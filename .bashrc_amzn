@@ -4,3 +4,7 @@ then
 else
   alias bb='brazil-build'
 fi
+
+
+# Path
+export PATH=$HOME/.toolbox/bin:$PATH

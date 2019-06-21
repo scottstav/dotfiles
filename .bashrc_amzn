@@ -1,0 +1,6 @@
+if [ $(date +%A) = "Friday" ]
+then
+  alias bb='brazil-build-rainbow'
+else
+  alias bb='brazil-build'
+fi

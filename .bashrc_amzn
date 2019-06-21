@@ -3,8 +3,8 @@ then
   alias bb='brazil-build-rainbow'
 else
   alias bb='brazil-build'
-fi
 
+fi
 
 # Path
 export PATH=$HOME/.toolbox/bin:$PATH

@@ -1,9 +1,9 @@
 ;; Add MELPA
 
 (require 'package)
-(require 'use-package)
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
 (package-initialize)
+(require 'use-package)
 
 
 ;; Save Configuration ;;

@@ -27,7 +27,7 @@
          ("\\.md\\'" . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
-
+(setq markdown-command "pandoc")
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.

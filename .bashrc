@@ -1,5 +1,6 @@
+<<<<<<< HEAD
 # Alias
-alias config='/usr/bin/git --git-dir=/Users/sstavino/.cfg/ --work-tree=/Users/sstavino'
+alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 alias ls='ls -GAF'
 
 # Amazon specific settings

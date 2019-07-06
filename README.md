@@ -26,3 +26,7 @@ config config status.showUntrackedFiles no
 ```
 ### tmux
 `ln -s -f .tmux/.tmux.conf`
+
+### emacs
+* i'd reccomend emacs 24+ (MELPA/ELPA shipped by default)\
+* if you can't upgrade, try installing package.el manually from [here](http://git.savannah.gnu.org/gitweb/?p=emacs.git;a=blob_plain;hb=ba08b24186711eaeb3748f3d1f23e2c2d9ed0d09;f=lisp/emacs-lisp/package.el)

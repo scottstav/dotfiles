@@ -11,6 +11,14 @@ magenta=$(tput setaf 5)
 cyan=$(tput setaf 6)
 white=$(tput setaf 7)
 
+# SSH is CYAN, local is RED
+if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
+    session_color=$cyan
+else
+    session_color=$red
+fi
+
+
 cd () { builtin cd "$@" && chpwd; }
 pushd () { builtin pushd "$@" && chpwd; }
 popd () { builtin popd "$@" && chpwd; }
@@ -26,6 +34,6 @@ chpwd () {
   esac
 }
 
-PS1='\[$reset\]\[$white\][\[$cyan\]$HPWD\[$white\]] →\[$reset\] '
+PS1='\[$reset\]\[$white\][\[$session_color\]$HPWD\[$white\]] →\[$reset\] '
 cd # this is to trigger evaluation of chpwd when shell comes up
 

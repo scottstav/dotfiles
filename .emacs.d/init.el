@@ -1,10 +1,11 @@
 ;; Add MELPA
-
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
 (package-initialize)
 (require 'use-package)
-
+(add-to-list 'load-path "~/.emacs.d/lisp/")
+(require 'yaml-mode)
+(add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
 
 ;; Save Configuration ;;
 (setq backup-directory-alist `(("." . "~/.saves")))

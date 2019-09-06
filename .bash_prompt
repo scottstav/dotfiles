@@ -35,5 +35,5 @@ chpwd () {
 }
 
 PS1='\[$reset\]\[$white\][\[$session_color\]$HPWD\[$white\]] →\[$reset\] '
-cd # this is to trigger evaluation of chpwd when shell comes up
+chpwd # this is to trigger evaluation of chpwd when shell comes up
 

@@ -14,10 +14,21 @@
 (add-to-list 'load-path "~/.emacs.d/lisp/")
 (require 'yaml-mode)
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
+(require 'flymake-ruby)
+
+
+(eval-after-load 'company
+  '(push 'company-robe company-backends))
 
 
 ;; Save Configuration ;;
-(setq backup-directory-alist `(("." . "~/.saves")))
+;; save backups in .emacs.d/backups
+(setq backup-directory-alist
+      `(("." . ,(expand-file-name
+		 (concat user-emacs-directory "backups")))))
+;; save auto-saves in .emacs.d/autosave
+(setq auto-save-file-name-transforms
+      `((".*" ,(concat user-emacs-directory "auto-save/") t)))
 
 (setq backup-by-copying t)
 
@@ -26,6 +37,10 @@
       kept-old-versions 0   ;; Number of oldest versions to keep.
       delete-old-versions t ;; Don't ask to delete excess backup versions.
       backup-by-copying t)  ;; Copy all files, don't rename them.
+
+;; remove trailing whitespace
+(add-hook 'before-save-hook 'delete-trailing-whitespace)
+
 ;; ------------------ ;;
 
 
@@ -47,6 +62,10 @@
 (setq web-mode-content-types-alist '(("jsx" . "\\.js[x]?\\'")))
 (add-to-list 'auto-mode-alist '("\\.jsx?$" . web-mode))
 (add-to-list 'auto-mode-alist '("\\.css?$" . web-mode))
+
+;; ruby
+(add-hook 'ruby-mode-hook 'robe-mode)
+(add-hook 'ruby-mode-hook 'flymake-ruby-load)
 
 (use-package markdown-mode
   :ensure t
@@ -71,7 +90,7 @@
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

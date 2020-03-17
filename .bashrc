@@ -1,6 +1,3 @@
-# Amazon specific settings
-. ~/.bashrc_amzn
-
 # Alias
 alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 alias ls='ls -GAF'

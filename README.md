@@ -1,6 +1,7 @@
-# /Users/sstavino/
+# dot-files
 
 ### setup
+Run script:
 ```
 # create bare repo in ~/.cfg
 git clone --bare git@github.com:scottstav/dotfiles.git $HOME/.cfg
@@ -22,10 +23,13 @@ fi;
 config checkout
 # make 'config status' command not overwhelming
 config config status.showUntrackedFiles no
-
 ```
+
 ### tmux
 `ln -s -f .tmux/.tmux.conf`
+
+### iTerm2
+import `scott-default-iterm-profile.json` into iTerm2 preferences
 
 ### emacs
 * i'd reccomend emacs 24+ (MELPA/ELPA shipped by default)\

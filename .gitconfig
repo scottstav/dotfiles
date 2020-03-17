@@ -1,0 +1,16 @@
+[user]
+	email = howdy@scotty.dance
+	name = scottstav
+[color]
+	ui = auto
+[core]
+	pager = less -FMRiX
+	excludesfile = /Users/sstavino/.gitignore
+[push]
+	default = simple
+[alias]
+	dag = log --graph --format='format:%C(yellow)%h%C(reset) %C(blue)\"%an\" <%ae>%C(reset) %C(magenta)%cr%C(reset)%C(auto)%d%C(reset)%n%s' --date-order
+	# git change-commits GIT_AUTHOR_NAME "old name" "new name"
+	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f "
+[amazon]
+	setup-crv = true

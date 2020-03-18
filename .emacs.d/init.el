@@ -17,13 +17,10 @@
   (require 'use-package))
 (require 'use-package)
 
-(eval-after-load 'company
-  '(push 'company-robe company-backends))
-
 ;;------------------language config------------------------------
 
 ;; install language config packages
-(dolist (package '(yaml-mode flymake-ruby inf-ruby))
+(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe))
   (unless (package-installed-p package)
     (package-install package))
   (require package))
@@ -43,15 +40,18 @@
 ;; json/yaml
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
 (add-hook 'json-mode-hook
-(lambda ()
-(make-local-variable 'js-indent-level)
-(setq js-indent-level 2)))
+	  (lambda ()
+	    (make-local-variable 'js-indent-level)
+	    (setq js-indent-level 2)))
 
 ;; ruby
 (add-hook 'ruby-mode-hook 'robe-mode)
 (add-hook 'ruby-mode-hook 'flymake-ruby-load)
 
 ;; markdown
+;; may need to:
+;; * brew install markdown
+;; * brew install pandoc
 (use-package markdown-mode
   :ensure t
   :commands (markdown-mode gfm-mode)
@@ -62,20 +62,23 @@
 (setq markdown-command "pandoc")
 
 ;; auto-complete
+(global-company-mode)
 (add-hook 'after-init-hook 'global-company-mode)
+(eval-after-load 'company
+  '(push 'company-robe company-backends))
 
 ;;---------------------------------------------------------------
 
 
-;------------------save config------------------------------
+;;------------------save config------------------------------
 
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
       `(("." . ,(expand-file-name
 		 (concat user-emacs-directory "backups")))))
-;; save auto-saves in .emacs.d/autosave
+;; save auto-saves in .emacs.d/auto-save
 (setq auto-save-file-name-transforms
-      `((".*" ,(concat user-emacs-directory "auto-save/") t)))
+      `((".*" ,(concat user-emacs-directory "auto-save") t)))
 
 (setq backup-by-copying t)
 
@@ -90,7 +93,11 @@
 
 ;;---------------------------------------------------------------
 
-(ido-mode 1)
+(ido-mode 1) ; file search magic
+
+(when (string= system-type "darwin") ; avoid warn when opening dir on macOS
+  (setq dired-use-ls-dired nil))
+
 (when (version<= "26.0.50" emacs-version )
   (global-display-line-numbers-mode))
 

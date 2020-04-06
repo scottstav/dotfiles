@@ -1,5 +1,10 @@
 # dot-files
 
+## Prerequisites
+1. install git
+2. install emacs
+3. setup ssh key for git
+
 ### setup
 Run script:
 

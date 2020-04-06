@@ -17,10 +17,15 @@
   (require 'use-package))
 (require 'use-package)
 
+(global-set-key "\C-cy"
+		'(lambda ()
+		   (interactive)
+		   (popup-menu 'yank-menu)))
+
 ;;------------------language config------------------------------
 
 ;; install language config packages
-(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe))
+(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit))
   (unless (package-installed-p package)
     (package-install package))
   (require package))
@@ -75,10 +80,10 @@
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
       `(("." . ,(expand-file-name
-		 (concat user-emacs-directory "backups")))))
+		 (concat user-emacs-directory "backups/")))))
 ;; save auto-saves in .emacs.d/auto-save
 (setq auto-save-file-name-transforms
-      `((".*" ,(concat user-emacs-directory "auto-save") t)))
+      `((".*" ,(concat user-emacs-directory "auto-save/") t)))
 
 (setq backup-by-copying t)
 
@@ -108,7 +113,7 @@
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

@@ -22,6 +22,24 @@
 		   (interactive)
 		   (popup-menu 'yank-menu)))
 
+;; org mode
+(require 'org)
+
+(setq org-directory "~/Dropbox/org")
+(setq org-default-notes-file (concat org-directory "/General.org"))
+(global-set-key (kbd "C-c l") 'org-store-link)
+(global-set-key (kbd "C-c a") 'org-agenda)
+(global-set-key (kbd "C-c c") 'org-capture)
+(setq org-agenda-files (directory-files-recursively (concat org-directory "") "\\.org$"))
+(setq org-log-done t)
+
+(customize-set-variable 'org-journal-dir (concat org-directory "/journal"))
+(customize-set-variable 'org-journal-file-type 'weekly)
+(customize-set-variable 'org-journal-file-format "%Y%m%d.org")
+(dolist (package '(org-journal))
+  (unless (package-installed-p package)
+    (package-install package))
+  (require package))
 ;;------------------language config------------------------------
 
 ;; install language config packages
@@ -113,7 +131,7 @@
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (org-journal magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

@@ -33,9 +33,9 @@
 (setq org-agenda-files (directory-files-recursively (concat org-directory "") "\\.org$"))
 (setq org-log-done t)
 
-(customize-set-variable 'org-journal-dir (concat org-directory "/journal"))
+(customize-set-variable 'org-journal-dir (concat org-directory ""))
 (customize-set-variable 'org-journal-file-type 'weekly)
-(customize-set-variable 'org-journal-file-format "%Y%m%d.org")
+(customize-set-variable 'org-journal-file-format "journal-%Y%m%d.org")
 (dolist (package '(org-journal))
   (unless (package-installed-p package)
     (package-install package))

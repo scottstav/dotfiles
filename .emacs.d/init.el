@@ -118,6 +118,9 @@
 
 (ido-mode 1) ; file search magic
 
+;; stupid bell
+(setq ring-bell-function 'ignore)
+
 (when (string= system-type "darwin") ; avoid warn when opening dir on macOS
   (setq dired-use-ls-dired nil))
 

@@ -9,6 +9,20 @@
 (eval-after-load 'gnutls
   '(add-to-list 'gnutls-trustfiles "/etc/ssl/cert.pem"))
 
+;; Buffers
+(global-set-key (kbd "C-x C-b") 'ibuffer)
+
+;; Directory
+(defun file-info ()
+  (interactive)
+  (let ((dired-listing-switches "-alh"))
+    (dired-other-window buffer-file-name)))
+
+(global-set-key (kbd "C-x C-b") 'ibuffer)
+
+(desktop-save-mode 1)
+(when (fboundp 'winner-mode)
+      (winner-mode 1))
 ;; setup 'use-package'
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
@@ -100,6 +114,7 @@
       `(("." . ,(expand-file-name
 		 (concat user-emacs-directory "backups/")))))
 ;; save auto-saves in .emacs.d/auto-save
+;; this is not working
 (setq auto-save-file-name-transforms
       `((".*" ,(concat user-emacs-directory "auto-save/") t)))
 
@@ -132,6 +147,9 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(org-agenda-files
+   (quote
+    ("~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/journal-20200413.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
  '(package-selected-packages
    (quote
     (org-journal magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))

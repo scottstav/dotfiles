@@ -106,6 +106,9 @@
 
 ;;---------------------------------------------------------------
 
+(defun connect-remote ()
+  (interactive)
+  (dired "/ec2-user@minecraft.scotty.dance:~"))
 
 ;;------------------save config------------------------------
 
@@ -136,6 +139,8 @@
 ;; stupid bell
 (setq ring-bell-function 'ignore)
 
+(add-to-list 'default-frame-alist '(font . "Menlo-18" ))
+
 (when (string= system-type "darwin") ; avoid warn when opening dir on macOS
   (setq dired-use-ls-dired nil))
 
@@ -147,9 +152,15 @@
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(ansi-color-faces-vector
+   [default default default italic underline success warning error])
+ '(custom-enabled-themes (quote (wombat)))
  '(org-agenda-files
    (quote
     ("~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/journal-20200413.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
+ '(org-journal-dir "~/Dropbox/org")
+ '(org-journal-file-format "journal-%Y%m%d.org")
+ '(org-journal-file-type (quote weekly))
  '(package-selected-packages
    (quote
     (org-journal magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))

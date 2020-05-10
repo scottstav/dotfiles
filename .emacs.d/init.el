@@ -20,7 +20,13 @@
 
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
-(desktop-save-mode 1)
+(dolist (package '(desktop+ google-this))
+  (unless (package-installed-p package)
+    (package-install package))
+  (require package))
+
+(google-this-mode 1)
+
 (when (fboundp 'winner-mode)
       (winner-mode 1))
 ;; setup 'use-package'
@@ -36,6 +42,8 @@
 		   (interactive)
 		   (popup-menu 'yank-menu)))
 
+
+
 ;; org mode
 (require 'org)
 
@@ -47,14 +55,28 @@
 (setq org-agenda-files (directory-files-recursively (concat org-directory "") "\\.org$"))
 (setq org-log-done t)
 
-(customize-set-variable 'org-journal-dir (concat org-directory ""))
-(customize-set-variable 'org-journal-file-type 'weekly)
-(customize-set-variable 'org-journal-file-format "journal-%Y%m%d.org")
-(dolist (package '(org-journal))
-  (unless (package-installed-p package)
-    (package-install package))
-  (require package))
+(add-hook 'org-mode-hook '(lambda () (setq fill-column 80)))
+(add-hook 'org-mode-hook 'turn-on-auto-fill)
+
+(defun org-capture-journal-location ()
+    "go to journal.org and find the subtree by date"
+    (interactive "P")
+    (let* ((heading (format-time-string "%Y-%m-%d %A")))
+      (find-file (concat org-directory "/journal.org"))
+      (goto-char 0)
+      (unless (search-forward (format "* %s" heading) nil t)
+        (insert (format "* %s\n" heading))
+        (goto-line -1))))
+
+(setq org-capture-templates
+  '(
+    ("j" "Journal Entry"
+     entry (function org-capture-journal-location))
+    )
+  )
 ;;------------------language config------------------------------
+
+(show-paren-mode 1)
 
 ;; install language config packages
 (dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit))
@@ -110,6 +132,28 @@
   (interactive)
   (dired "/ec2-user@minecraft.scotty.dance:~"))
 
+;; Shell
+  (defun with-face (str &rest face-plist)
+    (propertize str 'face face-plist))
+
+  (defun shk-eshell-prompt ()
+    (let ((header-bg "#cae682"))
+      (concat
+       (with-face (concat (eshell/pwd) " ") :background header-bg :foreground "#e5786d")
+       (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#888")
+       (with-face
+        (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
+        :background header-bg)
+       (with-face "\n" :background header-bg)
+       (with-face user-login-name :foreground "#cae682")
+       (if (= (user-uid) 0)
+           (with-face " #" :foreground "red")
+         " $")
+       " ")))
+  (setq eshell-prompt-function 'shk-eshell-prompt)
+  (setq eshell-highlight-prompt nil)
+
+
 ;;------------------save config------------------------------
 
 ;; save backups in .emacs.d/backups
@@ -157,13 +201,10 @@
  '(custom-enabled-themes (quote (wombat)))
  '(org-agenda-files
    (quote
-    ("~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/journal-20200413.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
- '(org-journal-dir "~/Dropbox/org")
- '(org-journal-file-format "journal-%Y%m%d.org")
- '(org-journal-file-type (quote weekly))
+    ("~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
  '(package-selected-packages
    (quote
-    (org-journal magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

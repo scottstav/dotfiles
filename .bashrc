@@ -12,8 +12,6 @@ show_space() {
 export VISUAL=emacs
 export EDITOR="$VISUAL"
 
-. ~/.bash_prompt
-
 # macOS Catalina switched to zsh but i dont wanna deal
 export BASH_SILENCE_DEPRECATION_WARNING=1
 

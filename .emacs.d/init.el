@@ -84,6 +84,14 @@
     (package-install package))
   (require package))
 
+(use-package elpy
+  :ensure t
+  :init
+  (elpy-enable))
+
+(setq elpy-rpc-virtualenv-path 'current)
+(setq elpy-rpc-python-command "python3")
+
 (defun web-mode-init-hook ()
   "Hooks for web-mode"
   (setq web-mode-code-indent-offset 2)
@@ -178,12 +186,13 @@
 
 ;;---------------------------------------------------------------
 
+(setq next-line-add-newlines t)
 (ido-mode 1) ; file search magic
 
 ;; stupid bell
 (setq ring-bell-function 'ignore)
 
-(add-to-list 'default-frame-alist '(font . "Menlo-18" ))
+(add-to-list 'default-frame-alist '(font . "Menlo-20" ))
 
 (when (string= system-type "darwin") ; avoid warn when opening dir on macOS
   (setq dired-use-ls-dired nil))
@@ -204,7 +213,7 @@
     ("~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
  '(package-selected-packages
    (quote
-    (google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

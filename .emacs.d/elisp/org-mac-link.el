@@ -234,9 +234,9 @@ When done, go grab the link, and insert it at point."
 (defun org-mac-paste-applescript-links (as-link-list)
   "Paste in a list of links from an applescript handler.
 The links are of the form <link>::split::<name>."
-  (let* ((noquote-as-link-list 
-	  (if (string-prefix-p "\"" as-link-list) 
-	      (substring as-link-list 1 -1) 
+  (let* ((noquote-as-link-list
+	  (if (string-prefix-p "\"" as-link-list)
+	      (substring as-link-list 1 -1)
 	    as-link-list))
 	 (link-list
           (mapcar (lambda (x) (if (string-match "\\`\"\\(.*\\)\"\\'" x)
@@ -413,7 +413,7 @@ The links are of the form <link>::split::<name>."
 (defun org-mac-safari-get-frontmost-url ()
   (interactive)
   (message "Applescript: Getting Safari url...")
-  (org-mac-paste-applescript-links 
+  (org-mac-paste-applescript-links
    (org-as-mac-safari-get-frontmost-url)))
 
 (defun org-mac-safari-insert-frontmost-url ()
@@ -782,7 +782,7 @@ This will use the command `open' with the message URL."
     "repeat with theMessage in theSelection\n"
     "set theID to message id of theMessage\n"
     "set theSubject to subject of theMessage\n"
-    "set theLink to \"message://\" & theID & \"::split::\" & theSubject\n"
+    "set theLink to \"message://<\" & theID & \">::split::\" & theSubject\n"
     "if (theLinkList is not equal to {}) then\n"
     "set theLink to \"\n\" & theLink\n"
     "end if\n"
@@ -806,7 +806,7 @@ This will use the command `open' with the message URL."
     "repeat with theMessage in theSelection\n"
     "set theID to message id of theMessage\n"
     "set theSubject to subject of theMessage\n"
-    "set theLink to \"message://\" & theID & \"::split::\" & theSubject & \"\n\"\n"
+    "set theLink to \"message://<\" & theID & \"::split::\" & theSubject & \">\n\"\n"
     "copy theLink to end of theLinkList\n"
     "end repeat\n"
     "end repeat\n"

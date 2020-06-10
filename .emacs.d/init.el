@@ -4,7 +4,7 @@
 (add-to-list 'load-path "/usr/local/share/emacs/site-lisp/mu/mu4e")
 (package-initialize)
 
-(add-to-list 'load-path "~/.emacs.d/lisp/")
+(add-to-list 'load-path "~/.emacs.d/elisp/")
 
 ;; MAIL
 (require 'mu4e)
@@ -16,6 +16,10 @@
 ;; use imagemagick, if available
 (when (fboundp 'imagemagick-register-types)
   (imagemagick-register-types))
+
+(setq mu4e-html2text-command "iconv -c -t utf-8 | pandoc -f html -t plain")
+
+
 ;; END MAIL
 
 ;; dont remember what this was for...
@@ -116,7 +120,7 @@
 ;;   :ensure t)
 
 ;; (use-package treemacs-persp
-;;   :after treemacs persp-mode
+;;   :after treemacs persp-moden
 ;;   :ensure t
 ;;   :config (treemacs-set-scope-type 'Perspectives))
 
@@ -189,6 +193,10 @@
 	 "* TODO %?\n  %iSCHEDULED: %^t\n  %a")
       	)
       )
+
+(require 'org-mac-link)
+(add-hook 'org-mode-hook (lambda ()
+  (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)))
 
 ;;------------------language config------------------------------
 
@@ -331,9 +339,13 @@
  '(org-agenda-files
    (quote
     ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
+ '(org-modules
+   (quote
+    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-link)))
  '(package-selected-packages
    (quote
-    (treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode))))
+    (urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+ '(send-mail-function (quote sendmail-send-it)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

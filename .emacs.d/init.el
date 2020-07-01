@@ -6,22 +6,6 @@
 
 (add-to-list 'load-path "~/.emacs.d/elisp/")
 
-;; MAIL
-(require 'mu4e)
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize))
-(setq mu4e-mu-binary (executable-find "mu"))
-;; enable inline images
-(setq mu4e-view-show-images t)
-;; use imagemagick, if available
-(when (fboundp 'imagemagick-register-types)
-  (imagemagick-register-types))
-
-(setq mu4e-html2text-command "iconv -c -t utf-8 | pandoc -f html -t plain")
-
-
-;; END MAIL
-
 ;; dont remember what this was for...
 (eval-after-load 'gnutls
   '(add-to-list 'gnutls-trustfiles "/etc/ssl/cert.pem"))
@@ -158,11 +142,10 @@
 		   (popup-menu 'yank-menu)))
 
 ;; org mode
+
+(setq diary-file "~/Dropbox/org/diary")
+
 (require 'org)
-;;store org-mode links to messages
-(require 'org-mu4e)
-;;store link to message if in header view, not to header query
-(setq org-mu4e-link-query-in-headers-mode nil)
 (setq org-directory "~/Dropbox/org")
 (setq org-default-notes-file (concat org-directory "/General.org"))
 (global-set-key (kbd "C-c l") 'org-store-link)
@@ -198,6 +181,9 @@
 (add-hook 'org-mode-hook (lambda ()
   (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)))
 
+(require 'org-mac-iCal)
+
+(setq org-agenda-include-diary t)
 ;;------------------language config------------------------------
 
 (show-paren-mode 1)
@@ -338,13 +324,13 @@
  '(custom-enabled-themes (quote (wombat)))
  '(org-agenda-files
    (quote
-    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org" "~/Dropbox/org/movement.org" "~/Dropbox/org/shopping.org" "/Users/scottstav/Dropbox/org/dotfiles.org" "/Users/scottstav/Dropbox/org/poetry.org" "/Users/scottstav/Dropbox/org/posts.org" "/Users/scottstav/Dropbox/org/projects.org" "/Users/scottstav/Dropbox/org/sensunDnD.org")))
+    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
  '(org-modules
    (quote
-    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-link)))
+    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
  '(package-selected-packages
    (quote
-    (urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+    (gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
  '(send-mail-function (quote sendmail-send-it)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

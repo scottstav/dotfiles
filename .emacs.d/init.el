@@ -181,8 +181,6 @@
 (add-hook 'org-mode-hook (lambda ()
   (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)))
 
-(require 'org-mac-iCal)
-
 (setq org-agenda-include-diary t)
 ;;------------------language config------------------------------
 

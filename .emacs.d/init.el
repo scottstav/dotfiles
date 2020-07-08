@@ -19,95 +19,6 @@
   (let ((dired-listing-switches "-alh"))
     (dired-other-window buffer-file-name)))
 
-;; (use-package treemacs
-;;   :ensure t
-;;   :defer t
-;;   :init
-;;   (with-eval-after-load 'winum
-;;     (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
-;;   :config
-;;   (progn
-;;     (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
-;;           treemacs-deferred-git-apply-delay      0.5
-;;           treemacs-directory-name-transformer    #'identity
-;;           treemacs-display-in-side-window        t
-;;           treemacs-eldoc-display                 t
-;;           treemacs-file-event-delay              5000
-;;           treemacs-file-extension-regex          treemacs-last-period-regex-value
-;;           treemacs-file-follow-delay             0.2
-;;           treemacs-file-name-transformer         #'identity
-;;           treemacs-follow-after-init             t
-;;           treemacs-git-command-pipe              ""
-;;           treemacs-goto-tag-strategy             'refetch-index
-;;           treemacs-indentation                   2
-;;           treemacs-indentation-string            " "
-;;           treemacs-is-never-other-window         nil
-;;           treemacs-max-git-entries               5000
-;;           treemacs-missing-project-action        'ask
-;;           treemacs-move-forward-on-expand        nil
-;;           treemacs-no-png-images                 nil
-;;           treemacs-no-delete-other-windows       t
-;;           treemacs-project-follow-cleanup        nil
-;;           treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
-;;           treemacs-position                      'left
-;;           treemacs-recenter-distance             0.1
-;;           treemacs-recenter-after-file-follow    nil
-;;           treemacs-recenter-after-tag-follow     nil
-;;           treemacs-recenter-after-project-jump   'always
-;;           treemacs-recenter-after-project-expand 'on-distance
-;;           treemacs-show-cursor                   nil
-;;           treemacs-show-hidden-files             t
-;;           treemacs-silent-filewatch              nil
-;;           treemacs-silent-refresh                nil
-;;           treemacs-sorting                       'alphabetic-asc
-;;           treemacs-space-between-root-nodes      t
-;;           treemacs-tag-follow-cleanup            t
-;;           treemacs-tag-follow-delay              1.5
-;;           treemacs-user-mode-line-format         nil
-;;           treemacs-user-header-line-format       nil
-;;           treemacs-width                         35)
-
-;;     ;; The default width and height of the icons is 22 pixels. If you are
-;;     ;; using a Hi-DPI display, uncomment this to double the icon size.
-;;     ;;(treemacs-resize-icons 44)
-
-;;     (treemacs-follow-mode t)
-;;     (treemacs-filewatch-mode t)
-;;     (treemacs-fringe-indicator-mode t)
-;;     (pcase (cons (not (null (executable-find "git")))
-;;                  (not (null treemacs-python-executable)))
-;;       (`(t . t)
-;;        (treemacs-git-mode 'deferred))
-;;       (`(t . _)
-;;        (treemacs-git-mode 'simple))))
-;;   :bind
-;;   (:map global-map
-;;         ("M-0"       . treemacs-select-window)
-;;         ("C-x t 1"   . treemacs-delete-other-windows)
-;;         ("C-x t t"   . treemacs)
-;;         ("C-x t B"   . treemacs-bookmark)
-;;         ("C-x t C-t" . treemacs-find-file)
-;;         ("C-x t M-t" . treemacs-find-tag)))
-
-
-;; (use-package treemacs-projectile
-;;   :after treemacs projectile
-;;   :ensure t)
-
-;; (use-package treemacs-icons-dired
-;;   :after treemacs dired
-;;   :ensure t
-;;   :config (treemacs-icons-dired-mode))
-
-;; (use-package treemacs-magit
-;;   :after treemacs magit
-;;   :ensure t)
-
-;; (use-package treemacs-persp
-;;   :after treemacs persp-moden
-;;   :ensure t
-;;   :config (treemacs-set-scope-type 'Perspectives))
-
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
 ;; scroll one line at a time (less "jumpy" than defaults)
@@ -158,14 +69,20 @@
 (add-hook 'org-mode-hook 'turn-on-auto-fill)
 
 (defun org-capture-journal-location ()
-    "go to journal.org and find the subtree by date"
-    (interactive "P")
-    (let* ((heading (format-time-string "%Y-%m-%d %A")))
-      (find-file (concat org-directory "/journal.org"))
-      (goto-char 0)
-      (unless (search-forward (format "* %s" heading) nil t)
-        (insert (format "* %s\n" heading))
-        (goto-line -1))))
+  "go to journal.org and find the subtree by date"
+  (interactive "P")
+  (let* ((heading (format-time-string "%Y-%m-%d %A")))
+    (find-file (concat org-directory "/journal.org"))
+    (goto-char 0)
+    (unless (search-forward (format "* %s" heading) nil t)
+      (insert (format "* %s\n" heading))
+      (goto-line -1)))
+  )
+
+(defun find-journal-date ()
+  "Search the journal file for the current date"
+  (interactive "P")
+  )
 
 (setq org-capture-templates
       `(
@@ -235,6 +152,27 @@
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
 (setq markdown-command "pandoc")
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(ansi-color-faces-vector
+   [default default default italic underline success warning error])
+ '(ansi-color-names-vector
+   ["black" "red3" "ForestGreen" "yellow3" "blue" "magenta3" "DeepSkyBlue" "gray50"])
+ '(custom-enabled-themes (quote (light-blue)))
+ '(markdown-command "/usr/local/bin/pandoc")
+ '(org-agenda-files
+   (quote
+    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
+ '(org-modules
+   (quote
+    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
+ '(package-selected-packages
+   (quote
+    (impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+ '(send-mail-function (quote sendmail-send-it)))
 
 ;; auto-complete
 (global-company-mode)
@@ -312,24 +250,7 @@
 (when (version<= "26.0.50" emacs-version )
   (global-display-line-numbers-mode))
 
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(ansi-color-faces-vector
-   [default default default italic underline success warning error])
- '(custom-enabled-themes (quote (wombat)))
- '(org-agenda-files
-   (quote
-    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
- '(org-modules
-   (quote
-    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
- '(package-selected-packages
-   (quote
-    (gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
- '(send-mail-function (quote sendmail-send-it)))
+
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

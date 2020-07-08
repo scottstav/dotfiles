@@ -10,6 +10,96 @@
 (eval-after-load 'gnutls
   '(add-to-list 'gnutls-trustfiles "/etc/ssl/cert.pem"))
 
+(defconst EMACS27+   (> emacs-major-version 26))
+(defconst EMACS28+   (> emacs-major-version 27))
+(defconst IS-MAC     (eq system-type 'darwin))
+(defconst IS-LINUX   (eq system-type 'gnu/linux))
+(defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
+(defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
+
+;; ----------------- stolen from DOOM ----------------------------------------;
+;; Contrary to what many Emacs users have in their configs, you really don't
+;; need more than this to make UTF-8 the default coding system:
+(when (fboundp 'set-charset-priority)
+  (set-charset-priority 'unicode))       ; pretty
+(prefer-coding-system 'utf-8)            ; pretty
+(setq locale-coding-system 'utf-8)       ; please
+;; The clipboard's on Windows could be in an encoding that's wider (or thinner)
+;; than utf-8, so let Emacs/the OS decide what encoding to use there.
+(unless IS-WINDOWS
+  (setq selection-coding-system 'utf-8)) ; with sugar on top
+
+
+;; Less noise at startup. The dashboard/empty scratch buffer is good enough.
+(setq inhibit-startup-message t
+      inhibit-startup-echo-area-message user-login-name
+      inhibit-default-init t
+      ;; Avoid pulling in many packages by starting the scratch buffer in
+      ;; `fundamental-mode', rather than, say, `org-mode' or `text-mode'.
+      initial-major-mode 'fundamental-mode
+      initial-scratch-message nil)
+
+;; Get rid of "For information about GNU Emacs..." message at startup, unless
+;; we're in a daemon session, where it'll say "Starting Emacs daemon." instead,
+;; which isn't so bad.
+(unless (daemonp)
+  (advice-add #'display-startup-echo-area-message :override #'ignore))
+
+;; Emacs is essentially one huge security vulnerability, what with all the
+;; dependencies it pulls in from all corners of the globe. Let's try to be at
+;; least a little more discerning.
+(setq gnutls-verify-error (not (getenv "INSECURE"))
+      gnutls-algorithm-priority
+      (when (boundp 'libgnutls-version)
+        (concat "SECURE128:+SECURE192:-VERS-ALL"
+                (if (and (not IS-WINDOWS)
+                         (not (version< emacs-version "26.3"))
+                         (>= libgnutls-version 30605))
+                    ":+VERS-TLS1.3")
+                ":+VERS-TLS1.2"))
+      ;; `gnutls-min-prime-bits' is set based on recommendations from
+      ;; https://www.keylength.com/en/4/
+      gnutls-min-prime-bits 3072
+      tls-checktrust gnutls-verify-error
+      ;; Emacs is built with `gnutls' by default, so `tls-program' would not be
+      ;; used in that case. Otherwise, people have reasons to not go with
+      ;; `gnutls', we use `openssl' instead. For more details, see
+      ;; https://redd.it/8sykl1
+      tls-program '("openssl s_client -connect %h:%p -CAfile %t -nbio -no_ssl3 -no_tls1 -no_tls1_1 -ign_eof"
+                    "gnutls-cli -p %p --dh-bits=3072 --ocsp --x509cafile=%t \
+--strict-tofu --priority='SECURE192:+SECURE128:-VERS-ALL:+VERS-TLS1.2:+VERS-TLS1.3' %h"
+                    ;; compatibility fallbacks
+                    "gnutls-cli -p %p %h"))
+
+;; themes
+(use-package doom-themes
+  :config
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+        doom-themes-enable-italic t) ; if nil, italics is universally disabled
+  (load-theme 'doom-one-light t)
+
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
+
+  ;; Enable custom neotree theme (all-the-icons must be installed!)
+  (doom-themes-neotree-config)
+  ;; or for treemacs users
+  (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
+  (doom-themes-treemacs-config)
+
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config))
+
+;; mode line
+(use-package all-the-icons)
+
+(use-package doom-modeline
+  :ensure t
+  :init (doom-modeline-mode 1))
+
+;; ----------------- END stolen from DOOM ----------------------------------------;
+
 ;; Buffers
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
@@ -98,6 +188,8 @@
 (add-hook 'org-mode-hook (lambda ()
   (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)))
 
+(require 'org-mac-iCal)
+
 (setq org-agenda-include-diary t)
 ;;------------------language config------------------------------
 
@@ -151,28 +243,8 @@
          ("\\.md\\'" . markdown-mode)
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
-(setq markdown-command "pandoc")
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(ansi-color-faces-vector
-   [default default default italic underline success warning error])
- '(ansi-color-names-vector
-   ["black" "red3" "ForestGreen" "yellow3" "blue" "magenta3" "DeepSkyBlue" "gray50"])
- '(custom-enabled-themes (quote (light-blue)))
- '(markdown-command "/usr/local/bin/pandoc")
- '(org-agenda-files
-   (quote
-    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
- '(org-modules
-   (quote
-    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
- '(package-selected-packages
-   (quote
-    (impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
- '(send-mail-function (quote sendmail-send-it)))
+
+
 
 ;; auto-complete
 (global-company-mode)
@@ -181,6 +253,9 @@
   '(push 'company-robe company-backends))
 
 ;;---------------------------------------------------------------
+;; Projectile
+(projectile-mode +1)
+(define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
 
 (defun connect-remote-minecraft ()
   (interactive)
@@ -250,6 +325,59 @@
 (when (version<= "26.0.50" emacs-version )
   (global-display-line-numbers-mode))
 
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(ansi-color-faces-vector
+   [default default default italic underline success warning error])
+ '(ansi-color-names-vector
+   ["black" "red3" "ForestGreen" "yellow3" "blue" "magenta3" "DeepSkyBlue" "gray50"])
+ '(custom-enabled-themes nil)
+ '(doom-modeline-bar-width 8)
+ '(doom-modeline-height 15)
+ '(fci-rule-color "#383a42")
+ '(jdee-db-active-breakpoint-face-colors (cons "#f0f0f0" "#4078f2"))
+ '(jdee-db-requested-breakpoint-face-colors (cons "#f0f0f0" "#50a14f"))
+ '(jdee-db-spec-breakpoint-face-colors (cons "#f0f0f0" "#9ca0a4"))
+ '(markdown-command "/usr/local/bin/pandoc" t)
+ '(objed-cursor-color "#e45649")
+ '(org-agenda-files
+   (quote
+    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
+ '(org-modules
+   (quote
+    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
+ '(package-selected-packages
+   (quote
+    (projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+ '(pdf-view-midnight-colors (cons "#383a42" "#fafafa"))
+ '(rustic-ansi-faces
+   ["#fafafa" "#e45649" "#50a14f" "#986801" "#4078f2" "#a626a4" "#0184bc" "#383a42"])
+ '(send-mail-function (quote sendmail-send-it))
+ '(vc-annotate-background "#fafafa")
+ '(vc-annotate-color-map
+   (list
+    (cons 20 "#50a14f")
+    (cons 40 "#688e35")
+    (cons 60 "#807b1b")
+    (cons 80 "#986801")
+    (cons 100 "#ae7118")
+    (cons 120 "#c37b30")
+    (cons 140 "#da8548")
+    (cons 160 "#c86566")
+    (cons 180 "#b74585")
+    (cons 200 "#a626a4")
+    (cons 220 "#ba3685")
+    (cons 240 "#cf4667")
+    (cons 260 "#e45649")
+    (cons 280 "#d2685f")
+    (cons 300 "#c07b76")
+    (cons 320 "#ae8d8d")
+    (cons 340 "#383a42")
+    (cons 360 "#383a42")))
+ '(vc-annotate-very-old-color nil))
 
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

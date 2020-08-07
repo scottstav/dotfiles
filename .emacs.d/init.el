@@ -6,6 +6,7 @@
 
 (add-to-list 'load-path "~/.emacs.d/elisp/")
 
+
 ;; dont remember what this was for...
 (eval-after-load 'gnutls
   '(add-to-list 'gnutls-trustfiles "/etc/ssl/cert.pem"))
@@ -16,6 +17,14 @@
 (defconst IS-LINUX   (eq system-type 'gnu/linux))
 (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
+
+(add-to-list 'default-frame-alist '(font . "Menlo-20" ))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; multiple cursors                                                       ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package multiple-cursors)
+(global-set-key (kbd "C-c m c") 'mc/edit-lines)
 
 ;; ----------------- stolen from DOOM ----------------------------------------;
 ;; Contrary to what many Emacs users have in their configs, you really don't
@@ -77,13 +86,11 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-one-light t)
+  (load-theme 'doom-snazzy t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
 
-  ;; Enable custom neotree theme (all-the-icons must be installed!)
-  (doom-themes-neotree-config)
   ;; or for treemacs users
   (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
   (doom-themes-treemacs-config)
@@ -99,6 +106,28 @@
   :init (doom-modeline-mode 1))
 
 ;; ----------------- END stolen from DOOM ----------------------------------------;
+
+
+(defun untabify-buffer ()
+  (interactive)
+  (untabify (point-min) (point-max)))
+
+(defun indent-buffer ()
+  (interactive)
+  (indent-region (point-min) (point-max)))
+
+(defun cleanup-buffer ()
+  "Perform a bunch of operations on the whitespace content of a buffer.
+Including indent-buffer, which should not be called automatically on save."
+  (interactive)
+  (untabify-buffer)
+  (delete-trailing-whitespace)
+  (indent-buffer))
+
+(defun crontab-e ()
+    "Run `crontab -e' in a emacs buffer."
+    (interactive)
+    (with-editor-async-shell-command "crontab -e"))
 
 ;; Buffers
 (global-set-key (kbd "C-x C-b") 'ibuffer)
@@ -141,6 +170,97 @@
 		'(lambda ()
 		   (interactive)
 		   (popup-menu 'yank-menu)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Treemacs                                  ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(use-package treemacs
+  :ensure t
+  :defer t
+  :init
+  (with-eval-after-load 'winum
+    (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
+  :config
+  (progn
+    (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
+          treemacs-deferred-git-apply-delay      0.5
+          treemacs-directory-name-transformer    #'identity
+          treemacs-display-in-side-window        t
+          treemacs-eldoc-display                 t
+          treemacs-file-event-delay              5000
+          treemacs-file-extension-regex          treemacs-last-period-regex-value
+          treemacs-file-follow-delay             0.2
+          treemacs-file-name-transformer         #'identity
+          treemacs-follow-after-init             t
+          treemacs-git-command-pipe              ""
+          treemacs-goto-tag-strategy             'refetch-index
+          treemacs-indentation                   2
+          treemacs-indentation-string            " "
+          treemacs-is-never-other-window         nil
+          treemacs-max-git-entries               5000
+          treemacs-missing-project-action        'ask
+          treemacs-move-forward-on-expand        nil
+          treemacs-no-png-images                 nil
+          treemacs-no-delete-other-windows       t
+          treemacs-project-follow-cleanup        nil
+          treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
+          treemacs-position                      'left
+          treemacs-recenter-distance             0.1
+          treemacs-recenter-after-file-follow    nil
+          treemacs-recenter-after-tag-follow     nil
+          treemacs-recenter-after-project-jump   'always
+          treemacs-recenter-after-project-expand 'on-distance
+          treemacs-show-cursor                   nil
+          treemacs-show-hidden-files             t
+          treemacs-silent-filewatch              nil
+          treemacs-silent-refresh                nil
+          treemacs-sorting                       'alphabetic-asc
+          treemacs-space-between-root-nodes      t
+          treemacs-tag-follow-cleanup            t
+          treemacs-tag-follow-delay              1.5
+          treemacs-user-mode-line-format         nil
+          treemacs-user-header-line-format       nil
+          treemacs-width                         35
+          treemacs-workspace-switch-cleanup      nil)
+
+    ;; The default width and height of the icons is 22 pixels. If you are
+    ;; using a Hi-DPI display, uncomment this to double the icon size.
+    ;;(treemacs-resize-icons 44)
+
+    (treemacs-follow-mode t)
+    (treemacs-filewatch-mode t)
+    (treemacs-fringe-indicator-mode t)
+    (pcase (cons (not (null (executable-find "git")))
+                 (not (null treemacs-python-executable)))
+      (`(t . t)
+       (treemacs-git-mode 'deferred))
+      (`(t . _)
+       (treemacs-git-mode 'simple))))
+  :bind
+  (:map global-map
+        ("M-0"       . treemacs-select-window)
+        ("C-x t 1"   . treemacs-delete-other-windows)
+        ("C-x t t"   . treemacs)
+        ("C-x t B"   . treemacs-bookmark)
+        ("C-x t C-t" . treemacs-find-file)
+        ("C-x t M-t" . treemacs-find-tag)))
+
+
+(use-package treemacs-projectile
+  :after treemacs projectile
+  :ensure t)
+
+(use-package treemacs-icons-dired
+  :after treemacs dired
+  :ensure t
+  :config (treemacs-icons-dired-mode))
+
+(use-package treemacs-magit
+  :after treemacs magit
+  :ensure t)
+
+;; END Treemacs ;;;;;;;;;
+
 
 ;; org mode
 
@@ -196,24 +316,45 @@
 (show-paren-mode 1)
 
 ;; install language config packages
-(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit))
+(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit npm-mode exec-path-from-shell jedi go-mode terraform-mode))
   (unless (package-installed-p package)
     (package-install package))
   (require package))
+
+
+(when (memq window-system '(mac ns x))
+  (exec-path-from-shell-initialize))
+
+;; go-lang
+(add-to-list 'exec-path "/Users/scottstav/go/bin")
+
+(defun auto-complete-for-go ()
+  (auto-complete-mode 1))
+
+(defun my-go-mode-hook ()
+  ; Call Gofmt before saving
+  (add-hook 'before-save-hook 'gofmt-before-save)
+  ; Godef jump key binding
+  (local-set-key (kbd "M-.") 'godef-jump)
+  (local-set-key (kbd "M-,") 'pop-tag-mark)
+  (add-hook 'go-mode-hook 'auto-complete-for-go)
+  )
+
+(add-hook 'go-mode-hook 'my-go-mode-hook)
 
 (use-package elpy
   :ensure t
   :init
   (elpy-enable))
 
-(setq elpy-rpc-virtualenv-path 'current)
-(setq elpy-rpc-python-command "python3")
+(setq elpy-rpc-backend "jedi")
 
 (defun web-mode-init-hook ()
   "Hooks for web-mode"
   (setq web-mode-code-indent-offset 2)
   (setq web-mode-css-indent-offset 2)
   (setq web-mode-markup-indent-offset 2))
+
 
 (add-hook 'web-mode-hook  'web-mode-init-hook)
 
@@ -255,15 +396,13 @@
 ;;---------------------------------------------------------------
 ;; Projectile
 (projectile-mode +1)
+(setq projectile-project-search-path '("~/projects/"))
 (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+
 
 (defun connect-remote-minecraft ()
   (interactive)
-  (dired "/ec2-user@minecraft.scotty.dance:~"))
-
-(defun connect-remote-arch ()
-  (interactive)
-  (dired "/root@10.0.1.41:/"))
+  (dired "/ssh:ec2-user@minecraft.scotty.dance:~"))
 
 ;; Shell
   (defun with-face (str &rest face-plist)
@@ -289,6 +428,8 @@
 
 ;;------------------save config------------------------------
 
+
+
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
       `(("." . ,(expand-file-name
@@ -311,13 +452,15 @@
 
 ;;---------------------------------------------------------------
 
+;; keybindings
+(global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
+
+
 (setq next-line-add-newlines t)
 (ido-mode 1) ; file search magic
 
 ;; stupid bell
 (setq ring-bell-function 'ignore)
-
-(add-to-list 'default-frame-alist '(font . "Menlo-20" ))
 
 (when (string= system-type "darwin") ; avoid warn when opening dir on macOS
   (setq dired-use-ls-dired nil))
@@ -334,28 +477,29 @@
    [default default default italic underline success warning error])
  '(ansi-color-names-vector
    ["black" "red3" "ForestGreen" "yellow3" "blue" "magenta3" "DeepSkyBlue" "gray50"])
- '(custom-enabled-themes nil)
  '(doom-modeline-bar-width 8)
  '(doom-modeline-height 15)
  '(fci-rule-color "#383a42")
+ '(global-display-line-numbers-mode t)
  '(jdee-db-active-breakpoint-face-colors (cons "#f0f0f0" "#4078f2"))
  '(jdee-db-requested-breakpoint-face-colors (cons "#f0f0f0" "#50a14f"))
  '(jdee-db-spec-breakpoint-face-colors (cons "#f0f0f0" "#9ca0a4"))
- '(markdown-command "/usr/local/bin/pandoc" t)
+ '(markdown-command "/usr/local/bin/pandoc")
  '(objed-cursor-color "#e45649")
  '(org-agenda-files
    (quote
-    ("~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
+    ("~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
  '(org-modules
    (quote
     (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
  '(package-selected-packages
    (quote
-    (projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+    (terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
  '(pdf-view-midnight-colors (cons "#383a42" "#fafafa"))
  '(rustic-ansi-faces
    ["#fafafa" "#e45649" "#50a14f" "#986801" "#4078f2" "#a626a4" "#0184bc" "#383a42"])
  '(send-mail-function (quote sendmail-send-it))
+ '(show-paren-mode t)
  '(vc-annotate-background "#fafafa")
  '(vc-annotate-color-map
    (list

@@ -314,6 +314,7 @@ Including indent-buffer, which should not be called automatically on save."
 ;;------------------language config------------------------------
 
 (show-paren-mode 1)
+(electric-pair-mode 1)
 
 ;; install language config packages
 (dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit npm-mode exec-path-from-shell jedi go-mode terraform-mode))
@@ -321,15 +322,26 @@ Including indent-buffer, which should not be called automatically on save."
     (package-install package))
   (require package))
 
-
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
 
-;; go-lang
-(add-to-list 'exec-path "/Users/scottstav/go/bin")
+(defun set-exec-path-from-shell-PATH ()
+  (let ((path-from-shell (replace-regexp-in-string
+                          "[ \t\n]*$"
+                          ""
+                          (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
+    (setenv "PATH" path-from-shell)
+    (setq eshell-path-env path-from-shell) ; for eshell users
+    (setq exec-path (split-string path-from-shell path-separator))))
 
-(defun auto-complete-for-go ()
-  (auto-complete-mode 1))
+(when window-system (set-exec-path-from-shell-PATH))
+
+
+;; go-lang
+
+(setenv "GOPATH" "/Users/scottstav/go")
+;; i dont know why this has to be set manually
+(setenv "GOROOT" "/usr/local/opt/go/libexec")
 
 (defun my-go-mode-hook ()
   ; Call Gofmt before saving
@@ -337,9 +349,15 @@ Including indent-buffer, which should not be called automatically on save."
   ; Godef jump key binding
   (local-set-key (kbd "M-.") 'godef-jump)
   (local-set-key (kbd "M-,") 'pop-tag-mark)
-  (add-hook 'go-mode-hook 'auto-complete-for-go)
+  (local-set-key (kbd "M-p") 'compile)            ; Invoke compiler
+  (local-set-key (kbd "M-P") 'recompile)          ; Redo most recent compile cmd
+  (local-set-key (kbd "M-]") 'next-error)         ; Go to next error (or msg)
+  (local-set-key (kbd "M-[") 'previous-error)     ; Go to previous error or msg
+  (go-eldoc-setup)
+  (lsp)
   )
 
+(require 'go-projectile)
 (add-hook 'go-mode-hook 'my-go-mode-hook)
 
 (use-package elpy
@@ -392,13 +410,12 @@ Including indent-buffer, which should not be called automatically on save."
 (add-hook 'after-init-hook 'global-company-mode)
 (eval-after-load 'company
   '(push 'company-robe company-backends))
-
+(add-hook 'after-init-hook #'global-flycheck-mode)
 ;;---------------------------------------------------------------
 ;; Projectile
 (projectile-mode +1)
-(setq projectile-project-search-path '("~/projects/"))
 (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
-
+(setq projectile-indexing-method 'native)
 
 (defun connect-remote-minecraft ()
   (interactive)
@@ -484,7 +501,7 @@ Including indent-buffer, which should not be called automatically on save."
  '(jdee-db-active-breakpoint-face-colors (cons "#f0f0f0" "#4078f2"))
  '(jdee-db-requested-breakpoint-face-colors (cons "#f0f0f0" "#50a14f"))
  '(jdee-db-spec-breakpoint-face-colors (cons "#f0f0f0" "#9ca0a4"))
- '(markdown-command "/usr/local/bin/pandoc")
+ '(markdown-command "/usr/local/bin/pandoc" t)
  '(objed-cursor-color "#e45649")
  '(org-agenda-files
    (quote
@@ -494,7 +511,7 @@ Including indent-buffer, which should not be called automatically on save."
     (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
  '(package-selected-packages
    (quote
-    (terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+    (lsp-mode browse-at-remote terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
  '(pdf-view-midnight-colors (cons "#383a42" "#fafafa"))
  '(rustic-ansi-faces
    ["#fafafa" "#e45649" "#50a14f" "#986801" "#4078f2" "#a626a4" "#0184bc" "#383a42"])

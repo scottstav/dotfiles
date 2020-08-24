@@ -108,6 +108,9 @@
 ;; ----------------- END stolen from DOOM ----------------------------------------;
 
 
+;; this	is a mess i dont know where to put anything!!!
+(global-set-key (kbd "C-\\") 'er/expand-region)
+
 (defun untabify-buffer ()
   (interactive)
   (untabify (point-min) (point-max)))
@@ -149,7 +152,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq scroll-step 1) ;; keyboard scroll one line at a time
 
-(dolist (package '(desktop+ google-this))
+(dolist (package '(desktop+ google-this helm))
   (unless (package-installed-p package)
     (package-install package))
   (require package))
@@ -262,6 +265,10 @@ Including indent-buffer, which should not be called automatically on save."
 ;; END Treemacs ;;;;;;;;;
 
 
+;; god i dont know anymore somebody make me organize my config
+(add-hook 'text-mode-hook
+          (lambda () (local-set-key (kbd "C-c C-d") #'define-word-at-point)))
+
 ;; org mode
 
 (setq diary-file "~/Dropbox/org/diary")
@@ -313,6 +320,16 @@ Including indent-buffer, which should not be called automatically on save."
 (setq org-agenda-include-diary t)
 ;;------------------language config------------------------------
 
+(use-package yasnippet
+  :ensure t
+  :init
+  (yas-global-mode 1)
+  :config
+  (add-to-list 'yas-snippet-dirs (locate-user-emacs-file "snippets")))
+
+
+
+(global-set-key (kbd "C-x g") 'magit-status)
 (show-paren-mode 1)
 (electric-pair-mode 1)
 
@@ -355,6 +372,9 @@ Including indent-buffer, which should not be called automatically on save."
   (local-set-key (kbd "M-[") 'previous-error)     ; Go to previous error or msg
   (go-eldoc-setup)
   (lsp)
+  (if (not (string-match "go" compile-command))
+      (set (make-local-variable 'compile-command)
+           "go build -v && go test -v && go vet"))
   )
 
 (require 'go-projectile)
@@ -476,15 +496,7 @@ Including indent-buffer, which should not be called automatically on save."
 (setq next-line-add-newlines t)
 (ido-mode 1) ; file search magic
 
-;; stupid bell
-(setq ring-bell-function 'ignore)
-
-(when (string= system-type "darwin") ; avoid warn when opening dir on macOS
-  (setq dired-use-ls-dired nil))
-
-(when (version<= "26.0.50" emacs-version )
-  (global-display-line-numbers-mode))
-
+;; helm-ag
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -498,10 +510,12 @@ Including indent-buffer, which should not be called automatically on save."
  '(doom-modeline-height 15)
  '(fci-rule-color "#383a42")
  '(global-display-line-numbers-mode t)
+ '(helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
+ '(helm-ag-insert-at-point (quote symbol))
  '(jdee-db-active-breakpoint-face-colors (cons "#f0f0f0" "#4078f2"))
  '(jdee-db-requested-breakpoint-face-colors (cons "#f0f0f0" "#50a14f"))
  '(jdee-db-spec-breakpoint-face-colors (cons "#f0f0f0" "#9ca0a4"))
- '(markdown-command "/usr/local/bin/pandoc" t)
+ '(markdown-command "/usr/local/bin/pandoc")
  '(objed-cursor-color "#e45649")
  '(org-agenda-files
    (quote
@@ -511,7 +525,7 @@ Including indent-buffer, which should not be called automatically on save."
     (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
  '(package-selected-packages
    (quote
-    (lsp-mode browse-at-remote terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
+    (define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
  '(pdf-view-midnight-colors (cons "#383a42" "#fafafa"))
  '(rustic-ansi-faces
    ["#fafafa" "#e45649" "#50a14f" "#986801" "#4078f2" "#a626a4" "#0184bc" "#383a42"])
@@ -540,9 +554,24 @@ Including indent-buffer, which should not be called automatically on save."
     (cons 360 "#383a42")))
  '(vc-annotate-very-old-color nil))
 
+(global-set-key (kbd "M-i") 'helm-do-ag-project-root)
+
+
+;; stupid bell
+(setq ring-bell-function 'ignore)
+
+(when (string= system-type "darwin") ; avoid warn when opening dir on macOS
+  (setq dired-use-ls-dired nil))
+
+(when (version<= "26.0.50" emacs-version )
+  (global-display-line-numbers-mode))
+
+
+
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+(put 'downcase-region 'disabled nil)

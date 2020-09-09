@@ -1,16 +1,16 @@
 ;; Add MELPA
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
-(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/mu/mu4e")
 (package-initialize)
 
 (add-to-list 'load-path "~/.emacs.d/elisp/")
 
 
-;; dont remember what this was for...
+;; local cert for http requests
 (eval-after-load 'gnutls
   '(add-to-list 'gnutls-trustfiles "/etc/ssl/cert.pem"))
 
+;; constants
 (defconst EMACS27+   (> emacs-major-version 26))
 (defconst EMACS28+   (> emacs-major-version 27))
 (defconst IS-MAC     (eq system-type 'darwin))
@@ -18,6 +18,7 @@
 (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
 
+;; font
 (add-to-list 'default-frame-alist '(font . "Menlo-20" ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -25,6 +26,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package multiple-cursors)
 (global-set-key (kbd "C-c m c") 'mc/edit-lines)
+(global-set-key (kbd "C-c m m")  'mc/mark-more-like-this-extended)
 
 ;; ----------------- stolen from DOOM ----------------------------------------;
 ;; Contrary to what many Emacs users have in their configs, you really don't
@@ -86,7 +88,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-snazzy t)
+  (load-theme 'doom-one-light t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -106,16 +108,17 @@
   :init (doom-modeline-mode 1))
 
 ;; ----------------- END stolen from DOOM ----------------------------------------;
-
-
-;; this	is a mess i dont know where to put anything!!!
+;; expand-region
 (global-set-key (kbd "C-\\") 'er/expand-region)
 
+;; misc functions
 (defun untabify-buffer ()
+  "De-indent current buffer."
   (interactive)
   (untabify (point-min) (point-max)))
 
 (defun indent-buffer ()
+  "Indent the entire buffer according to current mode."
   (interactive)
   (indent-region (point-min) (point-max)))
 
@@ -128,22 +131,21 @@ Including indent-buffer, which should not be called automatically on save."
   (indent-buffer))
 
 (defun crontab-e ()
-    "Run `crontab -e' in a emacs buffer."
+    "Run `crontab -e' in a Emacs buffer."
     (interactive)
     (with-editor-async-shell-command "crontab -e"))
 
-;; Buffers
-(global-set-key (kbd "C-x C-b") 'ibuffer)
-
-;; Directory
 (defun file-info ()
+  "Show the info for just the current file."
   (interactive)
   (let ((dired-listing-switches "-alh"))
     (dired-other-window buffer-file-name)))
 
+;; change from list-buffer to ibuffer
+;; ibuffer allows you to do things on buffers
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 
-;; scroll one line at a time (less "jumpy" than defaults)
+;; better scrolling config
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
 
 (setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
@@ -152,15 +154,13 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq scroll-step 1) ;; keyboard scroll one line at a time
 
-(dolist (package '(desktop+ google-this helm))
-  (unless (package-installed-p package)
-    (package-install package))
-  (require package))
 
-(google-this-mode 1)
+;; Begin installed packages
 
-(when (fboundp 'winner-mode)
-      (winner-mode 1))
+
+
+
+
 ;; setup 'use-package'
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
@@ -169,6 +169,19 @@ Including indent-buffer, which should not be called automatically on save."
   (require 'use-package))
 (require 'use-package)
 
+;; misc install
+(dolist (package '(desktop+ helm yaml-mode flymake-ruby inf-ruby company robe magit npm-mode exec-path-from-shell jedi go-mode terraform-mode tide define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode restclient vterm jedi  multiple-cursors projectile doom-themes urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell magit git js2-mode flymake-ruby robe inf-ruby flycheck json-mode markdown-mode))
+  (unless (package-installed-p package)
+    (package-install package))
+  (require package))
+
+(use-package google-this
+  :ensure google-this)
+
+;; google this (set to C-c / ENTER)
+(google-this-mode 1)
+
+;; keychain history
 (global-set-key "\C-cy"
 		'(lambda ()
 		   (interactive)
@@ -265,12 +278,11 @@ Including indent-buffer, which should not be called automatically on save."
 ;; END Treemacs ;;;;;;;;;
 
 
-;; god i dont know anymore somebody make me organize my config
+;; define-word
 (add-hook 'text-mode-hook
           (lambda () (local-set-key (kbd "C-c C-d") #'define-word-at-point)))
 
 ;; org mode
-
 (setq diary-file "~/Dropbox/org/diary")
 
 (require 'org)
@@ -286,7 +298,7 @@ Including indent-buffer, which should not be called automatically on save."
 (add-hook 'org-mode-hook 'turn-on-auto-fill)
 
 (defun org-capture-journal-location ()
-  "go to journal.org and find the subtree by date"
+  "Go to journal.org and find the subtree by date."
   (interactive "P")
   (let* ((heading (format-time-string "%Y-%m-%d %A")))
     (find-file (concat org-directory "/journal.org"))
@@ -320,6 +332,8 @@ Including indent-buffer, which should not be called automatically on save."
 (setq org-agenda-include-diary t)
 ;;------------------language config------------------------------
 
+(setq flycheck-javascript-standard-executable "/usr/local/bin/standardx")
+
 (use-package yasnippet
   :ensure t
   :init
@@ -327,17 +341,24 @@ Including indent-buffer, which should not be called automatically on save."
   :config
   (add-to-list 'yas-snippet-dirs (locate-user-emacs-file "snippets")))
 
-
-
 (global-set-key (kbd "C-x g") 'magit-status)
 (show-paren-mode 1)
 (electric-pair-mode 1)
 
-;; install language config packages
-(dolist (package '(yaml-mode flymake-ruby inf-ruby company robe web-mode magit npm-mode exec-path-from-shell jedi go-mode terraform-mode))
-  (unless (package-installed-p package)
-    (package-install package))
-  (require package))
+(defun setup-tide-mode ()
+  "Setup function for tide."
+  (interactive)
+  (tide-setup)
+  (flycheck-mode +1)
+  ;;(setq flycheck-check-syntax-automatically '(save mode-enabled))
+  (eldoc-mode +1)
+  (tide-hl-identifier-mode +1)
+  (company-mode +1))
+
+(setq company-tooltip-align-annotations t)
+
+(add-hook 'js-mode-hook #'setup-tide-mode)
+(setq js-indent-level 2)
 
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
@@ -377,6 +398,34 @@ Including indent-buffer, which should not be called automatically on save."
            "go build -v && go test -v && go vet"))
   )
 
+
+;; lsp-mode
+
+(defun my/mc-lsp-highlight-symbol ()
+  (interactive)
+  (mc/remove-fake-cursors)
+
+  (-when-let ((((&hash? "range" (&hash? "start"))) highlights)
+              (->> (lsp-request "textDocument/documentHighlight"
+                                (lsp--text-document-position-params))
+                   (-separate
+                    (-lambda ((&hash "range"))
+                      (lsp--point-in-bounds-p (lsp--range-to-region range))))))
+    (goto-char (lsp--position-to-point start))
+    (push-mark)
+
+    (mapc (-lambda ((&hash? "range" (&hash? "start")))
+            (goto-char (lsp--position-to-point start))
+            (push-mark)
+            (mc/create-fake-cursor-at-point))
+          highlights)
+
+    (mc/maybe-multiple-cursors-mode)
+    (->> start
+         (lsp--position-to-point)
+         (goto-char))
+    (push-mark)))
+
 (require 'go-projectile)
 (add-hook 'go-mode-hook 'my-go-mode-hook)
 
@@ -386,19 +435,6 @@ Including indent-buffer, which should not be called automatically on save."
   (elpy-enable))
 
 (setq elpy-rpc-backend "jedi")
-
-(defun web-mode-init-hook ()
-  "Hooks for web-mode"
-  (setq web-mode-code-indent-offset 2)
-  (setq web-mode-css-indent-offset 2)
-  (setq web-mode-markup-indent-offset 2))
-
-
-(add-hook 'web-mode-hook  'web-mode-init-hook)
-
-(setq web-mode-content-types-alist '(("jsx" . "\\.js[x]?\\'")))
-(add-to-list 'auto-mode-alist '("\\.jsx?$" . web-mode))
-(add-to-list 'auto-mode-alist '("\\.css?$" . web-mode))
 
 ;; json/yaml
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
@@ -435,32 +471,33 @@ Including indent-buffer, which should not be called automatically on save."
 ;; Projectile
 (projectile-mode +1)
 (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
-(setq projectile-indexing-method 'native)
+;;(setq projectile-indexing-method 'native)
+(setq projectile-indexing-method 'alien)
 
 (defun connect-remote-minecraft ()
   (interactive)
   (dired "/ssh:ec2-user@minecraft.scotty.dance:~"))
 
 ;; Shell
-  (defun with-face (str &rest face-plist)
-    (propertize str 'face face-plist))
+(defun with-face (str &rest face-plist)
+  (propertize str 'face face-plist))
 
-  (defun shk-eshell-prompt ()
-    (let ((header-bg "#cae682"))
-      (concat
-       (with-face (concat (eshell/pwd) " ") :background header-bg :foreground "#e5786d")
-       (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#888")
-       (with-face
-        (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
-        :background header-bg)
-       (with-face "\n" :background header-bg)
-       (with-face user-login-name :foreground "#cae682")
-       (if (= (user-uid) 0)
-           (with-face " #" :foreground "red")
-         " $")
-       " ")))
-  (setq eshell-prompt-function 'shk-eshell-prompt)
-  (setq eshell-highlight-prompt nil)
+(defun shk-eshell-prompt ()
+  (let ((header-bg "#cae682"))
+    (concat
+     (with-face (concat (eshell/pwd) " ") :background header-bg :foreground "#e5786d")
+     (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#888")
+     (with-face
+      (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
+      :background header-bg)
+     (with-face "\n" :background header-bg)
+     (with-face user-login-name :foreground "#cae682")
+     (if (= (user-uid) 0)
+	 (with-face " #" :foreground "red")
+       " $")
+     " ")))
+(setq eshell-prompt-function 'shk-eshell-prompt)
+(setq eshell-highlight-prompt nil)
 
 
 ;;------------------save config------------------------------
@@ -491,71 +528,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; keybindings
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
-
-
-(setq next-line-add-newlines t)
-(ido-mode 1) ; file search magic
-
-;; helm-ag
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(ansi-color-faces-vector
-   [default default default italic underline success warning error])
- '(ansi-color-names-vector
-   ["black" "red3" "ForestGreen" "yellow3" "blue" "magenta3" "DeepSkyBlue" "gray50"])
- '(doom-modeline-bar-width 8)
- '(doom-modeline-height 15)
- '(fci-rule-color "#383a42")
- '(global-display-line-numbers-mode t)
- '(helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
- '(helm-ag-insert-at-point (quote symbol))
- '(jdee-db-active-breakpoint-face-colors (cons "#f0f0f0" "#4078f2"))
- '(jdee-db-requested-breakpoint-face-colors (cons "#f0f0f0" "#50a14f"))
- '(jdee-db-spec-breakpoint-face-colors (cons "#f0f0f0" "#9ca0a4"))
- '(markdown-command "/usr/local/bin/pandoc")
- '(objed-cursor-color "#e45649")
- '(org-agenda-files
-   (quote
-    ("~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
- '(org-modules
-   (quote
-    (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
- '(package-selected-packages
-   (quote
-    (define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode treemacs-evil restclient vterm jedi speed-type npm-mode multiple-cursors projectile doom-themes impatient-mode gdscript-mode urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell google-this desktop+ magit git js2-mode flymake-ruby robe inf-ruby flycheck web-mode json-mode groovy-mode gradle-mode use-package markdown-mode)))
- '(pdf-view-midnight-colors (cons "#383a42" "#fafafa"))
- '(rustic-ansi-faces
-   ["#fafafa" "#e45649" "#50a14f" "#986801" "#4078f2" "#a626a4" "#0184bc" "#383a42"])
- '(send-mail-function (quote sendmail-send-it))
- '(show-paren-mode t)
- '(vc-annotate-background "#fafafa")
- '(vc-annotate-color-map
-   (list
-    (cons 20 "#50a14f")
-    (cons 40 "#688e35")
-    (cons 60 "#807b1b")
-    (cons 80 "#986801")
-    (cons 100 "#ae7118")
-    (cons 120 "#c37b30")
-    (cons 140 "#da8548")
-    (cons 160 "#c86566")
-    (cons 180 "#b74585")
-    (cons 200 "#a626a4")
-    (cons 220 "#ba3685")
-    (cons 240 "#cf4667")
-    (cons 260 "#e45649")
-    (cons 280 "#d2685f")
-    (cons 300 "#c07b76")
-    (cons 320 "#ae8d8d")
-    (cons 340 "#383a42")
-    (cons 360 "#383a42")))
- '(vc-annotate-very-old-color nil))
-
 (global-set-key (kbd "M-i") 'helm-do-ag-project-root)
-
 
 ;; stupid bell
 (setq ring-bell-function 'ignore)
@@ -566,12 +539,25 @@ Including indent-buffer, which should not be called automatically on save."
 (when (version<= "26.0.50" emacs-version )
   (global-display-line-numbers-mode))
 
+(setq next-line-add-newlines t)
+(ido-mode 1) ; file search magic
 
+;; never used
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+(toggle-scroll-bar -1)
 
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
-(put 'downcase-region 'disabled nil)
+;; customize keep
+(setq show-paren-mode t)
+(setq doom-modeline-bar-width 8)
+(setq doom-modeline-height 15)
+(setq global-display-line-numbers-mode t)
+(setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
+(setq helm-ag-insert-at-point (quote symbol))
+(setq markdown-command "/usr/local/bin/pandoc")
+(setq org-agenda-files
+      (quote
+       ("~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
+(setq org-modules
+      (quote
+       (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))

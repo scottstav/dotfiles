@@ -1,16 +1,12 @@
 # Alias
 alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 alias ls='ls -GAF'
-alias emacs='emacs -nw'    # no gui
+alias emacs='emacsclient -create-frame --alternate-editor="" -t'    # no gui
 
 # clean help
 show_space() {
     du -xhS $1 | sort -h | tail -n15
 }
-
-# set default editor
-export VISUAL=emacs
-export EDITOR="$VISUAL"
 
 # macOS Catalina switched to zsh but i dont wanna deal
 export BASH_SILENCE_DEPRECATION_WARNING=1
@@ -31,6 +27,11 @@ vterm_printf(){
         printf "\e]%s\e\\" "$1"
     fi
 }
+export ALTERNATE_EDITOR=""
+export EDITOR="emacsclient -t"                  # $EDITOR opens in terminal
+export VISUAL="emacsclient -t -a emacs"         # $VISUAL opens in GUI mode
+
+# TODO: this clashes with ruby bundle...
 export GOROOT=/usr/local/opt/go/libexec
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
@@ -38,6 +39,7 @@ export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 vterm_prompt_end(){
     vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"
 }
+export PS1="\[\e[34m\][\[\e[m\]\u\[\e[m\]\[\e[34m\]]\[\e[m\]\w\[\e[m\] \\$ "
 PS1=$PS1'\[$(vterm_prompt_end)\]'
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.

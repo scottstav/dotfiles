@@ -1,9 +1,8 @@
 # dot-files
 
 ## Prerequisites
-1. install git
-2. install emacs
-3. setup ssh key for git
+1. ``brew install git``
+2. ``$ brew tap d12frosted/emacs-plus && brew install emacs-plus    [options] # install the latest release (Emacs 27)``
 
 ### setup
 Run script:
@@ -12,13 +11,6 @@ Run script:
 
 ### tmux
 `ln -s -f .tmux/.tmux.conf`
-
-### iTerm2
-import `scott-default-iterm-profile.json` into iTerm2 preferences
-
-### emacs
-* i'd reccomend emacs 24+ (MELPA/ELPA shipped by default)\
-* if you can't upgrade, try installing package.el manually from [here](http://git.savannah.gnu.org/gitweb/?p=emacs.git;a=blob_plain;hb=ba08b24186711eaeb3748f3d1f23e2c2d9ed0d09;f=lisp/emacs-lisp/package.el)
 
 ### Dropbox
 Set up Dropbox at ~/Dropbox for syncing org files

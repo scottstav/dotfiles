@@ -26,7 +26,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (use-package multiple-cursors)
 (global-set-key (kbd "C-c m c") 'mc/edit-lines)
-(global-set-key (kbd "C-c m m")  'mc/mark-more-like-this-extended)
+(global-set-key (kbd "C-=")  'mc/mark-next-like-this)
+(global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
+(global-set-key (kbd "C-<")  'mc/mark-previous-like-this)
 
 ;; ----------------- stolen from DOOM ----------------------------------------;
 ;; Contrary to what many Emacs users have in their configs, you really don't
@@ -88,7 +90,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-one-light t)
+  (load-theme 'doom-opera-light t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -170,7 +172,7 @@ Including indent-buffer, which should not be called automatically on save."
 (require 'use-package)
 
 ;; misc install
-(dolist (package '(desktop+ helm yaml-mode flymake-ruby inf-ruby company robe magit npm-mode exec-path-from-shell jedi go-mode terraform-mode tide define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode restclient vterm jedi  multiple-cursors projectile doom-themes urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell magit git js2-mode flymake-ruby robe inf-ruby flycheck json-mode markdown-mode))
+(dolist (package '(desktop+ helm yaml-mode flymake-ruby inf-ruby company robe magit npm-mode exec-path-from-shell jedi go-mode terraform-mode define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode restclient vterm jedi  multiple-cursors projectile doom-themes urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell magit git js2-mode flymake-ruby robe inf-ruby flycheck json-mode markdown-mode))
   (unless (package-installed-p package)
     (package-install package))
   (require package))
@@ -529,6 +531,7 @@ Including indent-buffer, which should not be called automatically on save."
 ;; keybindings
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
 (global-set-key (kbd "M-i") 'helm-do-ag-project-root)
+(global-unset-key (kbd "s-w"))
 
 ;; stupid bell
 (setq ring-bell-function 'ignore)

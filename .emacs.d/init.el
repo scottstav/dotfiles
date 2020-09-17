@@ -137,6 +137,8 @@ Including indent-buffer, which should not be called automatically on save."
     (interactive)
     (with-editor-async-shell-command "crontab -e"))
 
+;; dired
+(add-hook 'dired-mode-hook 'dired-hide-details-mode)
 (defun file-info ()
   "Show the info for just the current file."
   (interactive)
@@ -280,61 +282,84 @@ Including indent-buffer, which should not be called automatically on save."
 ;; END Treemacs ;;;;;;;;;
 
 
+;; spotify
+(use-package oauth2
+  :ensure)
+(add-to-list 'load-path "~/.emacs.d/elisp/spotify/")
+(require 'spotify)
+
+;; Settings
+;; import auth credentionls
+(load-file "./auth/spotify-credentials.el")
+(setq spotify-oauth2-client-secret spotify-client-secret)
+(setq spotify-oauth2-client-id spotify-client-id)
+(define-key spotify-mode-map (kbd "C-c .") 'spotify-command-map)
+;; the minibuf message is annoying so..
+(setq spotify-player-status-refresh-interval 5)
+(setq spotify-transport 'connect)
+
 ;; define-word
 (add-hook 'text-mode-hook
           (lambda () (local-set-key (kbd "C-c C-d") #'define-word-at-point)))
 
 ;; org mode
-(setq diary-file "~/Dropbox/org/diary")
-
 (require 'org)
+(setq diary-file "~/Dropbox/org/diary")
 (setq org-directory "~/Dropbox/org")
-(setq org-default-notes-file (concat org-directory "/General.org"))
+;;(setq org-default-notes-file (concat org-directory "/General.org"))
+(setq org-agenda-files (list "~/Dropbox/org/inbox.org" "~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org"))
+(setq org-modules
+      (quote
+       (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
+
+(setq org-capture-templates
+      '(("i" "Inbox" entry (file "~/Dropbox/org/inbox.org")
+         "* TODO %?\nEntered on %U")
+        ))
+
+(define-key global-map (kbd "C-c c") 'org-capture)
 (global-set-key (kbd "C-c l") 'org-store-link)
 (global-set-key (kbd "C-c a") 'org-agenda)
-(global-set-key (kbd "C-c c") 'org-capture)
-(setq org-agenda-files (directory-files-recursively (concat org-directory "") "\\.org$"))
+
 (setq org-log-done t)
 
+;; these two things auto-beak lines when they become too long
 (add-hook 'org-mode-hook '(lambda () (setq fill-column 80)))
 (add-hook 'org-mode-hook 'turn-on-auto-fill)
 
-(defun org-capture-journal-location ()
-  "Go to journal.org and find the subtree by date."
-  (interactive "P")
-  (let* ((heading (format-time-string "%Y-%m-%d %A")))
-    (find-file (concat org-directory "/journal.org"))
-    (goto-char 0)
-    (unless (search-forward (format "* %s" heading) nil t)
-      (insert (format "* %s\n" heading))
-      (goto-line -1)))
-  )
-
-(defun find-journal-date ()
-  "Search the journal file for the current date"
-  (interactive "P")
-  )
-
-(setq org-capture-templates
-      `(
-	("j" "Journal Entry"
-	 entry (function org-capture-journal-location))
-	("t" "Todo"
-	 entry (file ,(concat org-directory "/General.org"))
-	 "* TODO %?\n  %iSCHEDULED: %^t\n  %a")
-      	)
-      )
-
-(require 'org-mac-link)
-(add-hook 'org-mode-hook (lambda ()
-  (define-key org-mode-map (kbd "C-c g") 'org-mac-grab-link)))
-
-(require 'org-mac-iCal)
+;; this doesnt work
+;; (defun org-capture-journal-location ()
+;;   "Go to journal.org and find the subtree by date."
+;;   (interactive "P")
+;;   (let* ((heading (format-time-string "%Y-%m-%d %A")))
+;;     (find-file (concat org-directory "/journal.org"))
+;;     (goto-char 0)
+;;     (unless (search-forward (format "* %s" heading) nil t)
+;;       (insert (format "* %s\n" heading))
+;;       (goto-line -1)))
+;;   )
 
 (setq org-agenda-include-diary t)
+
+;; org roam!
+(use-package org-roam
+  :ensure t
+  :hook
+  (after-init . org-roam-mode)
+  :custom
+  (org-roam-directory "~/Dropbox/org/")
+  :bind (:map org-roam-mode-map
+              (("C-c n l" . org-roam)
+               ("C-c n f" . org-roam-find-file)
+               ("C-c n g" . org-roam-graph-show))
+              :map org-mode-map
+              (("C-c n i" . org-roam-insert))
+              (("C-c n I" . org-roam-insert-immediate))))
+
 ;;------------------language config------------------------------
 
-(setq flycheck-javascript-standard-executable "/usr/local/bin/standardx")
+;;(setq flycheck-javascript-standard-executable "/usr/local/bin/standardx")
+
 
 (use-package yasnippet
   :ensure t
@@ -347,6 +372,16 @@ Including indent-buffer, which should not be called automatically on save."
 (show-paren-mode 1)
 (electric-pair-mode 1)
 
+(use-package lsp-sourcekit
+  :ensure
+  :after lsp-mode
+  :config
+  (setq lsp-sourcekit-executable "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp"))
+
+(use-package swift-mode
+  :ensure
+  :hook (swift-mode . (lambda () (lsp))))
+
 (defun setup-tide-mode ()
   "Setup function for tide."
   (interactive)
@@ -358,6 +393,19 @@ Including indent-buffer, which should not be called automatically on save."
   (company-mode +1))
 
 (setq company-tooltip-align-annotations t)
+
+(use-package js-comint
+  :ensure js-comint)
+
+(setq inferior-js-program-command "/usr/bin/java org.mozilla.javascript.tools.shell.Main")
+(add-hook 'js-mode-hook '(lambda ()
+			    (local-set-key "\C-x\C-e" 'js-send-last-sexp)
+			    (local-set-key "\C-\M-x" 'js-send-last-sexp-and-go)
+			    (local-set-key "\C-cb" 'js-send-buffer)
+			    (local-set-key "\C-c\C-b" 'js-send-buffer-and-go)
+			    (local-set-key "\C-cl" 'js-load-file-and-go)
+			    (run-js)
+			    ))
 
 (add-hook 'js-mode-hook #'setup-tide-mode)
 (setq js-indent-level 2)
@@ -468,7 +516,7 @@ Including indent-buffer, which should not be called automatically on save."
 (add-hook 'after-init-hook 'global-company-mode)
 (eval-after-load 'company
   '(push 'company-robe company-backends))
-(add-hook 'after-init-hook #'global-flycheck-mode)
+;;(add-hook 'after-init-hook #'global-flycheck-mode)
 ;;---------------------------------------------------------------
 ;; Projectile
 (projectile-mode +1)
@@ -542,7 +590,7 @@ Including indent-buffer, which should not be called automatically on save."
 (when (version<= "26.0.50" emacs-version )
   (global-display-line-numbers-mode))
 
-(setq next-line-add-newlines t)
+(setq next-line-add-newlines nil)
 (ido-mode 1) ; file search magic
 
 ;; never used
@@ -558,9 +606,3 @@ Including indent-buffer, which should not be called automatically on save."
 (setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
 (setq helm-ag-insert-at-point (quote symbol))
 (setq markdown-command "/usr/local/bin/pandoc")
-(setq org-agenda-files
-      (quote
-       ("~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org")))
-(setq org-modules
-      (quote
-       (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))

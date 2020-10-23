@@ -1,11 +1,12 @@
 [user]
-	email = howdy@scotty.dance
+	email = scotts@ifit.com
 	name = scottstav
 [color]
 	ui = auto
 [core]
 	pager = less -FMRiX
 	excludesFile = ~/.gitignore
+	editor = emacs
 [push]
 	default = simple
 [alias]
@@ -14,3 +15,10 @@
 	change-commits = "!f() { VAR=$1; OLD=$2; NEW=$3; shift 3; git filter-branch --env-filter \"if [[ \\\"$`echo $VAR`\\\" = '$OLD' ]]; then export $VAR='$NEW'; fi\" $@; }; f "
 [amazon]
 	setup-crv = true
+[github]
+	user = scottstav
+[forge]
+	remote = upstream
+
+[commit]
+	template = ~/.gitmessage

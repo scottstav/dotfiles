@@ -5,6 +5,8 @@
 
 (add-to-list 'load-path "~/.emacs.d/elisp/")
 
+;; start in home dir
+(setq default-directory "~/")
 
 ;; local cert for http requests
 (eval-after-load 'gnutls
@@ -90,7 +92,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-opera-light t)
+  (load-theme 'doom-one t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -139,6 +141,20 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; dired
 (add-hook 'dired-mode-hook 'dired-hide-details-mode)
+
+(defun dired-get-size ()
+  (interactive)
+  (let ((files (dired-get-marked-files)))
+    (with-temp-buffer
+      (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+      (message "Size of all marked files: %s"
+               (progn
+                 (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+                 (match-string 1))))))
+
+;; (define-key dired-mode-map (kbd "?") 'dired-get-size)
+
+
 (defun file-info ()
   "Show the info for just the current file."
   (interactive)
@@ -182,6 +198,10 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package google-this
   :ensure google-this)
 
+;; desktop mode
+(desktop-save-mode 1)
+(setq desktop-path '("~/.emacs.d/desktops"))
+
 ;; google this (set to C-c / ENTER)
 (google-this-mode 1)
 
@@ -216,7 +236,7 @@ Including indent-buffer, which should not be called automatically on save."
           treemacs-goto-tag-strategy             'refetch-index
           treemacs-indentation                   2
           treemacs-indentation-string            " "
-          treemacs-is-never-other-window         nil
+          treemacs-is-never-other-window         t
           treemacs-max-git-entries               5000
           treemacs-missing-project-action        'ask
           treemacs-move-forward-on-expand        nil
@@ -285,18 +305,18 @@ Including indent-buffer, which should not be called automatically on save."
 ;; spotify
 (use-package oauth2
   :ensure)
-(add-to-list 'load-path "~/.emacs.d/elisp/spotify/")
-(require 'spotify)
+;;(add-to-list 'load-path "~/.emacs.d/elisp/spotify/")
+;;(require 'spotify)
 
 ;; Settings
 ;; import auth credentionls
-(load-file "./auth/spotify-credentials.el")
-(setq spotify-oauth2-client-secret spotify-client-secret)
-(setq spotify-oauth2-client-id spotify-client-id)
-(define-key spotify-mode-map (kbd "C-c .") 'spotify-command-map)
-;; the minibuf message is annoying so..
-(setq spotify-player-status-refresh-interval 5)
-(setq spotify-transport 'connect)
+;; (load-file "./auth/spotify-credentials.el")
+;; (setq spotify-oauth2-client-secret spotify-client-secret)
+;; (setq spotify-oauth2-client-id spotify-client-id)
+;; (define-key spotify-mode-map (kbd "C-c .") 'spotify-command-map)
+;; ;; the minibuf message is annoying so..
+;; (setq spotify-player-status-refresh-interval 5)
+;; (setq spotify-transport 'connect)
 
 ;; define-word
 (add-hook 'text-mode-hook
@@ -304,16 +324,16 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; org mode
 (require 'org)
-(setq diary-file "~/Dropbox/org/diary")
+(setq diary-file "~/Dropbox/org/personal/diary")
 (setq org-directory "~/Dropbox/org")
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
-(setq org-agenda-files (list "~/Dropbox/org/inbox.org" "~/Dropbox/org/marathon.org" "~/Dropbox/org/birthdays.org" "~/Dropbox/org/General.org"))
+(setq org-agenda-files (list "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
 (setq org-modules
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
 
 (setq org-capture-templates
-      '(("i" "Inbox" entry (file "~/Dropbox/org/inbox.org")
+      '(("i" "Inbox" entry (file "~/Dropbox/org/personal/inbox.org")
          "* TODO %?\nEntered on %U")
         ))
 
@@ -326,6 +346,13 @@ Including indent-buffer, which should not be called automatically on save."
 ;; these two things auto-beak lines when they become too long
 (add-hook 'org-mode-hook '(lambda () (setq fill-column 80)))
 (add-hook 'org-mode-hook 'turn-on-auto-fill)
+
+;; jira (ifit)
+(use-package org-jira
+  :ensure
+  :init
+  (setq jiralib-url "https://ifitdev.atlassian.net"))
+
 
 ;; this doesnt work
 ;; (defun org-capture-journal-location ()
@@ -341,21 +368,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq org-agenda-include-diary t)
 
-;; org roam!
-(use-package org-roam
-  :ensure t
-  :hook
-  (after-init . org-roam-mode)
-  :custom
-  (org-roam-directory "~/Dropbox/org/")
-  :bind (:map org-roam-mode-map
-              (("C-c n l" . org-roam)
-               ("C-c n f" . org-roam-find-file)
-               ("C-c n g" . org-roam-graph-show))
-              :map org-mode-map
-              (("C-c n i" . org-roam-insert))
-              (("C-c n I" . org-roam-insert-immediate))))
-
 ;;------------------language config------------------------------
 
 ;;(setq flycheck-javascript-standard-executable "/usr/local/bin/standardx")
@@ -368,7 +380,20 @@ Including indent-buffer, which should not be called automatically on save."
   :config
   (add-to-list 'yas-snippet-dirs (locate-user-emacs-file "snippets")))
 
+;; magit / git
 (global-set-key (kbd "C-x g") 'magit-status)
+(use-package forge
+  :ensure
+  :after magit)
+(setq forge-owned-accounts '(("scottstav")))
+
+(use-package git-gutter+
+  :ensure
+  :config
+  (define-key git-gutter+-mode-map (kbd "M-g k") 'git-gutter+-revert-hunk)
+  (define-key git-gutter+-mode-map (kbd "M-g n") 'git-gutter+-next-hunk))
+(global-git-gutter+-mode)
+
 (show-paren-mode 1)
 (electric-pair-mode 1)
 
@@ -382,6 +407,9 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure
   :hook (swift-mode . (lambda () (lsp))))
 
+(use-package tide
+  :ensure t)
+
 (defun setup-tide-mode ()
   "Setup function for tide."
   (interactive)
@@ -390,24 +418,37 @@ Including indent-buffer, which should not be called automatically on save."
   ;;(setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
   (tide-hl-identifier-mode +1)
-  (company-mode +1))
+  (company-mode +1)
+  (local-set-key "\C-c\C-d" 'tide-documentation-at-point)
+  (local-set-key "\C-c\C-r" 'tide-references)
+  (local-set-key "\C-c\C-f" 'tide-rename-file)
+  (setq tide-native-json-parsing t))
 
 (setq company-tooltip-align-annotations t)
+
+;; formats the buffer before saving
+(add-hook 'before-save-hook 'tide-format-before-save)
+
+;;(eval-after-load 'flycheck
+  ;;'(add-hook 'flycheck-mode-hook #'flycheck-typescript-tslint-setup))
+
+(add-hook 'typescript-mode-hook #'setup-tide-mode)
+(add-hook 'js-mode-hook #'setup-tide-mode)
 
 (use-package js-comint
   :ensure js-comint)
 
-(setq inferior-js-program-command "/usr/bin/java org.mozilla.javascript.tools.shell.Main")
-(add-hook 'js-mode-hook '(lambda ()
-			    (local-set-key "\C-x\C-e" 'js-send-last-sexp)
-			    (local-set-key "\C-\M-x" 'js-send-last-sexp-and-go)
-			    (local-set-key "\C-cb" 'js-send-buffer)
-			    (local-set-key "\C-c\C-b" 'js-send-buffer-and-go)
-			    (local-set-key "\C-cl" 'js-load-file-and-go)
-			    (run-js)
-			    ))
+;; (setq inferior-js-program-command "/usr/bin/java org.mozilla.javascript.tools.shell.Main")
+;; (add-hook 'js-mode-hook '(lambda ()
+;; 			    (local-set-key "\C-x\C-e" 'js-send-last-sexp)
+;; 			    (local-set-key "\C-\M-x" 'js-send-last-sexp-and-go)
+;; 			    (local-set-key "\C-cb" 'js-send-buffer)
+;; 			    (local-set-key "\C-c\C-b" 'js-send-buffer-and-go)
+;; 			    (local-set-key "\C-cl" 'js-load-file-and-go)
+;; 			    (run-js)
+;; 			    ))
 
-(add-hook 'js-mode-hook #'setup-tide-mode)
+
 (setq js-indent-level 2)
 
 (when (memq window-system '(mac ns x))
@@ -489,9 +530,8 @@ Including indent-buffer, which should not be called automatically on save."
 ;; json/yaml
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
 (add-hook 'json-mode-hook
-	  (lambda ()
-	    (make-local-variable 'js-indent-level)
-	    (setq js-indent-level 2)))
+          (lambda ()
+            (setq standard-indent 2)))
 
 ;; ruby
 (add-hook 'ruby-mode-hook 'robe-mode)
@@ -532,27 +572,16 @@ Including indent-buffer, which should not be called automatically on save."
 (defun with-face (str &rest face-plist)
   (propertize str 'face face-plist))
 
-(defun shk-eshell-prompt ()
-  (let ((header-bg "#cae682"))
-    (concat
-     (with-face (concat (eshell/pwd) " ") :background header-bg :foreground "#e5786d")
-     (with-face (format-time-string "(%Y-%m-%d %H:%M) " (current-time)) :background header-bg :foreground "#888")
-     (with-face
-      (or (ignore-errors (format "(%s)" (vc-responsible-backend default-directory))) "")
-      :background header-bg)
-     (with-face "\n" :background header-bg)
-     (with-face user-login-name :foreground "#cae682")
-     (if (= (user-uid) 0)
-	 (with-face " #" :foreground "red")
-       " $")
-     " ")))
-(setq eshell-prompt-function 'shk-eshell-prompt)
-(setq eshell-highlight-prompt nil)
-
 
 ;;------------------save config------------------------------
 
+;; my functions
+(defun my/big-small-window ()
+  "Expand current window to use half of the other window's lines."
+  (interactive)
+  (enlarge-window (/ (window-height (next-window)) 2)))
 
+(global-set-key (kbd "C-c w") 'my/big-small-window)
 
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
@@ -575,6 +604,9 @@ Including indent-buffer, which should not be called automatically on save."
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 
 ;;---------------------------------------------------------------
+
+;; restclient-mode
+(add-to-list 'auto-mode-alist '("\\.rest-client\\'" . restclient-mode))
 
 ;; keybindings
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
@@ -606,3 +638,16 @@ Including indent-buffer, which should not be called automatically on save."
 (setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
 (setq helm-ag-insert-at-point (quote symbol))
 (setq markdown-command "/usr/local/bin/pandoc")
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(org-jira git-gutter+ git-gitter+ forge tide yaml-mode vterm use-package urlenc treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired terraform-mode swift-mode ruby-refactor robe restclient org-roam oauth2 npm-mode multiple-cursors lsp-sourcekit json-mode js2-mode js-comint jedi helm-projectile helm-ag google-this go-projectile go-dlv git flymake-ruby flycheck expand-region exec-path-from-shell elpy doom-themes doom-modeline desktop+ define-word browse-at-remote ag)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

@@ -2,3 +2,4 @@
 .projectile
 /.eslintrc
 /tsconfig.json
+/.rest-mode

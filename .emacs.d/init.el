@@ -454,6 +454,9 @@ Including indent-buffer, which should not be called automatically on save."
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
 
+;; shell / vterm
+(setq vterm-max-scrollback 100000)
+
 (defun set-exec-path-from-shell-PATH ()
   (let ((path-from-shell (replace-regexp-in-string
                           "[ \t\n]*$"
@@ -613,6 +616,10 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key (kbd "M-i") 'helm-do-ag-project-root)
 (global-unset-key (kbd "s-w"))
 
+;; scroll other window
+(define-key global-map [(meta p)] '(lambda() (interactive) (scroll-other-window -1)))
+(define-key global-map [(meta n)] '(lambda() (interactive) (scroll-other-window 1)))
+
 ;; stupid bell
 (setq ring-bell-function 'ignore)
 
@@ -643,6 +650,7 @@ Including indent-buffer, which should not be called automatically on save."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(global-visual-line-mode t)
  '(package-selected-packages
    '(org-jira git-gutter+ git-gitter+ forge tide yaml-mode vterm use-package urlenc treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired terraform-mode swift-mode ruby-refactor robe restclient org-roam oauth2 npm-mode multiple-cursors lsp-sourcekit json-mode js2-mode js-comint jedi helm-projectile helm-ag google-this go-projectile go-dlv git flymake-ruby flycheck expand-region exec-path-from-shell elpy doom-themes doom-modeline desktop+ define-word browse-at-remote ag)))
 (custom-set-faces

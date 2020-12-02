@@ -3,3 +3,6 @@
 /.eslintrc
 /tsconfig.json
 /.rest-mode
+/.env.dev
+/.env.test
+/.env.prod

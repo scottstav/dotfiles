@@ -168,7 +168,8 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; change from list-buffer to ibuffer
 ;; ibuffer allows you to do things on buffers
-(global-set-key (kbd "C-x C-b") 'ibuffer)
+(global-set-key (kbd "C-x C-b") 'helm-buffers-list)
+(global-set-key (kbd "C-x b") 'helm-buffers-list)
 
 ;; better scrolling config
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time

@@ -25,6 +25,9 @@
   :ensure
   :hook (after-init . global-emojify-mode))
 
+(global-unset-key [(control z)])
+(global-unset-key [(control x)(control z)])
+
 ;; font
 (add-to-list 'default-frame-alist '(font . "Menlo-20" ))
 
@@ -36,6 +39,12 @@
 (global-set-key (kbd "C-=")  'mc/mark-next-like-this)
 (global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
 (global-set-key (kbd "C-<")  'mc/mark-previous-like-this)
+
+;; OS level keybinds
+(setq mac-option-modifier 'meta)
+(setq mac-command-modifier 'super)
+(global-set-key (kbd "s-v")  'yank)
+(global-set-key (kbd "s-c")  'kill-ring-save)
 
 ;; ----------------- stolen from DOOM ----------------------------------------;
 ;; Contrary to what many Emacs users have in their configs, you really don't
@@ -97,7 +106,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-one t)
+  (load-theme 'doom-acario-dark t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -168,8 +177,27 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; change from list-buffer to ibuffer
 ;; ibuffer allows you to do things on buffers
-(global-set-key (kbd "C-x C-b") 'helm-buffers-list)
+(use-package helm
+  :ensure)
+(global-set-key (kbd "C-x C-b") 'ibuffer)
 (global-set-key (kbd "C-x b") 'helm-buffers-list)
+(global-set-key (kbd "C-c y") 'helm-show-kill-ring)
+(global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "C-x C-f") 'helm-find-files)
+(define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to run persistent action
+(define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB work in terminal
+(define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
+(when (executable-find "curl")
+  (setq helm-google-suggest-use-curl-p t))
+
+(setq helm-split-window-in-side-p           t ; open helm buffer inside current window, not occupy whole other window
+      helm-move-to-line-cycle-in-source     t ; move to end or beginning of source when reaching top or bottom of source.
+      helm-ff-search-library-in-sexp        t ; search for library in `require' and `declare-function' sexp.
+      helm-scroll-amount                    8 ; scroll 8 lines other window using M-<next>/M-<prior>
+      helm-ff-file-name-history-use-recentf t
+      helm-echo-input-in-header-line t)
+
+(helm-mode 1)
 
 ;; better scrolling config
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
@@ -184,10 +212,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 
 ;; Begin installed packages
-
-
-
-
+(use-package indium)
 
 ;; setup 'use-package'
 (unless (package-installed-p 'use-package)
@@ -196,12 +221,6 @@ Including indent-buffer, which should not be called automatically on save."
 (eval-when-compile
   (require 'use-package))
 (require 'use-package)
-
-;; misc install
-(dolist (package '(desktop+ helm yaml-mode flymake-ruby inf-ruby company robe magit npm-mode exec-path-from-shell jedi go-mode terraform-mode define-word helm-projectile ag helm-ag go-dlv expand-region lsp-mode browse-at-remote terraform-mode go-mode restclient vterm jedi  multiple-cursors projectile doom-themes urlenc ruby-refactor treemacs-persp treemacs-magit treemacs-icons-dired treemacs-projectile treemacs elpy exec-path-from-shell magit git js2-mode flymake-ruby robe inf-ruby flycheck json-mode markdown-mode))
-  (unless (package-installed-p package)
-    (package-install package))
-  (require package))
 
 (use-package google-this
   :ensure google-this)
@@ -212,12 +231,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; google this (set to C-c / ENTER)
 (google-this-mode 1)
-
-;; keychain history
-(global-set-key "\C-cy"
-		'(lambda ()
-		   (interactive)
-		   (popup-menu 'yank-menu)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; Treemacs                                  ;;
@@ -419,16 +432,16 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package request
   :ensure)
 
+(global-company-mode 1)
+
+(use-package prettier-js
+  :ensure)
+
+
+
 ;;???
 ;;(use-package indium
   ;;:ensure)
-
-(use-package yasnippet
-  :ensure t
-  :init
-  (yas-global-mode 1)
-  :config
-  (add-to-list 'yas-snippet-dirs (locate-user-emacs-file "snippets")))
 
 ;; magit / git
 (global-set-key (kbd "C-x g") 'magit-status)
@@ -460,6 +473,8 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package tide
   :ensure t)
 
+
+
 (defun setup-tide-mode ()
   "Setup function for tide."
   (interactive)
@@ -469,19 +484,36 @@ Including indent-buffer, which should not be called automatically on save."
   (eldoc-mode +1)
   (tide-hl-identifier-mode +1)
   (company-mode +1)
+  (prettier-js-mode +1)
   (local-set-key "\C-c\C-d" 'tide-documentation-at-point)
   (local-set-key "\C-c\C-r" 'tide-references)
   (local-set-key "\C-c\C-f" 'tide-rename-file)
   (setq tide-native-json-parsing t))
 
+(global-set-key "\C-c\C-u" 'uncomment-region)
+(global-set-key "\C-c\C-p" 'comment-region)
+
 (setq company-tooltip-align-annotations t)
 
 ;; formats the buffer before saving
-(add-hook 'before-save-hook 'tide-format-before-save)
+;;(add-hook 'before-save-hook 'tide-format-before-save)
+
+
+(defun setup-js-mode ()
+  "Setup function for tide."
+  (interactive)
+  (flycheck-mode +1)
+  (prettier-js-mode +1)
+  (local-set-key "\C-c\C-r" 'lsp-find-references)
+  (local-set-key "\M-/" 'lsp-find-references)
+  (lsp)
+  (company-mode +1))
 
 ;;(eval-after-load 'flycheck
   ;;'(add-hook 'flycheck-mode-hook #'flycheck-typescript-tslint-setup))
 
+;;(add-hook 'typescript-mode-hook #'setup-tide-mode)
+;;(add-hook 'js-mode-hook #'setup-tide-mode)
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
 (add-hook 'js-mode-hook #'setup-tide-mode)
 
@@ -555,6 +587,19 @@ Including indent-buffer, which should not be called automatically on save."
 
 
 ;; lsp-mode
+(use-package lsp-mode
+  :ensure)
+
+(use-package helm-lsp
+  :ensure)
+
+(use-package lsp-treemacs
+  :ensure)
+
+(use-package dap-mode
+  :ensure)
+
+(define-key lsp-mode-map [remap xref-find-apropos] #'helm-lsp-workspace-symbol)
 
 (defun my/align-whitespace (start end)
   "Align columns by whitespace"
@@ -619,11 +664,7 @@ Including indent-buffer, which should not be called automatically on save."
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
 
-;; auto-complete
-(global-company-mode)
-(add-hook 'after-init-hook 'global-company-mode)
-(eval-after-load 'company
-  '(push 'company-robe company-backends))
+;; auto-completen
 ;;(add-hook 'after-init-hook #'global-flycheck-mode)
 ;;---------------------------------------------------------------
 ;; Projectile
@@ -700,7 +741,6 @@ Including indent-buffer, which should not be called automatically on save."
   (global-display-line-numbers-mode))
 
 (setq next-line-add-newlines nil)
-(ido-mode 1) ; file search magic
 
 ;; never used
 (tool-bar-mode -1)
@@ -715,24 +755,17 @@ Including indent-buffer, which should not be called automatically on save."
 (setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
 (setq helm-ag-insert-at-point (quote symbol))
 (setq markdown-command "/usr/local/bin/pandoc")
+(setq global-visual-line-mode t)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(global-visual-line-mode t)
+ '(org-agenda-files
+   '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
+ '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(ts-comint nodejs-repl indium jest-test-mode emojify htmlize url-util paredit graphql-mode org-jira git-gutter+ git-gitter+ forge tide yaml-mode vterm use-package urlenc treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired terraform-mode swift-mode ruby-refactor robe restclient org-roam oauth2 npm-mode multiple-cursors lsp-sourcekit json-mode js2-mode js-comint jedi helm-projectile helm-ag google-this go-projectile go-dlv git flymake-ruby flycheck expand-region exec-path-from-shell elpy doom-themes doom-modeline desktop+ define-word browse-at-remote ag))
- '(safe-local-variable-values
-   '((nil
-      (eval add-hook 'after-save-hook
-	    '(lambda nil
-	       (org-publish-project "org"))
-	    nil t))
-     (eval add-hook 'after-save-hook
-	   '(lambda nil
-	      (org-publish-project "org"))
-	   nil t))))
+   '(dap-mode lsp-treemacs helm-lsp help-lsp yaml-mode vterm use-package urlenc ts-comint treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired tide terraform-mode swift-mode ruby-refactor robe restclient paredit org-roam org-jira oauth2 npm-mode nodejs-repl lsp-sourcekit json-mode js-comint jest-test-mode jedi indium htmlize helm-projectile helm-ag graphql-mode google-this go-projectile go-dlv git-gutter+ git forge flymake-ruby expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline desktop+ define-word browse-at-remote ag)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

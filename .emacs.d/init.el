@@ -20,10 +20,8 @@
 (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
 
-
-(use-package emojify
-  :ensure
-  :hook (after-init . global-emojify-mode))
+(use-package vterm
+    :ensure t)
 
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
@@ -34,7 +32,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple cursors                                                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package multiple-cursors)
+(use-package multiple-cursors
+  :ensure)
 (global-set-key (kbd "C-c m c") 'mc/edit-lines)
 (global-set-key (kbd "C-=")  'mc/mark-next-like-this)
 (global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
@@ -102,11 +101,12 @@
 
 ;; themes
 (use-package doom-themes
+  :ensure
   :config
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-acario-dark t)
+  (load-theme 'doom-fairy-floss t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -210,10 +210,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; url
 
-
-;; Begin installed packages
-(use-package indium)
-
 ;; setup 'use-package'
 (unless (package-installed-p 'use-package)
   (package-refresh-contents)
@@ -222,106 +218,9 @@ Including indent-buffer, which should not be called automatically on save."
   (require 'use-package))
 (require 'use-package)
 
-(use-package google-this
-  :ensure google-this)
-
 ;; desktop mode
 (desktop-save-mode 1)
 (setq desktop-path '("~/.emacs.d/desktops"))
-
-;; google this (set to C-c / ENTER)
-(google-this-mode 1)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Treemacs                                  ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(use-package treemacs
-  :ensure t
-  :defer t
-  :init
-  (with-eval-after-load 'winum
-    (define-key winum-keymap (kbd "M-0") #'treemacs-select-window))
-  :config
-  (progn
-    (setq treemacs-collapse-dirs                 (if treemacs-python-executable 3 0)
-          treemacs-deferred-git-apply-delay      0.5
-          treemacs-directory-name-transformer    #'identity
-          treemacs-display-in-side-window        t
-          treemacs-eldoc-display                 t
-          treemacs-file-event-delay              5000
-          treemacs-file-extension-regex          treemacs-last-period-regex-value
-          treemacs-file-follow-delay             0.2
-          treemacs-file-name-transformer         #'identity
-          treemacs-follow-after-init             t
-          treemacs-git-command-pipe              ""
-          treemacs-goto-tag-strategy             'refetch-index
-          treemacs-indentation                   2
-          treemacs-indentation-string            " "
-          treemacs-is-never-other-window         t
-          treemacs-max-git-entries               5000
-          treemacs-missing-project-action        'ask
-          treemacs-move-forward-on-expand        nil
-          treemacs-no-png-images                 nil
-          treemacs-no-delete-other-windows       t
-          treemacs-project-follow-cleanup        nil
-          treemacs-persist-file                  (expand-file-name ".cache/treemacs-persist" user-emacs-directory)
-          treemacs-position                      'left
-          treemacs-recenter-distance             0.1
-          treemacs-recenter-after-file-follow    nil
-          treemacs-recenter-after-tag-follow     nil
-          treemacs-recenter-after-project-jump   'always
-          treemacs-recenter-after-project-expand 'on-distance
-          treemacs-show-cursor                   nil
-          treemacs-show-hidden-files             t
-          treemacs-silent-filewatch              nil
-          treemacs-silent-refresh                nil
-          treemacs-sorting                       'alphabetic-asc
-          treemacs-space-between-root-nodes      t
-          treemacs-tag-follow-cleanup            t
-          treemacs-tag-follow-delay              1.5
-          treemacs-user-mode-line-format         nil
-          treemacs-user-header-line-format       nil
-          treemacs-width                         35
-          treemacs-workspace-switch-cleanup      nil)
-
-    ;; The default width and height of the icons is 22 pixels. If you are
-    ;; using a Hi-DPI display, uncomment this to double the icon size.
-    ;;(treemacs-resize-icons 44)
-
-    (treemacs-follow-mode t)
-    (treemacs-filewatch-mode t)
-    (treemacs-fringe-indicator-mode t)
-    (pcase (cons (not (null (executable-find "git")))
-                 (not (null treemacs-python-executable)))
-      (`(t . t)
-       (treemacs-git-mode 'deferred))
-      (`(t . _)
-       (treemacs-git-mode 'simple))))
-  :bind
-  (:map global-map
-        ("M-0"       . treemacs-select-window)
-        ("C-x t 1"   . treemacs-delete-other-windows)
-        ("C-x t t"   . treemacs)
-        ("C-x t B"   . treemacs-bookmark)
-        ("C-x t C-t" . treemacs-find-file)
-        ("C-x t M-t" . treemacs-find-tag)))
-
-
-(use-package treemacs-projectile
-  :after treemacs projectile
-  :ensure t)
-
-(use-package treemacs-icons-dired
-  :after treemacs dired
-  :ensure t
-  :config (treemacs-icons-dired-mode))
-
-(use-package treemacs-magit
-  :after treemacs magit
-  :ensure t)
-
-;; END Treemacs ;;;;;;;;;
-
 
 ;; spotify
 (use-package oauth2
@@ -426,22 +325,13 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;;------------------language config------------------------------
 
-;;(setq flycheck-javascript-standard-executable "/usr/local/bin/standardx")
 (use-package graphql-mode
   :ensure)
 (use-package request
   :ensure)
 
-(global-company-mode 1)
-
 (use-package prettier-js
   :ensure)
-
-
-
-;;???
-;;(use-package indium
-  ;;:ensure)
 
 ;; magit / git
 (global-set-key (kbd "C-x g") 'magit-status)
@@ -456,24 +346,11 @@ Including indent-buffer, which should not be called automatically on save."
   (define-key git-gutter+-mode-map (kbd "M-g k") 'git-gutter+-revert-hunk)
   (define-key git-gutter+-mode-map (kbd "M-g n") 'git-gutter+-next-hunk))
 (global-git-gutter+-mode)
-
 (show-paren-mode 1)
 (electric-pair-mode 1)
 
-(use-package lsp-sourcekit
-  :ensure
-  :after lsp-mode
-  :config
-  (setq lsp-sourcekit-executable "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/sourcekit-lsp"))
-
-(use-package swift-mode
-  :ensure
-  :hook (swift-mode . (lambda () (lsp))))
-
 (use-package tide
   :ensure t)
-
-
 
 (defun setup-tide-mode ()
   "Setup function for tide."
@@ -483,7 +360,6 @@ Including indent-buffer, which should not be called automatically on save."
   ;;(setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
   (tide-hl-identifier-mode +1)
-  (company-mode +1)
   (prettier-js-mode +1)
   (local-set-key "\C-c\C-d" 'tide-documentation-at-point)
   (local-set-key "\C-c\C-r" 'tide-references)
@@ -493,8 +369,6 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key "\C-c\C-u" 'uncomment-region)
 (global-set-key "\C-c\C-p" 'comment-region)
 
-(setq company-tooltip-align-annotations t)
-
 ;; formats the buffer before saving
 ;;(add-hook 'before-save-hook 'tide-format-before-save)
 
@@ -503,20 +377,14 @@ Including indent-buffer, which should not be called automatically on save."
   "Setup function for tide."
   (interactive)
   (flycheck-mode +1)
-  (prettier-js-mode +1)
   (local-set-key "\C-c\C-r" 'lsp-find-references)
-  (local-set-key "\M-/" 'lsp-find-references)
+  (local-set-key "\M-." 'lsp-find-definition)
   (lsp)
-  (company-mode +1))
+  )
 
-;;(eval-after-load 'flycheck
-  ;;'(add-hook 'flycheck-mode-hook #'flycheck-typescript-tslint-setup))
-
-;;(add-hook 'typescript-mode-hook #'setup-tide-mode)
-;;(add-hook 'js-mode-hook #'setup-tide-mode)
+(setq lsp-enable-file-watchers nil)
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
-(add-hook 'js-mode-hook #'setup-tide-mode)
-
+(add-hook 'js-mode-hook #'setup-js-mode)
 
 (use-package nodejs-repl
   :ensure)
@@ -526,24 +394,13 @@ Including indent-buffer, which should not be called automatically on save."
   (add-hook 'js-mode-hook 'jest-test-mode)
   (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
 
-
-;; (setq inferior-js-program-command "/usr/bin/java org.mozilla.javascript.tools.shell.Main")
-;; (add-hook 'js-mode-hook '(lambda ()
-;; 			    (local-set-key "\C-x\C-e" 'js-send-last-sexp)
-;; 			    (local-set-key "\C-\M-x" 'js-send-last-sexp-and-go)
-;; 			    (local-set-key "\C-cb" 'js-send-buffer)
-;; 			    (local-set-key "\C-c\C-b" 'js-send-buffer-and-go)
-;; 			    (local-set-key "\C-cl" 'js-load-file-and-go)
-;; 			    (run-js)
-;; 			    ))
-
-
 (setq js-indent-level 2)
 (setq typescript-indent-level 2)
 
 (use-package paredit
   :ensure)
 
+(use-package exec-path-from-shell :ensure)
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize))
 
@@ -558,6 +415,7 @@ Including indent-buffer, which should not be called automatically on save."
     (setenv "PATH" path-from-shell)
     (setq eshell-path-env path-from-shell) ; for eshell users
     (setq exec-path (split-string path-from-shell path-separator))))
+
 
 (when window-system (set-exec-path-from-shell-PATH))
 
@@ -593,12 +451,6 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package helm-lsp
   :ensure)
 
-(use-package lsp-treemacs
-  :ensure)
-
-(use-package dap-mode
-  :ensure)
-
 (define-key lsp-mode-map [remap xref-find-apropos] #'helm-lsp-workspace-symbol)
 
 (defun my/align-whitespace (start end)
@@ -607,32 +459,6 @@ Including indent-buffer, which should not be called automatically on save."
   (align-regexp start end
                 "\\(\\s-*\\)\\s-" 1 0 t))
 
-(defun my/mc-lsp-highlight-symbol ()
-  (interactive)
-  (mc/remove-fake-cursors)
-
-  (-when-let ((((&hash? "range" (&hash? "start"))) highlights)
-              (->> (lsp-request "textDocument/documentHighlight"
-                                (lsp--text-document-position-params))
-                   (-separate
-                    (-lambda ((&hash "range"))
-                      (lsp--point-in-bounds-p (lsp--range-to-region range))))))
-    (goto-char (lsp--position-to-point start))
-    (push-mark)
-
-    (mapc (-lambda ((&hash? "range" (&hash? "start")))
-            (goto-char (lsp--position-to-point start))
-            (push-mark)
-            (mc/create-fake-cursor-at-point))
-          highlights)
-
-    (mc/maybe-multiple-cursors-mode)
-    (->> start
-         (lsp--position-to-point)
-         (goto-char))
-    (push-mark)))
-
-(require 'go-projectile)
 (add-hook 'go-mode-hook 'my-go-mode-hook)
 
 (use-package elpy
@@ -668,6 +494,10 @@ Including indent-buffer, which should not be called automatically on save."
 ;;(add-hook 'after-init-hook #'global-flycheck-mode)
 ;;---------------------------------------------------------------
 ;; Projectile
+(use-package projectile
+  :ensure)
+(use-package helm-projectile
+  :ensure)
 
 (projectile-mode +1)
 (setq projectile-switch-project-action 'magit-status)
@@ -765,7 +595,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(dap-mode lsp-treemacs helm-lsp help-lsp yaml-mode vterm use-package urlenc ts-comint treemacs-projectile treemacs-persp treemacs-magit treemacs-icons-dired tide terraform-mode swift-mode ruby-refactor robe restclient paredit org-roam org-jira oauth2 npm-mode nodejs-repl lsp-sourcekit json-mode js-comint jest-test-mode jedi indium htmlize helm-projectile helm-ag graphql-mode google-this go-projectile go-dlv git-gutter+ git forge flymake-ruby expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline desktop+ define-word browse-at-remote ag)))
+   '(vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

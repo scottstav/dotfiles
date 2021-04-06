@@ -106,7 +106,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-fairy-floss t)
+  (load-theme 'doom-palenight t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -127,6 +127,8 @@
 
 ;; ----------------- END stolen from DOOM ----------------------------------------;
 ;; expand-region
+(use-package expand-region
+  :ensure)
 (global-set-key (kbd "C-\\") 'er/expand-region)
 
 ;; misc functions
@@ -178,6 +180,8 @@ Including indent-buffer, which should not be called automatically on save."
 ;; change from list-buffer to ibuffer
 ;; ibuffer allows you to do things on buffers
 (use-package helm
+  :ensure)
+(use-package helm-ag
   :ensure)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 (global-set-key (kbd "C-x b") 'helm-buffers-list)
@@ -334,6 +338,7 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 
 ;; magit / git
+(use-package browse-at-remote :ensure)
 (global-set-key (kbd "C-x g") 'magit-status)
 (use-package forge
   :ensure
@@ -386,6 +391,7 @@ Including indent-buffer, which should not be called automatically on save."
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
 (add-hook 'js-mode-hook #'setup-js-mode)
 
+(setq exec-path (append exec-path '("~/.nvm/versions/node/v14.16.0/bin")))
 (use-package nodejs-repl
   :ensure)
 
@@ -549,6 +555,7 @@ Including indent-buffer, which should not be called automatically on save."
 ;;---------------------------------------------------------------
 
 ;; restclient-mode
+(use-package restclient :ensure)
 (add-to-list 'auto-mode-alist '("\\.rest-client\\'" . restclient-mode))
 
 ;; keybindings
@@ -595,7 +602,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
+   '(restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

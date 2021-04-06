@@ -36,7 +36,7 @@ export GOROOT=/usr/local/opt/go/libexec
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 export PATH="/usr/local/opt/mongodb-community@3.4/bin:$PATH"
-export PATH="~/.bin:$PATH"
+export PATH="~/.bin:$HOME/bin:$PATH"
 
 vterm_prompt_end(){
     vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"

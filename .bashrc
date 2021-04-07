@@ -11,6 +11,8 @@ show_space() {
 # macOS Catalina switched to zsh but i dont wanna deal
 export BASH_SILENCE_DEPRECATION_WARNING=1
 
+source $(brew --prefix nvm)/nvm.sh
+
 if command -v pyenv 1>/dev/null 2>&1; then
   eval "$(pyenv init -)"
 fi
@@ -36,7 +38,11 @@ export GOROOT=/usr/local/opt/go/libexec
 export GOPATH=$HOME/go
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
 export PATH="/usr/local/opt/mongodb-community@3.4/bin:$PATH"
+<<<<<<< HEAD
 export PATH="~/.bin:$HOME/bin:$PATH"
+=======
+export PATH="~/.bin:/opt/homebrew/bin:$PATH"
+>>>>>>> from personal
 
 vterm_prompt_end(){
     vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"

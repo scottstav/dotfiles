@@ -183,10 +183,13 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 (use-package helm-ag
   :ensure)
+(use-package helm-swoop
+  :ensure)
 (global-set-key (kbd "C-x C-b") 'ibuffer)
 (global-set-key (kbd "C-x b") 'helm-buffers-list)
 (global-set-key (kbd "C-c y") 'helm-show-kill-ring)
 (global-set-key (kbd "M-x") 'helm-M-x)
+(global-set-key (kbd "C-s") 'helm-swoop)
 (global-set-key (kbd "C-x C-f") 'helm-find-files)
 (define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to run persistent action
 (define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB work in terminal
@@ -389,7 +392,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq lsp-enable-file-watchers nil)
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
-(add-hook 'js-mode-hook #'setup-js-mode)
+(add-hook 'js-mode-hook #'setup-tide-mode)
 
 (setq exec-path (append exec-path '("~/.nvm/versions/node/v14.16.0/bin")))
 (use-package nodejs-repl
@@ -475,7 +478,12 @@ Including indent-buffer, which should not be called automatically on save."
 (setq elpy-rpc-backend "jedi")
 
 ;; json/yaml
+(use-package yaml-mode
+  :ensure)
 (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))
+(add-hook 'yaml-mode-hook
+          (lambda ()
+            (define-key yaml-mode-map "\C-m" 'newline-and-indent)))
 (add-hook 'json-mode-hook
           (lambda ()
             (setq standard-indent 2)))
@@ -602,7 +610,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
+   '(helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

@@ -380,7 +380,7 @@ Including indent-buffer, which should not be called automatically on save."
   (interactive)
   (tide-setup)
   (flycheck-mode +1)
-  ;;(setq flycheck-check-syntax-automatically '(save mode-enabled))
+  (setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
   (tide-hl-identifier-mode +1)
   (add-hook 'before-save-hook 'tide-format-before-save)
@@ -407,7 +407,6 @@ Including indent-buffer, which should not be called automatically on save."
   (lsp)
   )
 
-(setq lsp-enable-file-watchers nil)
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
 (add-hook 'js-mode-hook #'setup-tide-mode)
 
@@ -473,6 +472,10 @@ Including indent-buffer, which should not be called automatically on save."
 ;; lsp-mode
 (use-package lsp-mode
   :ensure)
+
+(use-package lsp-ui :ensure)
+(lsp-ui-mode)
+
 
 (use-package helm-lsp
   :ensure)
@@ -579,16 +582,10 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;;---------------------------------------------------------------
 
-;; purpose
-(use-package window-purpose
-  :ensure)
-(use-package frame-purpose
-  :ensure)
-
 ;; text navigation
 (use-package ace-jump-mode
   :ensure)
-(define-key global-map (kbd "C-c SPC") 'ace-jump-mode)
+(define-key global-map (kbd "C-;") 'ace-jump-mode)
 
 (delete-selection-mode 1)
 
@@ -655,7 +652,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
+   '(lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

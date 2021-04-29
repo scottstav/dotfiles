@@ -44,7 +44,7 @@ export PATH="~/.bin:$HOME/bin:$PATH"
 export PATH="~/.bin:/opt/homebrew/bin:$PATH"
 >>>>>>> from personal
 
-vterm_prompt_end(){
+function vterm_prompt_end(){
     vterm_printf "51;A$(whoami)@$(hostname):$(pwd)"
 }
 export PS1="\[\e[34m\][\[\e[m\]\u\[\e[m\]\[\e[34m\]]\[\e[m\]\w\[\e[m\] \\$ "

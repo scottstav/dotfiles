@@ -189,7 +189,10 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key (kbd "C-x b") 'helm-buffers-list)
 (global-set-key (kbd "C-c y") 'helm-show-kill-ring)
 (global-set-key (kbd "M-x") 'helm-M-x)
+(setq helm-swoop-pre-input-function
+      (lambda () nil))
 (global-set-key (kbd "C-s") 'helm-swoop)
+(setq helm-swoop-split-with-multiple-windows t)
 (global-set-key (kbd "C-x C-f") 'helm-find-files)
 (define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to run persistent action
 (define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB work in terminal
@@ -342,6 +345,18 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; magit / git
 (use-package browse-at-remote :ensure)
+(setq magit-display-buffer-function
+      (lambda (buffer)
+        (display-buffer
+         buffer (if (and (derived-mode-p 'magit-mode)
+                         (memq (with-current-buffer buffer major-mode)
+                               '(magit-process-mode
+                                 magit-revision-mode
+                                 magit-diff-mode
+                                 magit-stash-mode
+                                 magit-status-mode)))
+                    nil
+                  '(display-buffer-same-window)))))
 (global-set-key (kbd "C-x g") 'magit-status)
 (use-package forge
   :ensure
@@ -368,10 +383,12 @@ Including indent-buffer, which should not be called automatically on save."
   ;;(setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
   (tide-hl-identifier-mode +1)
+  (add-hook 'before-save-hook 'tide-format-before-save)
   (prettier-js-mode +1)
   (local-set-key "\C-c\C-d" 'tide-documentation-at-point)
   (local-set-key "\C-c\C-r" 'tide-references)
   (local-set-key "\C-c\C-f" 'tide-rename-file)
+  (local-set-key "\C-c\C-s" 'tide-rename-symbol)
   (setq tide-native-json-parsing t))
 
 (global-set-key "\C-c\C-u" 'uncomment-region)
@@ -562,6 +579,34 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;;---------------------------------------------------------------
 
+;; purpose
+(use-package window-purpose
+  :ensure)
+(use-package frame-purpose
+  :ensure)
+
+;; text navigation
+(use-package ace-jump-mode
+  :ensure)
+(define-key global-map (kbd "C-c SPC") 'ace-jump-mode)
+
+(delete-selection-mode 1)
+
+(use-package which-key
+  :ensure)
+(which-key-mode 1)
+
+(use-package key-chord
+  :ensure)
+(key-chord-mode 1)
+
+;; (key-chord-define-global ",."     "<>\C-b")
+;; (key-chord-define-global "hj"     'undo)
+;; (key-chord-define-global [?h ?j]  'undo)  ; the same
+;; (key-chord-define-global "jk"     'dabbrev-expand)
+;; (key-chord-define-global "cv"     'reindent-then-newline-and-indent)
+;; (key-chord-define-global "4r"     "$")
+
 ;; restclient-mode
 (use-package restclient :ensure)
 (add-to-list 'auto-mode-alist '("\\.rest-client\\'" . restclient-mode))
@@ -610,7 +655,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
+   '(which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

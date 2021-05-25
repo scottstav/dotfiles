@@ -8,6 +8,8 @@ show_space() {
     du -xhS $1 | sort -h | tail -n15
 }
 
+alias video_to_gif='function video_to_gif(){ ffmpeg -i $1 output.gif && gifsicle -O3 output.gif -o output.gif && say "Video is ready!"};video_to_gif'
+
 # macOS Catalina switched to zsh but i dont wanna deal
 export BASH_SILENCE_DEPRECATION_WARNING=1
 

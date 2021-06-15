@@ -21,13 +21,15 @@
 (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
 
 (use-package vterm
-    :ensure t)
+  :ensure t
+  :init (add-hook 'vterm-mode-hook (lambda () (display-line-numbers-mode -1))))
+
 
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
 
 ;; font
-(add-to-list 'default-frame-alist '(font . "Menlo-20" ))
+(set-frame-font "Iosevka 20" nil t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple cursors                                                       ;;
@@ -256,6 +258,13 @@ Including indent-buffer, which should not be called automatically on save."
 (require 'org)
 (setq diary-file "~/Dropbox/org/personal/diary")
 (setq org-directory "~/Dropbox/org")
+(setq org-capture-templates nil)
+(add-to-list 'org-capture-templates
+             '("x" "Template name" plain
+               (file (lambda () (expand-file-name
+                     (format-time-string "%Y-%m-%d.org")
+                     org-directory)))
+               ""))
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
 (setq org-agenda-files (list "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
 (setq org-modules
@@ -589,6 +598,11 @@ Including indent-buffer, which should not be called automatically on save."
 ;; text navigation
 (use-package ace-jump-mode
   :ensure)
+
+(use-package ace-window
+  :ensure)
+(global-set-key (kbd "C-x o") 'ace-window)
+(global-set-key (kbd "M-o") 'ace-window)
 (define-key global-map (kbd "C-;") 'ace-jump-mode)
 
 (delete-selection-mode 1)
@@ -601,7 +615,7 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 (key-chord-mode 1)
 
-;; (key-chord-define-global ",."     "<>\C-b")
+(key-chord-define-global ";;" "\C-e;")
 ;; (key-chord-define-global "hj"     'undo)
 ;; (key-chord-define-global [?h ?j]  'undo)  ; the same
 ;; (key-chord-define-global "jk"     'dabbrev-expand)
@@ -656,7 +670,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

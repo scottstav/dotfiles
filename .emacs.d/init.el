@@ -548,7 +548,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (projectile-mode +1)
 (setq projectile-switch-project-action 'magit-status)
-(define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 ;;(setq projectile-indexing-method 'native)
 (setq projectile-indexing-method 'alien)
 (helm-projectile-on)
@@ -616,7 +616,7 @@ Including indent-buffer, which should not be called automatically on save."
 (key-chord-mode 1)
 
 (key-chord-define-global ";;" "\C-e;")
-(key-chord-define-global "vv" 'projectile-commander)
+(key-chord-define-global "vv" "\C-^")
 ;; (key-chord-define-global "hj"     'undo)
 ;; (key-chord-define-global [?h ?j]  'undo)  ; the same
 ;; (key-chord-define-global "jk"     'dabbrev-expand)

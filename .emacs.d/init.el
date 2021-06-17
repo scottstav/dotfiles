@@ -616,6 +616,7 @@ Including indent-buffer, which should not be called automatically on save."
 (key-chord-mode 1)
 
 (key-chord-define-global ";;" "\C-e;")
+(key-chord-define-global "vv" 'projectile-commander)
 ;; (key-chord-define-global "hj"     'undo)
 ;; (key-chord-define-global [?h ?j]  'undo)  ; the same
 ;; (key-chord-define-global "jk"     'dabbrev-expand)

@@ -2,6 +2,7 @@
 alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 alias ls='ls -GAF'
 alias emacs='emacsclient -create-frame --alternate-editor="" -t'    # no gui
+alias e='emacs'
 
 # clean help
 show_space() {

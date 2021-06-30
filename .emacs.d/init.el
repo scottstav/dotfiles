@@ -22,14 +22,17 @@
 
 (use-package vterm
   :ensure t
-  :init (add-hook 'vterm-mode-hook (lambda () (display-line-numbers-mode -1))))
+  :init (add-hook 'vterm-mode-hook (lambda ()
+				     (display-line-numbers-mode -1)
+				     (setq mode-line-format nil)
+				     )))
 
 
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
 
 ;; font
-(set-frame-font "Iosevka 20" nil t)
+(set-frame-font "Iosevka 24" nil t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple cursors                                                       ;;
@@ -108,7 +111,7 @@
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
         doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-palenight t)
+  (load-theme 'doom-dark+ t)
 
   ;; Enable flashing mode-line on errors
   (doom-themes-visual-bell-config)
@@ -123,6 +126,16 @@
 ;; mode line
 (use-package all-the-icons)
 
+(display-battery-mode 1)
+(display-time-mode 1)
+(setq display-time-default-load-average nil)
+(setq doom-modeline-bar-width 5)
+(setq doom-modeline-height 5)
+(setq doom-modeline-buffer-encoding nil)
+(setq doom-modeline-window-width-limit fill-column)
+(setq doom-modeline-vcs-max-length 40)
+(setq doom-modeline-percent-position nil)
+(setq doom-modeline-battery-status t)
 (use-package doom-modeline
   :ensure t
   :init (doom-modeline-mode 1))
@@ -212,6 +225,7 @@ Including indent-buffer, which should not be called automatically on save."
 (helm-mode 1)
 
 ;; better scrolling config
+(toggle-scroll-bar -1)
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
 
 (setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
@@ -219,6 +233,11 @@ Including indent-buffer, which should not be called automatically on save."
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
 (setq scroll-step 1) ;; keyboard scroll one line at a time
+(global-set-key (kbd "M-l") 'centered-cursor-mode)
+
+(use-package yascroll
+  :ensure)
+(global-yascroll-bar-mode 1)
 
 ;; url
 
@@ -538,7 +557,23 @@ Including indent-buffer, which should not be called automatically on save."
   :init (setq markdown-command "multimarkdown"))
 
 ;; auto-completen
-;;(add-hook 'after-init-hook #'global-flycheck-mode)
+(global-company-mode 1)
+(use-package yasnippet
+  :ensure
+  :config
+  (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+  (yas-global-mode 1))
+
+(use-package helm-c-yasnippet
+  :ensure
+  :config
+  (setq helm-yas-space-match-any-greedy t)
+  (global-set-key (kbd "C-c C-y") 'helm-yas-complete))
+
+
+
+
+
 ;;---------------------------------------------------------------
 ;; Projectile
 (use-package projectile
@@ -548,7 +583,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (projectile-mode +1)
 (setq projectile-switch-project-action 'magit-status)
-(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+(define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
 ;;(setq projectile-indexing-method 'native)
 (setq projectile-indexing-method 'alien)
 (helm-projectile-on)
@@ -627,6 +662,15 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package restclient :ensure)
 (add-to-list 'auto-mode-alist '("\\.rest-client\\'" . restclient-mode))
 
+;; windows, purpose
+(use-package window-purpose
+  :ensure)
+(add-to-list 'purpose-user-mode-purposes '(js-mode . edit))
+(add-to-list 'purpose-user-mode-purposes '(vterm-mode . shell))
+(add-to-list 'purpose-user-mode-purposes '(magit-mode . help))
+(purpose-mode)
+(purpose-compile-user-configuration)
+
 ;; keybindings
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
 (global-set-key (kbd "M-i") 'helm-do-ag-project-root)
@@ -651,12 +695,10 @@ Including indent-buffer, which should not be called automatically on save."
 ;; never used
 (tool-bar-mode -1)
 (menu-bar-mode -1)
-(toggle-scroll-bar -1)
+
 
 ;; customize keep
 (setq show-paren-mode t)
-(setq doom-modeline-bar-width 8)
-(setq doom-modeline-height 15)
 (setq global-display-line-numbers-mode t)
 (setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
 (setq helm-ag-insert-at-point (quote symbol))
@@ -671,7 +713,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/work.org" "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

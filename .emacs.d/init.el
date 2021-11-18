@@ -107,25 +107,44 @@
 
 ;; themes
 
-(use-package doom-themes
+(use-package modus-themes
   :ensure
+  :init
+  ;; Add all your customizations prior to loading the themes
+  (setq modus-themes-italic-constructs t
+        modus-themes-bold-constructs nil
+        modus-themes-region '(bg-only no-extend)
+        modus-themes-hl-line '(intense)
+	modus-themes-subtle-line-numbers t)
+
+  ;; Load the theme files before enabling a theme
+  (modus-themes-load-themes)
   :config
-  ;; Global settings (defaults)
-  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-        doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-acario-dark t)
+  ;; Load the theme of your choice:
+  (modus-themes-load-vivendi) ;; OR (modus-themes-load-vivendi)
+  :bind ("<f5>" . modus-themes-toggle))
 
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
+;; (use-package doom-themes
+;;   :ensure
+;;   :config
+;;   ;; Global settings (defaults)
+;;   (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
+;;         doom-themes-enable-italic t) ; if nil, italics is universally disabled
+;;   (load-theme 'doom-acario-dark t)
 
-  ;; or for treemacs users
-  (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
-  (doom-themes-treemacs-config)
+;;   ;; Enable flashing mode-line on errors
+;;   (doom-themes-visual-bell-config)
 
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config)
-  (setq doom-themes-padded-modeline t)
-  )
+;;   ;; or for treemacs users
+;;   (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
+;;   (doom-themes-treemacs-config)
+
+;;   ;; Corrects (and improves) org-mode's native fontification.
+;;   (doom-themes-org-config)
+;;   (setq doom-themes-padded-modeline t)
+;;   )
+
+
 (use-package solaire-mode
   :ensure)
 (solaire-global-mode +1)
@@ -291,7 +310,7 @@ Including indent-buffer, which should not be called automatically on save."
                      org-directory)))
                ""))
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
-(setq org-agenda-files (list "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org" "~/Dropbox/org/ifit/work.org"))
+(setq org-agenda-files (list "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/General.org" "~/Dropbox/org/ifit/work.org"))
 (setq org-modules
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
@@ -365,19 +384,16 @@ Including indent-buffer, which should not be called automatically on save."
   (setq jiralib-url "https://ifitdev.atlassian.net"))
 
 
-;; this doesnt work
-;; (defun org-capture-journal-location ()
-;;   "Go to journal.org and find the subtree by date."
-;;   (interactive "P")
-;;   (let* ((heading (format-time-string "%Y-%m-%d %A")))
-;;     (find-file (concat org-directory "/journal.org"))
-;;     (goto-char 0)
-;;     (unless (search-forward (format "* %s" heading) nil t)
-;;       (insert (format "* %s\n" heading))
-;;       (goto-line -1)))
-;;   )
-
 (setq org-agenda-include-diary t)
+
+;; org bullets
+(use-package org-bullets
+  :ensure)
+(add-hook 'org-mode-hook (lambda () (org-bullets-mode 1)))
+
+;; org reveal
+(use-package ox-reveal
+  :ensure)
 
 ;; mail
 (add-to-list 'load-path "/usr/local/share/emacs/site-lisp/mu/mu4e")
@@ -574,8 +590,9 @@ Including indent-buffer, which should not be called automatically on save."
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
 
-;; auto-completen
+;; auto-complete
 (global-company-mode 1)
+(setq company-dabbrev-downcase nil)
 (use-package yasnippet
   :ensure
   :config
@@ -720,10 +737,10 @@ Including indent-buffer, which should not be called automatically on save."
  ;; If there is more than one, they won't work right.
  '(helm-completion-style 'helm)
  '(org-agenda-files
-   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
+   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(modus-themes undo-tree ox-reveal org-reveal org-bullets solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

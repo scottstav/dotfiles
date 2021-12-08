@@ -29,6 +29,29 @@
 				     )))
 
 
+;; random annoying message
+(setq byte-compile-warnings '(cl-functions))
+
+(use-package dashboard
+  :ensure
+  :diminish dashboard-mode
+  :config
+  (setq dashboard-banner-logo-title "Howdy")
+  (setq dashboard-startup-banner 3)
+  (setq dashboard-items '((recents  . 5)
+                          (bookmarks . 5)
+			  (projects . 3)))
+  (dashboard-setup-startup-hook)
+  (setq dashboard-projects-backend 'projectile)
+  (setq dashboard-set-heading-icons t)
+  (setq dashboard-set-file-icons t)
+  (setq dashboard-set-footer t)
+  (setq dashboard-footer-messages '("Let's have a good day."))
+  (setq dashboard-footer-icon (all-the-icons-octicon "zap"
+                                                     :height 1.1
+                                                     :v-adjust -0.05
+                                                     :face 'font-lock-keyword-face)))
+
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
 
@@ -376,9 +399,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq org-agenda-include-diary t)
 
-;; mail
-(add-to-list 'load-path "/usr/local/share/emacs/site-lisp/mu/mu4e")
-(require 'mu4e)
 
 ;;------------------language config------------------------------
 
@@ -708,7 +728,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

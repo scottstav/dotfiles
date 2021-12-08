@@ -63,7 +63,6 @@
 (unless IS-WINDOWS
   (setq selection-coding-system 'utf-8)) ; with sugar on top
 
-
 ;; Less noise at startup. The dashboard/empty scratch buffer is good enough.
 (setq inhibit-startup-message t
       inhibit-startup-echo-area-message user-login-name
@@ -107,25 +106,21 @@
 
 ;; themes
 
-(use-package doom-themes
-  :ensure
+(use-package modus-themes
+  :ensure                         ; omit this to use the built-in themes
+  :init
+  ;; Add all your customizations prior to loading the themes
+  (setq modus-themes-italic-constructs t
+        modus-themes-bold-constructs nil
+        modus-themes-region '(bg-only no-extend))
+
+  ;; Load the theme files before enabling a theme (else you get an error).
+  (modus-themes-load-themes)
   :config
-  ;; Global settings (defaults)
-  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-        doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (load-theme 'doom-acario-dark t)
+  ;; Load the theme of your choice:
+  (modus-themes-load-vivendi) ;; OR (modus-themes-load-vivendi)
+  :bind ("<f5>" . modus-themes-toggle))
 
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-
-  ;; or for treemacs users
-  (setq doom-themes-treemacs-theme "doom-colors") ; use the colorful treemacs theme
-  (doom-themes-treemacs-config)
-
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config)
-  (setq doom-themes-padded-modeline t)
-  )
 (use-package solaire-mode
   :ensure)
 (solaire-global-mode +1)
@@ -147,6 +142,7 @@
   :init (doom-modeline-mode 1))
 
 ;; ----------------- END stolen from DOOM ----------------------------------------;
+
 ;; expand-region
 (use-package expand-region
   :ensure)
@@ -200,35 +196,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; change from list-buffer to ibuffer
 ;; ibuffer allows you to do things on buffers
-(use-package helm
-  :ensure)
-(use-package helm-ag
-  :ensure)
-(use-package helm-swoop
-  :ensure)
-(global-set-key (kbd "C-x C-b") 'ibuffer)
-(global-set-key (kbd "C-x b") 'helm-buffers-list)
-(global-set-key (kbd "C-c y") 'helm-show-kill-ring)
-(global-set-key (kbd "M-x") 'helm-M-x)
-(setq helm-swoop-pre-input-function
-      (lambda () nil))
-(global-set-key (kbd "C-s") 'helm-swoop)
-(setq helm-swoop-split-with-multiple-windows t)
-(global-set-key (kbd "C-x C-f") 'helm-find-files)
-(define-key helm-map (kbd "<tab>") 'helm-execute-persistent-action) ; rebind tab to run persistent action
-(define-key helm-map (kbd "C-i") 'helm-execute-persistent-action) ; make TAB work in terminal
-(define-key helm-map (kbd "C-z")  'helm-select-action) ; list actions using C-z
-(when (executable-find "curl")
-  (setq helm-google-suggest-use-curl-p t))
 
-(setq helm-split-window-in-side-p           t ; open helm buffer inside current window, not occupy whole other window
-      helm-move-to-line-cycle-in-source     t ; move to end or beginning of source when reaching top or bottom of source.
-      helm-ff-search-library-in-sexp        t ; search for library in `require' and `declare-function' sexp.
-      helm-scroll-amount                    8 ; scroll 8 lines other window using M-<next>/M-<prior>
-      helm-ff-file-name-history-use-recentf t
-      helm-echo-input-in-header-line t)
-
-(helm-mode 1)
 
 ;; better scrolling config
 (toggle-scroll-bar -1)
@@ -331,6 +299,28 @@ Including indent-buffer, which should not be called automatically on save."
    (ruby . t)
    (mongo . t)))
 
+;; ivy
+(use-package ivy
+  :ensure
+  :config
+  (ivy-mode 1)
+  (setq ivy-height 10)
+  (global-set-key (kbd "M-x") 'counsel-M-x))
+
+(use-package ivy-posframe
+  :ensure
+  :config
+  (ivy-posframe-mode 1))
+
+(use-package counsel
+  :ensure)
+
+(global-set-key (kbd "M-i") 'counsel-ag)
+
+(use-package swiper
+  :ensure
+  :config
+  (global-set-key "\C-s" 'swiper))
 
 ;; this ensures code highlighting on export... and probably other stuff
 (use-package htmlize
@@ -341,10 +331,17 @@ Including indent-buffer, which should not be called automatically on save."
       '(
 	("org-static"
 	 :base-directory "~/projects/scotty.dance/static/"
-	 :base-extension "css\\|js\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf\\|sh\\|txt\\|m4a\\|html"
+	 :base-extension any
 	 :publishing-directory "~/public_html/"
 	 :recursive t
 	 :publishing-function org-publish-attachment
+	 )
+	("org-pdfs"
+	 :base-directory "~/projects/scotty.dance/pdfs/"
+	 :base-extendion "org"
+	 :publishing-directory "~/public_html/"
+	 :recursive t
+	 :publishing-function org-latex-publish-to-pdf
 	 )
 	("org-pages"
 	 :base-directory "~/projects/scotty.dance/"
@@ -352,10 +349,10 @@ Including indent-buffer, which should not be called automatically on save."
 	 :publishing-directory "~/public_html/"
 	 :recursive t
 	 :publishing-function org-html-publish-to-html
-	 :headline-levels 4             ; Just the default for this project.
+	 :headline-levels 4
 	 :auto-preamble t
 	 )
-	("org" :components ("org-pages" "org-static"))
+	("my-website" :components ("org-pages" "org-static" "org-pdfs"))
 	))
 
 ;; jira (ifit)
@@ -526,12 +523,6 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package lsp-ui :ensure)
 (lsp-ui-mode)
 
-
-(use-package helm-lsp
-  :ensure)
-
-(define-key lsp-mode-map [remap xref-find-apropos] #'helm-lsp-workspace-symbol)
-
 (defun my/align-whitespace (start end)
   "Align columns by whitespace"
   (interactive "r")
@@ -559,8 +550,12 @@ Including indent-buffer, which should not be called automatically on save."
             (setq standard-indent 2)))
 
 ;; ruby
-(add-hook 'ruby-mode-hook 'robe-mode)
+(use-package flymake-ruby
+  :ensure)
+(use-package robe
+  :ensure)
 (add-hook 'ruby-mode-hook 'flymake-ruby-load)
+(add-hook 'ruby-mode-hook 'robe-mode)
 
 ;; markdown
 ;; may need to:
@@ -582,29 +577,22 @@ Including indent-buffer, which should not be called automatically on save."
   (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
   (yas-global-mode 1))
 
-(use-package helm-c-yasnippet
-  :ensure
-  :config
-  (setq helm-yas-space-match-any-greedy t)
-  (global-set-key (kbd "C-c C-y") 'helm-yas-complete))
-
-
-
-
 
 ;;---------------------------------------------------------------
 ;; Projectile
 (use-package projectile
   :ensure)
-(use-package helm-projectile
-  :ensure)
+(use-package counsel-projectile
+  :ensure
+  )
+
 
 (projectile-mode +1)
+
 (setq projectile-switch-project-action 'magit-status)
 (define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
 ;;(setq projectile-indexing-method 'native)
 (setq projectile-indexing-method 'alien)
-(helm-projectile-on)
 
 
 (defun connect-remote-minecraft ()
@@ -682,7 +670,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; keybindings
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
-(global-set-key (kbd "M-i") 'helm-do-ag-project-root)
 (global-unset-key (kbd "s-w"))
 (global-set-key (kbd "C-c C-k") 'paredit-splice-sexp)
 
@@ -709,8 +696,6 @@ Including indent-buffer, which should not be called automatically on save."
 ;; customize keep
 (setq show-paren-mode t)
 (setq global-display-line-numbers-mode t)
-(setq helm-ag-base-command "ag --nocolor --nogroup --ignore-case --path-to-ignore ~/.ignore")
-(setq helm-ag-insert-at-point (quote symbol))
 (setq markdown-command "/usr/local/bin/pandoc")
 (setq global-visual-line-mode t)
 (custom-set-variables
@@ -723,7 +708,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

@@ -199,6 +199,9 @@ Including indent-buffer, which should not be called automatically on save."
 ;; dired
 (add-hook 'dired-mode-hook 'dired-hide-details-mode)
 
+(global-unset-key (kbd "C-x C-r"))
+(global-set-key (kbd "C-x C-r") 'counsel-recentf)
+
 (defun dired-get-size ()
   (interactive)
   (let ((files (dired-get-marked-files)))
@@ -780,10 +783,11 @@ Assume point is in the corresponding edit buffer."
    '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
- '(smtpmail-smtp-service 587))
+ '(smtpmail-smtp-service 587)
+ '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

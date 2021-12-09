@@ -50,7 +50,8 @@
   (setq dashboard-footer-icon (all-the-icons-octicon "zap"
                                                      :height 1.1
                                                      :v-adjust -0.05
-                                                     :face 'font-lock-keyword-face)))
+                                                     :face 'font-lock-keyword-face))
+  (setq dashboard-center-content t))
 
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
@@ -456,7 +457,9 @@ Including indent-buffer, which should not be called automatically on save."
   (local-set-key "\C-c\C-r" 'tide-references)
   (local-set-key "\C-c\C-f" 'tide-rename-file)
   (local-set-key "\C-c\C-s" 'tide-rename-symbol)
-  (setq tide-native-json-parsing t))
+  (setq tide-native-json-parsing t)
+  (centered-cursor-mode 1)
+  (subword-mode 1))
 
 (global-set-key "\C-c\C-u" 'uncomment-region)
 (global-set-key "\C-c\C-p" 'comment-region)
@@ -626,13 +629,12 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;;------------------save config------------------------------
 
-;; my functions
-(defun my/big-small-window ()
-  "Expand current window to use half of the other window's lines."
-  (interactive)
-  (enlarge-window (/ (window-height (next-window)) 2)))
+(use-package zoom
+  :ensure
+  :config
+  (custom-set-variables
+   '(zoom-size '(0.618 . 0.618))))
 
-(global-set-key (kbd "C-c w") 'my/big-small-window)
 
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
@@ -712,6 +714,56 @@ Including indent-buffer, which should not be called automatically on save."
 (tool-bar-mode -1)
 (menu-bar-mode -1)
 
+;; some bug fix for org mode src blocks: https://emacs.stackexchange.com/questions/64886/indentation-in-org-mode-source-block-with-return
+(with-eval-after-load "org"
+  (when (version-list-= (version-to-list org-version) '(9 4 3))
+    (defun org-return-fix (fun &rest args)
+      "Fix https://emacs.stackexchange.com/questions/64886."
+      (let* ((context (if org-return-follows-link (org-element-context)
+            (org-element-at-point)))
+             (element-type (org-element-type context)))
+    (if (eq element-type 'src-block)
+        (apply #'org--newline args)
+      (apply fun args))))
+    (advice-add 'org-return :around #'org-return-fix)))
+
+(with-eval-after-load "org-src"
+  (when (version-list-= (version-to-list org-version) '(9 4 3))
+    (defun org-src--contents-for-write-back ()
+      "Return buffer contents in a format appropriate for write back.
+Assume point is in the corresponding edit buffer."
+      (let ((indentation-offset
+         (if org-src--preserve-indentation 0
+           (+ (or org-src--block-indentation 0)
+          (if (memq org-src--source-type '(example-block src-block))
+              org-src--content-indentation
+            0))))
+        (use-tabs? (and (> org-src--tab-width 0) t))
+        (source-tab-width org-src--tab-width)
+        (contents (org-with-wide-buffer (buffer-string)))
+        (write-back org-src--allow-write-back))
+    (with-temp-buffer
+      ;; Reproduce indentation parameters from source buffer.
+      (setq indent-tabs-mode use-tabs?)
+      (when (> source-tab-width 0) (setq tab-width source-tab-width))
+      ;; Apply WRITE-BACK function on edit buffer contents.
+      (insert (org-no-properties contents))
+      (goto-char (point-min))
+      (when (functionp write-back) (save-excursion (funcall write-back)))
+      ;; Add INDENTATION-OFFSET to every non-empty line in buffer,
+      ;; unless indentation is meant to be preserved.
+      (when (> indentation-offset 0)
+        (while (not (eobp))
+          (skip-chars-forward " \t")
+          ;; (unless (eolp)     ;ignore blank lines
+          (let ((i (current-column)))
+        (delete-region (line-beginning-position) (point))
+        (indent-to (+ i indentation-offset)))
+          ;;)
+          (forward-line)))
+      (buffer-string))))))
+
+
 
 ;; customize keep
 (setq show-paren-mode t)
@@ -728,7 +780,7 @@ Including indent-buffer, which should not be called automatically on save."
    '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587))

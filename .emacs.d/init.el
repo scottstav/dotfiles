@@ -136,7 +136,8 @@
   ;; Add all your customizations prior to loading the themes
   (setq modus-themes-italic-constructs t
         modus-themes-bold-constructs nil
-        modus-themes-region '(bg-only no-extend))
+        modus-themes-region '(bg-only no-extend)
+	modus-themes-subtle-line-numbers t)
 
   ;; Load the theme files before enabling a theme (else you get an error).
   (modus-themes-load-themes)
@@ -201,6 +202,8 @@ Including indent-buffer, which should not be called automatically on save."
 
 (global-unset-key (kbd "C-x C-r"))
 (global-set-key (kbd "C-x C-r") 'counsel-recentf)
+(package-install 'smex
+		 :ensure)
 
 (defun dired-get-size ()
   (interactive)
@@ -286,15 +289,16 @@ Including indent-buffer, which should not be called automatically on save."
                      org-directory)))
                ""))
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
-(setq org-agenda-files (list "~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org" "~/Dropbox/org/ifit/work.org"))
+(setq org-agenda-files (list "~/Dropbox/org/roam/daily"))
 (setq org-modules
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
 
-(setq org-capture-templates
-      '(("i" "Inbox" entry (file "~/Dropbox/org/personal/inbox.org")
-         "* TODO %?\nEntered on %U")
-        ))
+(use-package org-pomodoro
+  :ensure)
+
+(setq org-clock-persist 'history)
+(org-clock-persistence-insinuate)
 
 (define-key global-map (kbd "C-c c") 'org-capture)
 (global-set-key (kbd "C-c l") 'org-store-link)
@@ -304,9 +308,35 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq org-export-with-section-numbers nil)
 
-;; these two things auto-beak lines when they become too long
-(add-hook 'org-mode-hook '(lambda () (setq fill-column 80)))
-(add-hook 'org-mode-hook 'turn-on-auto-fill)
+;;roam
+(use-package org-roam
+  :ensure
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . org-roam-node-find)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n I" . org-roam-node-insert-immediate)
+         :map org-mode-map
+         ("C-M-i" . completion-at-point)
+         :map org-roam-dailies-map
+         ("Y" . org-roam-dailies-capture-yesterday)
+         ("T" . org-roam-dailies-capture-tomorrow))
+  :bind-keymap
+  ("C-c n d" . org-roam-dailies-map)
+  :config
+  (setq org-roam-directory (file-truename "~/Dropbox/org/roam"))
+  (org-roam-db-autosync-mode)
+  (require 'org-roam-dailies)
+
+  (setq org-roam-capture-templates '(("p" "project" plain
+				      "\n%?"
+				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org"
+							 "#+title: ${title}\n")
+				      :unnarrowed t)
+				     ("l" "literature" plain
+				      "\nURL: %^{url}\nNotes: \n\n%?"
+				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org"
+							 "#+title: ${title}\n")
+				      :unnarrowed t))))
 
 ;; publishing
 (setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
@@ -319,12 +349,21 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package ob-http :ensure)
 (use-package ob-mongo :ensure)
 
+
 (org-babel-do-load-languages
  'org-babel-load-languages
  '((emacs-lisp . t)
    (http . t)
    (ruby . t)
-   (mongo . t)))
+   (mongo . t)
+   (python . t)
+   (node . t)
+   )
+
+(defun my-org-confirm-babel-evaluate (lang body)
+  (not (member lang '("node" "http" "python"))))
+
+(setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
 ;; ivy
 (use-package ivy
@@ -332,7 +371,8 @@ Including indent-buffer, which should not be called automatically on save."
   :config
   (ivy-mode 1)
   (setq ivy-height 10)
-  (global-set-key (kbd "M-x") 'counsel-M-x))
+  (global-set-key (kbd "M-x") 'counsel-M-x)
+  (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
 (use-package ivy-posframe
   :ensure
@@ -595,8 +635,17 @@ Including indent-buffer, which should not be called automatically on save."
          ("\\.markdown\\'" . markdown-mode))
   :init (setq markdown-command "multimarkdown"))
 
+(use-package impatient-mode
+  :ensure)
+
 ;; auto-completen
 (global-company-mode 1)
+(setq company-minimum-prefix-length 3)
+
+(use-package orderless
+  :ensure t
+  :custom (completion-styles '(orderless)))
+
 (use-package yasnippet
   :ensure
   :config
@@ -668,7 +717,7 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package ace-window
   :ensure)
 (global-set-key (kbd "C-x o") 'ace-window)
-(global-set-key (kbd "M-o") 'ace-window)
+(global-set-key (kbd "M-o") 'next-window-any-frame)
 (define-key global-map (kbd "C-;") 'ace-jump-mode)
 
 (delete-selection-mode 1)
@@ -780,13 +829,14 @@ Assume point is in the corresponding edit buffer."
  ;; If there is more than one, they won't work right.
  '(helm-completion-style 'helm)
  '(org-agenda-files
-   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org" "~/Dropbox/org/personal/General.org"))
+   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(impatient-mode org-pomodoro smex orderless org-roam wgrep typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587)
+ '(zoom-mode t nil (zoom))
  '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

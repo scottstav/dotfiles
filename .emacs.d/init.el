@@ -323,18 +323,14 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package ob-mongo :ensure)
 (use-package ob-graphql :ensure)
 
-;; (org-babel-do-load-languages
-;;  'org-babel-load-languages
-;;  '((emacs-lisp . t)
-;;    (http . t)
-;;    (ruby . t)
-;;    (mongo . t)
-;;    (python . t)
-;;    (node . t)
-;;    )
+(org-babel-do-load-languages 'org-babel-load-languages
+    '(
+        (shell . t)
+    )
+)
 
 (defun my-org-confirm-babel-evaluate (lang body)
-  (not (member lang '("node" "http" "python"))))
+  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash"))))
 
 (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
@@ -351,6 +347,7 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure
   :config
   (ivy-posframe-mode 1))
+(set-face-attribute 'ivy-posframe nil :foreground "white" :background "DarkSlateBlue")
 
 (use-package counsel
   :ensure)

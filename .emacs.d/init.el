@@ -145,24 +145,20 @@
 (use-package solaire-mode
   :ensure)
 (solaire-global-mode +1)
-;; mode line
 (use-package all-the-icons)
 
-(display-battery-mode 1)
-(setq display-time-default-load-average nil)
-(display-time-mode 1)
-(setq doom-modeline-bar-width 30)
-(setq doom-modeline-height 5)
-(setq doom-modeline-buffer-encoding nil)
-(setq doom-modeline-window-width-limit fill-column)
-(setq doom-modeline-vcs-max-length 40)
-(setq doom-modeline-percent-position nil)
-(setq doom-modeline-battery-status t)
-(use-package doom-modeline
-  :ensure t
-  :init (doom-modeline-mode 1))
-
 ;; ----------------- END stolen from DOOM ----------------------------------------;
+
+;; mode line
+(use-package mood-line
+  :ensure)
+(mood-line-mode)
+(use-package fancy-battery
+  :ensure)
+(fancy-battery-mode)
+(setq display-time-default-load-average nil)
+(setq display-time-format " %I:%M%p")
+(display-time-mode 1)
 
 ;; expand-region
 (use-package expand-region
@@ -261,7 +257,7 @@ Including indent-buffer, which should not be called automatically on save."
                      org-directory)))
                ""))
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
-(setq org-agenda-files (list "~/Dropbox/org/roam/daily"))
+(setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))5
 (setq org-modules
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
@@ -797,12 +793,14 @@ Assume point is in the corresponding edit buffer."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(custom-safe-themes
+   '("3c83b3676d796422704082049fc38b6966bcad960f896669dfc21a7a37a748fa" default))
  '(helm-completion-style 'helm)
  '(org-agenda-files
-   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org" "~/Dropbox/org/personal/birthdays.org"))
+   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org"))
  '(org-agenda-window-setup 'other-frame)
  '(package-selected-packages
-   '(impatient-mode org-pomodoro smex orderless org-roam wgrep typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
+   '(fancy-battery mood-line spaceline spaceline-config simple-modeline simple-mode-line smart-mode-line org-roam-ui impatient-mode org-pomodoro smex orderless org-roam wgrep typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
  '(send-mail-function 'smtpmail-send-it)
  '(smtpmail-smtp-server "smtp.gmail.com")
  '(smtpmail-smtp-service 587)

@@ -218,7 +218,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; change from list-buffer to ibuffer
 ;; ibuffer allows you to do things on buffers
-;;(global-set-key (kbd "C-x C-b") 'ibuffer)
+(global-set-key (kbd "C-x C-b") 'ibuffer)
 
 ;; better scrolling config
 (toggle-scroll-bar -1)

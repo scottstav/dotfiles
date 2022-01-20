@@ -159,6 +159,9 @@
 (setq display-time-default-load-average nil)
 (setq display-time-format " %I:%M%p")
 (display-time-mode 1)
+(set-face-attribute 'mode-line nil
+                    :box nil)
+
 
 ;; expand-region
 (use-package expand-region
@@ -319,14 +322,19 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package ob-mongo :ensure)
 (use-package ob-graphql :ensure)
 
-(org-babel-do-load-languages 'org-babel-load-languages
-    '(
-        (shell . t)
-    )
-)
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((shell . t)
+   (emacs-lisp . t)
+   (latex . t)
+   (js . t)
+   (python . t)
+   (js . t)
+   ))
+
 
 (defun my-org-confirm-babel-evaluate (lang body)
-  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash"))))
+  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js"))))
 
 (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 

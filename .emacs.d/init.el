@@ -260,7 +260,7 @@ Including indent-buffer, which should not be called automatically on save."
                      org-directory)))
                ""))
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
-(setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))5
+(setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))
 (setq org-modules
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
@@ -796,27 +796,3 @@ Assume point is in the corresponding edit buffer."
 (setq global-display-line-numbers-mode t)
 (setq markdown-command "/usr/local/bin/pandoc")
 (setq global-visual-line-mode t)
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(custom-safe-themes
-   '("3c83b3676d796422704082049fc38b6966bcad960f896669dfc21a7a37a748fa" default))
- '(helm-completion-style 'helm)
- '(org-agenda-files
-   '("~/Dropbox/org/personal/inbox.org" "~/Dropbox/org/personal/marathon.org"))
- '(org-agenda-window-setup 'other-frame)
- '(package-selected-packages
-   '(fancy-battery mood-line spaceline spaceline-config simple-modeline simple-mode-line smart-mode-line org-roam-ui impatient-mode org-pomodoro smex orderless org-roam wgrep typit zoom dashboard modus-themes ivy-posframe ivy-postframe counsel-projectile counsel ivy rainbow-mode helm-dash robe flymake-ruby solaire-mode ob-http ob-mongo helm-c-yasnippet yascroll center-scroll-mode ace-window centered-cursor-mode jade-mode lsp-ui which-key key-chord key-chord-mode ace-jump-mode frame-purpose window-purpose helm-swoop yaml-mode restclient nvm expand-region helm-ag browse-at-remote vterm helm-projectile projectile elpy lsp-treemacs helm-lsp lsp-mode exec-path-from-shell paredit jest-test-mode nodejs-repl tide git-gutter+ forge prettier-js graphql-mode org-jira htmlize oauth2 helm doom-modeline doom-themes multiple-cursors emojify use-package))
- '(send-mail-function 'smtpmail-send-it)
- '(smtpmail-smtp-server "smtp.gmail.com")
- '(smtpmail-smtp-service 587)
- '(zoom-mode t nil (zoom))
- '(zoom-size '(0.618 . 0.618)))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )

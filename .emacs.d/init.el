@@ -264,10 +264,6 @@ Including indent-buffer, which should not be called automatically on save."
       (quote
        (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m org-mac-iCal org-mac-link)))
 
-(use-package org-pomodoro
-  :ensure
-  :bind (("C-c C-x C-g" . org-pomodoro)))
-
 (setq org-clock-persist 'history)
 (org-clock-persistence-insinuate)
 
@@ -278,6 +274,9 @@ Including indent-buffer, which should not be called automatically on save."
 (setq org-log-done nil)
 
 (setq org-export-with-section-numbers nil)
+
+;; go to first heading when opening org files
+(add-hook 'org-mode-hook (lambda () (org-next-visible-heading 1)))
 
 ;;roam
 (use-package org-roam
@@ -361,6 +360,9 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure
   :config
   (global-set-key "\C-s" 'swiper))
+
+(use-package wgrep
+  :ensure)
 
 ;; this ensures code highlighting on export... and probably other stuff
 (use-package htmlize
@@ -810,7 +812,7 @@ Assume point is in the corresponding edit buffer."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+   '(wgrep helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
  '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

@@ -266,6 +266,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq org-clock-persist 'history)
 (org-clock-persistence-insinuate)
+(setq org-clock-sound "~/Dropbox/Sounds/win.wav")
 
 (define-key global-map (kbd "C-c c") 'org-capture)
 (global-set-key (kbd "C-c l") 'org-store-link)
@@ -694,6 +695,9 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key (kbd "C-x o") 'ace-window)
 (global-set-key (kbd "M-o") 'next-window-any-frame)
 (define-key global-map (kbd "C-;") 'ace-jump-mode)
+(use-package golden-ratio
+  :ensure)
+(golden-ratio-mode 1)
 
 (delete-selection-mode 1)
 
@@ -730,6 +734,12 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
 (global-unset-key (kbd "s-w"))
 (global-set-key (kbd "C-c C-k") 'paredit-splice-sexp)
+
+(use-package dockerfile-mode
+  :ensure)
+
+(use-package terraform-mode
+  :ensure)
 
 ;; scroll other window
 (define-key global-map [(meta p)] '(lambda() (interactive) (scroll-other-window -1)))
@@ -812,7 +822,7 @@ Assume point is in the corresponding edit buffer."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(wgrep helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+   '(golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
  '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

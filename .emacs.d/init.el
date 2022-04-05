@@ -192,6 +192,7 @@ Including indent-buffer, which should not be called automatically on save."
     (with-editor-async-shell-command "crontab -e"))
 
 ;; dired
+(put 'dired-find-alternate-file 'disabled nil)
 (add-hook 'dired-mode-hook 'dired-hide-details-mode)
 
 (global-unset-key (kbd "C-x C-r"))
@@ -278,6 +279,12 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; go to first heading when opening org files
 (add-hook 'org-mode-hook (lambda () (org-next-visible-heading 1)))
+
+(use-package org-modern
+  :ensure)
+;; Enable org-modern-mode
+(add-hook 'org-mode-hook #'org-modern-mode)
+(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
 
 ;;roam
 (use-package org-roam
@@ -756,6 +763,11 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq next-line-add-newlines nil)
 
+(setq calendar-latitude 29.8940761)
+(setq calendar-longitude -98.3503236)
+(setq calendar-location-name "Spring Branch, TX")
+
+
 ;; never used
 (tool-bar-mode -1)
 (menu-bar-mode -1)
@@ -822,7 +834,7 @@ Assume point is in the corresponding edit buffer."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+   '(org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
  '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.

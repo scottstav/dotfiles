@@ -3,6 +3,7 @@ alias config='/usr/bin/git --git-dir=$HOME/.cfg/ --work-tree=$HOME'
 alias ls='ls -GAF'
 alias emacs='emacsclient -create-frame --alternate-editor="" -t'    # no gui
 alias e='emacs'
+alias tf='terraform'
 
 # clean help
 show_space() {
@@ -50,6 +51,7 @@ PS1=$PS1'\[$(vterm_prompt_end)\]'
 
 # Add RVM to PATH for scripting. Make sure this is the last PATH variable change.
 export PATH="$PATH:$HOME/.rvm/bin"
+export PATH=$(pyenv root)/shims:$PATH
 
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm

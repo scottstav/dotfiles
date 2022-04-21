@@ -31,23 +31,6 @@
 ;; random annoying message
 (setq byte-compile-warnings '(cl-functions))
 
-(use-package dashboard
-  :ensure
-  :diminish dashboard-mode
-  :config
-  (setq dashboard-banner-logo-title "Howdy")
-  (setq dashboard-startup-banner 3)
-  (setq dashboard-items '((recents  . 5)
-                          (bookmarks . 5)
-			  (projects . 3)))
-  (dashboard-setup-startup-hook)
-  (setq dashboard-projects-backend 'projectile)
-  (setq dashboard-set-heading-icons t)
-  (setq dashboard-set-file-icons t)
-  (setq dashboard-set-footer t)
-  (setq dashboard-footer-messages '("Let's have a good day."))
-  (setq dashboard-center-content t))
-
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
 
@@ -406,10 +389,6 @@ Including indent-buffer, which should not be called automatically on save."
 	))
 
 ;; jira (ifit)
-(use-package org-jira
-  :ensure
-  :init
-  (setq jiralib-url "https://ifitdev.atlassian.net"))
 
 
 ;; this doesnt work
@@ -438,6 +417,22 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 
 ;; magit / git
+
+(use-package blamer
+  :ensure t
+  :bind (("s-i" . blamer-show-commit-info))
+  :defer 20
+  :custom
+  (blamer-idle-time 0.3)
+  (blamer-min-offset 70)
+  :custom-face
+  (blamer-face ((t :foreground "#7a88cf"
+                    :background nil
+                    :height 140
+                    :italic t)))
+  :config
+  (global-blamer-mode 1))
+
 (use-package browse-at-remote :ensure)
 (setq magit-display-buffer-function
       (lambda (buffer)
@@ -834,11 +829,13 @@ Assume point is in the corresponding edit buffer."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro org-jira orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+   '(dash-docs blamer org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+ '(warning-suppress-log-types '((comp) (comp)))
+ '(warning-suppress-types '((comp)))
  '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- )
+ '(blamer-face ((t :foreground "#7a88cf" :background nil :height 140 :italic t))))

@@ -741,7 +741,14 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 
 (use-package terraform-mode
-  :ensure)
+  :ensure
+  :config
+  (defun tf-before-save ()
+    (when (eq major-mode 'terraform-mode)
+      (message (concat "Running tf format " buffer-file-name))
+      (call-process-shell-command (concat "terraform fmt -list=false -write=true " buffer-file-name "&"))))
+  (add-hook 'before-save-hook #'tf-before-save)
+  )
 
 ;; scroll other window
 (define-key global-map [(meta p)] '(lambda() (interactive) (scroll-other-window -1)))
@@ -779,6 +786,13 @@ Including indent-buffer, which should not be called automatically on save."
         (apply #'org--newline args)
       (apply fun args))))
     (advice-add 'org-return :around #'org-return-fix)))
+
+(defun name-of-the-file ()
+  "Gets the name of the file the current buffer is based on."
+  (interactive)
+  (message (buffer-file-name)))
+(global-unset-key (kbd "C-c C-/"))
+(global-set-key (kbd "C-c C-/") 'name-of-the-file)
 
 (with-eval-after-load "org-src"
   (when (version-list-= (version-to-list org-version) '(9 4 3))

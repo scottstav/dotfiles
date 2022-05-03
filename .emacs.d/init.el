@@ -336,12 +336,6 @@ Including indent-buffer, which should not be called automatically on save."
   (global-set-key (kbd "M-x") 'counsel-M-x)
   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
-(use-package ivy-posframe
-  :ensure
-  :config
-  (ivy-posframe-mode 1))
-(set-face-attribute 'ivy-posframe nil :foreground "white" :background "DarkSlateBlue")
-
 (use-package counsel
   :ensure)
 
@@ -619,6 +613,7 @@ Including indent-buffer, which should not be called automatically on save."
 ;; auto-completen
 (global-company-mode 1)
 (setq company-minimum-prefix-length 3)
+(setq company-dabbrev-downcase nil)
 
 (use-package orderless
   :ensure t

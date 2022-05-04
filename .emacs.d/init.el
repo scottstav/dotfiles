@@ -356,6 +356,7 @@ Including indent-buffer, which should not be called automatically on save."
 (require 'ox-publish)
 (setq org-publish-project-alist
       '(
+	;; static files that should be at the base of the website
 	("org-static"
 	 :base-directory "~/projects/scotty.dance/static/"
 	 :base-extension any
@@ -363,13 +364,15 @@ Including indent-buffer, which should not be called automatically on save."
 	 :recursive t
 	 :publishing-function org-publish-attachment
 	 )
+	;; convert org documents to pdfs
 	("org-pdfs"
 	 :base-directory "~/projects/scotty.dance/pdfs/"
-	 :base-extendion "org"
+	 :base-extension "org"
 	 :publishing-directory "~/public_html/"
 	 :recursive t
 	 :publishing-function org-latex-publish-to-pdf
 	 )
+	;; all other org files in nested directories i.e. posts/
 	("org-pages"
 	 :base-directory "~/projects/scotty.dance/"
 	 :base-extension "org"
@@ -379,7 +382,14 @@ Including indent-buffer, which should not be called automatically on save."
 	 :headline-levels 4
 	 :auto-preamble t
 	 )
-	("my-website" :components ("org-pages" "org-static" "org-pdfs"))
+	("org-media"
+	 :base-directory "~/projects/scotty.dance/media/"
+	 :base-extension any
+	 :publishing-directory "~/public_html/media/"
+	 :recursive t
+	 :publishing-function org-publish-attachment
+	 )
+	("my-website" :components ("org-media" "org-pages" "org-static" "org-pdfs"))
 	))
 
 ;; jira (ifit)

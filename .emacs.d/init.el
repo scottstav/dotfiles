@@ -28,6 +28,10 @@
 				     (centered-cursor-mode -1)
 				     )))
 
+;; auth
+(setq auth-sources '("~/.authinfo"))
+
+
 ;; random annoying message
 (setq byte-compile-warnings '(cl-functions))
 

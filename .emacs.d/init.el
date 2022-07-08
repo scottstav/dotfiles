@@ -28,6 +28,8 @@
 				     (centered-cursor-mode -1)
 				     )))
 
+(global-visual-line-mode 1)
+
 ;; auth
 (setq auth-sources '("~/.authinfo"))
 
@@ -543,30 +545,12 @@ Including indent-buffer, which should not be called automatically on save."
 
 (when window-system (set-exec-path-from-shell-PATH))
 
+(defun lsp-go-install-save-hooks ()
+  (add-hook 'before-save-hook #'lsp-format-buffer t t)
+  (add-hook 'before-save-hook #'lsp-organize-imports t t))
 
-;; go-lang
-
-(setenv "GOPATH" "/Users/scottstav/go")
-;; i dont know why this has to be set manually
-(setenv "GOROOT" "/usr/local/opt/go/libexec")
-
-(defun my-go-mode-hook ()
-  ; Call Gofmt before saving
-  (add-hook 'before-save-hook 'gofmt-before-save)
-  ; Godef jump key binding
-  (local-set-key (kbd "M-.") 'godef-jump)
-  (local-set-key (kbd "M-,") 'pop-tag-mark)
-  (local-set-key (kbd "M-p") 'compile)            ; Invoke compiler
-  (local-set-key (kbd "M-P") 'recompile)          ; Redo most recent compile cmd
-  (local-set-key (kbd "M-]") 'next-error)         ; Go to next error (or msg)
-  (local-set-key (kbd "M-[") 'previous-error)     ; Go to previous error or msg
-  (go-eldoc-setup)
-  (lsp)
-  (if (not (string-match "go" compile-command))
-      (set (make-local-variable 'compile-command)
-           "go build -v && go test -v && go vet"))
-  )
-
+(add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
+(add-hook 'go-mode-hook #'lsp-deferred)
 
 ;; lsp-mode
 (use-package lsp-mode
@@ -581,7 +565,7 @@ Including indent-buffer, which should not be called automatically on save."
   (align-regexp start end
                 "\\(\\s-*\\)\\s-" 1 0 t))
 
-(add-hook 'go-mode-hook 'my-go-mode-hook)
+
 
 (use-package elpy
   :ensure t
@@ -626,7 +610,8 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; auto-completen
 (global-company-mode 1)
-(setq company-minimum-prefix-length 3)
+(setq company-idle-delay 0)
+(setq company-minimum-prefix-length 1)
 (setq company-dabbrev-downcase nil)
 
 (use-package orderless
@@ -852,7 +837,7 @@ Assume point is in the corresponding edit buffer."
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(dash-docs blamer org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
+   '(go-eldoc go-mode dash-docs blamer org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
  '(warning-suppress-log-types '((comp) (comp)))
  '(warning-suppress-types '((comp)))
  '(zoom-size '(0.618 . 0.618)))

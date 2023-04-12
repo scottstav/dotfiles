@@ -1,16 +1,22 @@
-# dot-files
-
-## Prerequisites
-1. ``brew install git``
-2. ``$ brew tap d12frosted/emacs-plus && brew install emacs-plus    [options] # install the latest release (Emacs 27)``
-
-### setup
-Run script:
-
-``bash <(curl -s https://scotty.dance/dotfiles.sh)``
-
-### tmux
-`ln -s -f .tmux/.tmux.conf`
-
-### Dropbox
-Set up Dropbox at ~/Dropbox for syncing org files
+                            ,
+                       /(  /:./\
+                    ,_/:`-/::/::/\_ ,
+                    |:|::/::/::/::;'( ,,
+                    |:|:/::/::/:;'::,':(.( ,
+                _,-'"HHHHH"""HHoo--.::::,-:(,----..._
+            ,-"HHHb  "HHHHb  HHHHb   HHHoo-.::::::::::-.
+          ,'   "HHHb  "HHHHb "HHHH   HHHHH  Hoo::::::::::.              _,.-::`.
+        ,'      "HH`.  "HHHH  HHHHb  "HHHH  "HHHb`-:::::::.        _.-:::::::;'
+       / ,-.        :   HHHH  "HHHH   HHHH   HHHH  Hoo::::;    _,-:::::::::;'
+     ,'  `-'        :   HHHH   HHHH   "HHH   "HHH  "HHHH-:._,o:::::::::::;'
+    /               :   HHHH __HHHP...........HHH   HHHF   HHH:::::::;:;'
+   /_               ; _,-::::::.:::::::::::::''HH   HHH    "HH::::::::(
+   (_"-.,          /  : :.::.:.::::::::::,d   HHH   "HH     HH::::::::::.
+    (,-'          /    :.::.:::.::::::;'HHH   "HH    HH,::"-.H::::::::::::.
+     ".         ,'    : :.:::.::::::;'  "HH    HH   _H-:::)   `-::::::::::::.
+       `-.___,-'       `-.:::::,--'"     "H    HH,-::::::/        "--.::::::::.
+            """---..__________________,-------'::::::::;/               """---'
+                        \::.:---. Krogg    `::::::::::;'
+                         \::::::|            `::;-'""
+                          `.::::|
+                            `.::| Sheepshead (Archosargus probatocephalus)

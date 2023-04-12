@@ -1,0 +1,3 @@
+#!/bin/bash
+
+emacsclient -c -a emacs -q --eval "(progn (vterm) (delete-other-windows))"

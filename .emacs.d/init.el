@@ -3,6 +3,16 @@
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
 (package-initialize)
 
+;;(server-start)
+
+;; setup 'use-package'
+(unless (package-installed-p 'use-package)
+  (package-refresh-contents)
+  (package-install 'use-package))
+(eval-when-compile
+  (require 'use-package))
+(require 'use-package)
+
 (add-to-list 'load-path "~/.emacs.d/elisp/")
 
 ;; start in home dir
@@ -20,12 +30,25 @@
 (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
 
+;; mail
+
+(autoload 'notmuch "notmuch" "notmuch mail" t)
+(setq send-mail-function 'sendmail-send-it
+      sendmail-program "/usr/bin/msmtp"
+      mail-specify-envelope-from t
+      message-sendmail-envelope-from 'header
+      mail-envelope-from 'header)
+
+(setq mail-user-agent 'message-user-agent)
+
+(org-msg-mode)
+
+
 (use-package vterm
   :ensure t
   :init (add-hook 'vterm-mode-hook (lambda ()
 				     (display-line-numbers-mode -1)
-				     (setq mode-line-format nil)
-				     (centered-cursor-mode -1)
+				     (setq mode-line-format "  --- vterm ---")
 				     )))
 
 (global-visual-line-mode 1)
@@ -40,12 +63,15 @@
 (global-unset-key [(control z)])
 (global-unset-key [(control x)(control z)])
 
-;; font
-(set-frame-font "Iosevka 24" nil t)
+;; Use the whole screen
+(setq frame-resize-pixelwise t)
+(toggle-frame-maximized)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; multiple cursors                                                       ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(setq default-frame-alist '((cursor-color . "white")))
 (use-package multiple-cursors
   :ensure)
 (global-set-key (kbd "C-c m c") 'mc/edit-lines)
@@ -59,7 +85,6 @@
 (global-set-key (kbd "s-v")  'yank)
 (global-set-key (kbd "s-c")  'kill-ring-save)
 
-;; ----------------- stolen from DOOM ----------------------------------------;
 ;; Contrary to what many Emacs users have in their configs, you really don't
 ;; need more than this to make UTF-8 the default coding system:
 (when (fboundp 'set-charset-priority)
@@ -86,34 +111,6 @@
 (unless (daemonp)
   (advice-add #'display-startup-echo-area-message :override #'ignore))
 
-;; Emacs is essentially one huge security vulnerability, what with all the
-;; dependencies it pulls in from all corners of the globe. Let's try to be at
-;; least a little more discerning.
-(setq gnutls-verify-error (not (getenv "INSECURE"))
-      gnutls-algorithm-priority
-      (when (boundp 'libgnutls-version)
-        (concat "SECURE128:+SECURE192:-VERS-ALL"
-                (if (and (not IS-WINDOWS)
-                         (not (version< emacs-version "26.3"))
-                         (>= libgnutls-version 30605))
-                    ":+VERS-TLS1.3")
-                ":+VERS-TLS1.2"))
-      ;; `gnutls-min-prime-bits' is set based on recommendations from
-      ;; https://www.keylength.com/en/4/
-      gnutls-min-prime-bits 3072
-      tls-checktrust gnutls-verify-error
-      ;; Emacs is built with `gnutls' by default, so `tls-program' would not be
-      ;; used in that case. Otherwise, people have reasons to not go with
-      ;; `gnutls', we use `openssl' instead. For more details, see
-      ;; https://redd.it/8sykl1
-      tls-program '("openssl s_client -connect %h:%p -CAfile %t -nbio -no_ssl3 -no_tls1 -no_tls1_1 -ign_eof"
-                    "gnutls-cli -p %p --dh-bits=3072 --ocsp --x509cafile=%t \
---strict-tofu --priority='SECURE192:+SECURE128:-VERS-ALL:+VERS-TLS1.2:+VERS-TLS1.3' %h"
-                    ;; compatibility fallbacks
-                    "gnutls-cli -p %p %h"))
-
-;; themes
-
 (use-package modus-themes
   :ensure                         ; omit this to use the built-in themes
   :init
@@ -130,23 +127,20 @@
   (modus-themes-load-vivendi) ;; OR (modus-themes-load-vivendi)
   :bind ("<f5>" . modus-themes-toggle))
 
-(use-package solaire-mode
-  :ensure)
-(solaire-global-mode +1)
-(use-package all-the-icons)
+;; transparency
+(set-frame-parameter (selected-frame) 'alpha '(95 95))
+(add-to-list 'default-frame-alist '(alpha 95 95))
 
-;; ----------------- END stolen from DOOM ----------------------------------------;
+;; never used
+(tool-bar-mode -1)
+(menu-bar-mode -1)
+
+;; ------------- stolen from DOOM ----------------------------------------;
 
 ;; mode line
 (use-package mood-line
   :ensure)
 (mood-line-mode)
-(use-package fancy-battery
-  :ensure)
-(fancy-battery-mode)
-(setq display-time-default-load-average nil)
-(setq display-time-format " %I:%M%p")
-(display-time-mode 1)
 (set-face-attribute 'mode-line nil
                     :box nil)
 
@@ -181,13 +175,24 @@ Including indent-buffer, which should not be called automatically on save."
     (with-editor-async-shell-command "crontab -e"))
 
 ;; dired
+(require 'dired-x)
 (put 'dired-find-alternate-file 'disabled nil)
 (add-hook 'dired-mode-hook 'dired-hide-details-mode)
 
+(setq dired-guess-shell-alist-user '(("\\.jpeg\\'" "sxiv")
+                                     ("\\.doc\\'" "libreoffice")
+                                     ("\\.docx\\'" "libreoffice")
+                                     ("\\.ppt\\'" "libreoffice")
+                                     ("\\.pptx\\'" "libreoffice")
+                                     ("\\.xls\\'" "libreoffice")
+                                     ("\\.xlsx\\'" "libreoffice")
+                                     ("\\.jpg\\'" "pinta")
+                                     ("\\.png\\'" "pinta")
+                                     ("\\.jpeg\\'" "sxiv")))
+
+
 (global-unset-key (kbd "C-x C-r"))
 (global-set-key (kbd "C-x C-r") 'counsel-recentf)
-(package-install 'smex
-		 :ensure)
 
 (defun dired-get-size ()
   (interactive)
@@ -199,8 +204,8 @@ Including indent-buffer, which should not be called automatically on save."
                  (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
                  (match-string 1))))))
 
-;; (define-key dired-mode-map (kbd "?") 'dired-get-size)
-
+(define-key dired-mode-map (kbd "?") 'dired-get-size)
+;;(define-key dired-mode-map (kbd "V") 'dired-get-size)
 
 (defun file-info ()
   "Show the info for just the current file."
@@ -214,6 +219,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; better scrolling config
 (toggle-scroll-bar -1)
+(scroll-bar-mode -1)
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
 
 (setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
@@ -221,33 +227,15 @@ Including indent-buffer, which should not be called automatically on save."
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
 (setq scroll-step 1) ;; keyboard scroll one line at a time
-(global-set-key (kbd "M-l") 'centered-cursor-mode)
+;(global-set-key (kbd "M-l") 'centered-cursor-mode)
 
 ;; url
-
-;; setup 'use-package'
-(unless (package-installed-p 'use-package)
-  (package-refresh-contents)
-  (package-install 'use-package))
-(eval-when-compile
-  (require 'use-package))
-(require 'use-package)
-
-;; desktop mode
-(desktop-save-mode 1)
-(setq desktop-path '("~/.emacs.d/desktops"))
 
 ;; org-mode
 (require 'org)
 (setq diary-file "~/Dropbox/org/personal/diary")
 (setq org-directory "~/Dropbox/org")
-(setq org-capture-templates nil)
-(add-to-list 'org-capture-templates
-             '("x" "Template name" plain
-               (file (lambda () (expand-file-name
-                     (format-time-string "%Y-%m-%d.org")
-                     org-directory)))
-               ""))
+
 ;;(setq org-default-notes-file (concat org-directory "/General.org"))
 (setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))
 (setq org-modules
@@ -258,7 +246,6 @@ Including indent-buffer, which should not be called automatically on save."
 (org-clock-persistence-insinuate)
 (setq org-clock-sound "~/Dropbox/Sounds/win.wav")
 
-(define-key global-map (kbd "C-c c") 'org-capture)
 (global-set-key (kbd "C-c l") 'org-store-link)
 (global-set-key (kbd "C-c a") 'org-agenda)
 
@@ -268,12 +255,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; go to first heading when opening org files
 (add-hook 'org-mode-hook (lambda () (org-next-visible-heading 1)))
-
-(use-package org-modern
-  :ensure)
-;; Enable org-modern-mode
-(add-hook 'org-mode-hook #'org-modern-mode)
-(add-hook 'org-agenda-finalize-hook #'org-modern-agenda)
 
 ;;roam
 (use-package org-roam
@@ -296,15 +277,18 @@ Including indent-buffer, which should not be called automatically on save."
 
   (setq org-roam-capture-templates '(("p" "project" plain
 				      "\n%?"
-				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org"
-							 "#+title: ${title}\n")
+				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
 				      :unnarrowed t)
-				     ("l" "literature" plain
-				      "\nURL: %^{url}\nNotes: \n\n%?"
-				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org"
-							 "#+title: ${title}\n")
+				     ("w" "work" plain
+				      "\n%?"
+				      :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
 				      :unnarrowed t))))
 
+
+(setq org-roam-dailies-capture-templates
+      '(("d" "default" entry
+         "\n* %?"
+         :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))
 ;; publishing
 (setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
 (setq org-html-postamble-format
@@ -324,12 +308,11 @@ Including indent-buffer, which should not be called automatically on save."
    (latex . t)
    (js . t)
    (python . t)
-   (js . t)
    ))
 
 
 (defun my-org-confirm-babel-evaluate (lang body)
-  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js"))))
+  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell"))))
 
 (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
@@ -428,6 +411,9 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; magit / git
 
+(use-package magit
+  :ensure)
+
 (use-package blamer
   :ensure t
   :bind (("s-i" . blamer-show-commit-info))
@@ -441,7 +427,8 @@ Including indent-buffer, which should not be called automatically on save."
                     :height 140
                     :italic t)))
   :config
-  (global-blamer-mode 1))
+;  (global-blamer-mode 1)
+  )
 
 (use-package browse-at-remote :ensure)
 (setq magit-display-buffer-function
@@ -474,6 +461,9 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package tide
   :ensure t)
 
+(use-package add-node-modules-path
+  :ensure)
+
 (defun setup-tide-mode ()
   "Setup function for tide."
   (interactive)
@@ -481,15 +471,17 @@ Including indent-buffer, which should not be called automatically on save."
   (flycheck-mode +1)
   (setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
+  (company-mode +1)
   (tide-hl-identifier-mode +1)
-  (add-hook 'before-save-hook 'tide-format-before-save)
-  ;; (prettier-js-mode +1)
+  ;;(add-hook 'before-save-hook 'tide-format-before-save)
+  (prettier-js-mode +1)
+  (add-node-modules-path)
   (local-set-key "\C-c\C-d" 'tide-documentation-at-point)
   (local-set-key "\C-c\C-r" 'tide-references)
   (local-set-key "\C-c\C-f" 'tide-rename-file)
   (local-set-key "\C-c\C-s" 'tide-rename-symbol)
   (setq tide-native-json-parsing t)
-  (centered-cursor-mode 1)
+;  (centered-cursor-mode 1)
   (subword-mode 1))
 
 (global-set-key "\C-c\C-u" 'uncomment-region)
@@ -509,9 +501,14 @@ Including indent-buffer, which should not be called automatically on save."
   )
 
 (add-hook 'typescript-mode-hook #'setup-tide-mode)
-(add-hook 'js-mode-hook #'setup-tide-mode)
+;(add-hook 'js-mode-hook #'setup-tide-mode)
 
-(setq exec-path (append exec-path '("~/.nvm/versions/node/v14.16.0/bin")))
+(use-package exec-path-from-shell :ensure)
+(when (daemonp)
+  (exec-path-from-shell-initialize))
+
+(setq exec-path (append exec-path '("~/.nvm/versions/node/v14.20.0/bin")))
+
 (use-package nodejs-repl
   :ensure)
 
@@ -526,24 +523,8 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package paredit
   :ensure)
 
-(use-package exec-path-from-shell :ensure)
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize))
-
 ;; shell / vterm
 (setq vterm-max-scrollback 100000)
-
-(defun set-exec-path-from-shell-PATH ()
-  (let ((path-from-shell (replace-regexp-in-string
-                          "[ \t\n]*$"
-                          ""
-                          (shell-command-to-string "$SHELL --login -i -c 'echo $PATH'"))))
-    (setenv "PATH" path-from-shell)
-    (setq eshell-path-env path-from-shell) ; for eshell users
-    (setq exec-path (split-string path-from-shell path-separator))))
-
-
-(when window-system (set-exec-path-from-shell-PATH))
 
 (defun lsp-go-install-save-hooks ()
   (add-hook 'before-save-hook #'lsp-format-buffer t t)
@@ -609,7 +590,6 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure)
 
 ;; auto-completen
-(global-company-mode 1)
 (setq company-idle-delay 0)
 (setq company-minimum-prefix-length 1)
 (setq company-dabbrev-downcase nil)
@@ -618,11 +598,11 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure t
   :custom (completion-styles '(orderless)))
 
-(use-package yasnippet
-  :ensure
-  :config
-  (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
-  (yas-global-mode 1))
+;(use-package yasnippet
+;  :ensure
+;  :config
+;  (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+;  (yas-global-mode 1))
 
 
 ;;---------------------------------------------------------------
@@ -637,10 +617,9 @@ Including indent-buffer, which should not be called automatically on save."
 (projectile-mode +1)
 
 (setq projectile-switch-project-action 'magit-status)
-(define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 ;;(setq projectile-indexing-method 'native)
 (setq projectile-indexing-method 'alien)
-
 
 (defun connect-remote-minecraft ()
   (interactive)
@@ -649,16 +628,6 @@ Including indent-buffer, which should not be called automatically on save."
 ;; Shell
 (defun with-face (str &rest face-plist)
   (propertize str 'face face-plist))
-
-
-;;------------------save config------------------------------
-
-(use-package zoom
-  :ensure
-  :config
-  (custom-set-variables
-   '(zoom-size '(0.618 . 0.618))))
-
 
 ;; save backups in .emacs.d/backups
 (setq backup-directory-alist
@@ -689,7 +658,7 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package ace-window
   :ensure)
 (global-set-key (kbd "C-x o") 'ace-window)
-(global-set-key (kbd "M-o") 'next-window-any-frame)
+(global-set-key (kbd "M-o") 'other-window)
 (define-key global-map (kbd "C-;") 'ace-jump-mode)
 (use-package golden-ratio
   :ensure)
@@ -730,7 +699,6 @@ Including indent-buffer, which should not be called automatically on save."
 (global-set-key (kbd "C-M-<return>") 'org-insert-subheading)
 (global-unset-key (kbd "s-w"))
 (global-set-key (kbd "C-c C-k") 'paredit-splice-sexp)
-
 (use-package dockerfile-mode
   :ensure)
 
@@ -761,12 +729,15 @@ Including indent-buffer, which should not be called automatically on save."
 
 (setq calendar-latitude 29.8940761)
 (setq calendar-longitude -98.3503236)
-(setq calendar-location-name "Spring Branch, TX")
-
+(setq calendar-locpation-name "Spring Branch, TX")
 
 ;; never used
 (tool-bar-mode -1)
 (menu-bar-mode -1)
+
+(add-to-list 'default-frame-alist '(font . "Iosevka Extended 12" ))
+(set-frame-font "Iosevka Extended 12" nil t)
+
 
 ;; some bug fix for org mode src blocks: https://emacs.stackexchange.com/questions/64886/indentation-in-org-mode-source-block-with-return
 (with-eval-after-load "org"
@@ -824,26 +795,44 @@ Assume point is in the corresponding edit buffer."
           (forward-line)))
       (buffer-string))))))
 
-
-
 ;; customize keep
 (setq show-paren-mode t)
 (setq global-display-line-numbers-mode t)
 (setq markdown-command "/usr/local/bin/pandoc")
 (setq global-visual-line-mode t)
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(package-selected-packages
-   '(go-eldoc go-mode dash-docs blamer org-modern golden-ration terraform-mode dockerfile-mode golden-ratio helpful zoom yascroll yaml-mode which-key vterm use-package tide spaceline solaire-mode smex smart-mode-line simple-modeline robe restclient rainbow-mode prettier-js paredit org-roam-ui org-pomodoro orderless ob-mongo ob-http ob-graphql oauth2 nodejs-repl multiple-cursors mood-line modus-themes lsp-ui lsp-sourcekit key-chord jest-test-mode ivy-posframe impatient-mode helm-xref helm-swoop helm-projectile helm-lsp helm-dash helm-c-yasnippet helm-ag git-gutter+ forge flymake-ruby fancy-battery expand-region exec-path-from-shell emojify elpy doom-themes doom-modeline dashboard counsel-projectile centered-cursor-mode browse-at-remote ace-window ace-jump-mode))
- '(warning-suppress-log-types '((comp) (comp)))
- '(warning-suppress-types '((comp)))
- '(zoom-size '(0.618 . 0.618)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
- '(blamer-face ((t :foreground "#7a88cf" :background nil :height 140 :italic t))))
+ '(blamer-face ((t :foreground "#7a88cf" :background nil :height 140 :italic t)) t))
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(warning-suppress-log-types
+   '((use-package)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)))
+ '(warning-suppress-types
+   '((auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save)
+     (auto-save))))

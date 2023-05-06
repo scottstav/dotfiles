@@ -3,6 +3,7 @@
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
 (package-initialize)
 
+
 ;;(server-start)
 
 ;; setup 'use-package'
@@ -128,8 +129,8 @@
   :bind ("<f5>" . modus-themes-toggle))
 
 ;; transparency
-(set-frame-parameter (selected-frame) 'alpha '(95 95))
-(add-to-list 'default-frame-alist '(alpha 95 95))
+(set-frame-parameter (selected-frame) 'alpha '(90 90))
+(add-to-list 'default-frame-alist '(alpha 90 90))
 
 ;; never used
 (tool-bar-mode -1)
@@ -481,7 +482,7 @@ Including indent-buffer, which should not be called automatically on save."
   (local-set-key "\C-c\C-f" 'tide-rename-file)
   (local-set-key "\C-c\C-s" 'tide-rename-symbol)
   (setq tide-native-json-parsing t)
-;  (centered-cursor-mode 1)
+  (centered-cursor-mode 1)
   (subword-mode 1))
 
 (global-set-key "\C-c\C-u" 'uncomment-region)
@@ -735,8 +736,8 @@ Including indent-buffer, which should not be called automatically on save."
 (tool-bar-mode -1)
 (menu-bar-mode -1)
 
-(add-to-list 'default-frame-alist '(font . "Iosevka Extended 12" ))
-(set-frame-font "Iosevka Extended 12" nil t)
+(add-to-list 'default-frame-alist '(font . "Iosevka Extended 14" ))
+(set-frame-font "Iosevka Extended 14" nil t)
 
 
 ;; some bug fix for org mode src blocks: https://emacs.stackexchange.com/questions/64886/indentation-in-org-mode-source-block-with-return

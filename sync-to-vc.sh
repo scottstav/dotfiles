@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script does not work properly yet
+# The `files-to-sync` needs to be modified to exclude directories, e.g. `.emacs.d` should instead be `.emacs.d/init.el`
+
 cd "$(dirname "${BASH_SOURCE}")";
 
 ls -A > files-to-sync

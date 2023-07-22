@@ -1,3 +1,3 @@
 #!/bin/bash
 
-source .profile
+source ~/.profile

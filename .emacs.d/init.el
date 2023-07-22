@@ -42,8 +42,6 @@
 
 (setq mail-user-agent 'message-user-agent)
 
-(org-msg-mode)
-
 
 (use-package vterm
   :ensure t
@@ -119,14 +117,10 @@
   (setq modus-themes-italic-constructs t
         modus-themes-bold-constructs nil
         modus-themes-region '(bg-only no-extend)
-	modus-themes-subtle-line-numbers t)
+	modus-themes-subtle-line-numbers t))
 
-  ;; Load the theme files before enabling a theme (else you get an error).
-  (modus-themes-load-themes)
-  :config
-  ;; Load the theme of your choice:
-  (modus-themes-load-vivendi) ;; OR (modus-themes-load-vivendi)
-  :bind ("<f5>" . modus-themes-toggle))
+;(load-theme 'modus-operandi)            ; Light theme
+(load-theme 'modus-vivendi :no-confirm)             ; Dark theme
 
 ;; transparency
 (set-frame-parameter (selected-frame) 'alpha '(90 90))
@@ -221,6 +215,8 @@ Including indent-buffer, which should not be called automatically on save."
 ;; better scrolling config
 (toggle-scroll-bar -1)
 (scroll-bar-mode -1)
+(setq scroll-conservatively 101)
+
 (setq mouse-wheel-scroll-amount '(1 ((shift) . 1))) ;; one line at a time
 
 (setq mouse-wheel-progressive-speed nil) ;; don't accelerate scrolling
@@ -465,6 +461,9 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package add-node-modules-path
   :ensure)
 
+(use-package centered-cursor-mode
+  :ensure)
+
 (defun setup-tide-mode ()
   "Setup function for tide."
   (interactive)
@@ -491,18 +490,56 @@ Including indent-buffer, which should not be called automatically on save."
 ;; formats the buffer before saving
 ;;(add-hook 'before-save-hook 'tide-format-before-save)
 
+;;(add-hook 'typescript-mode-hook #'setup-tide-mode)
+;;(add-hook 'js-mode-hook #'setup-tide-mode)
 
-(defun setup-js-mode ()
-  "Setup function for tide."
+
+
+;; trying lsp mode or eglot with treesitter
+
+;; manually add the location of the typescript server because NVM installs it to different places
+;; depending on the currently used version
+;; so exec-path-from-shell does not find node modules correctly
+(setq exec-path (append exec-path '("~/.nvm/versions/node/v14.17.5/bin/")))
+
+(use-package treesit-auto
+  :config
+  (global-treesit-auto-mode))
+
+(use-package eglot :ensure)
+
+(use-package lsp-mode
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  :commands lsp)
+
+;; optionally
+(use-package lsp-ui :commands lsp-ui-mode)
+;; if you are ivy user
+(use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+
+;; optionally if you want to use debugger
+(use-package dap-mode :ensure)
+(use-package dap-node :ensure)
+
+(defun my-setup-dap-node ()
+  "Require dap-node feature and run dap-node-setup if VSCode module isn't already installed"
+  (require 'dap-node)
+  (unless (file-exists-p dap-node-debug-path) (dap-node-setup)))
+
+(defun setup-typescript-mode ()
+  "Setup function for typescript."
   (interactive)
-  (flycheck-mode +1)
-  (local-set-key "\C-c\C-r" 'lsp-find-references)
-  (local-set-key "\M-." 'lsp-find-definition)
-  (lsp)
-  )
+  (eglot-ensure)
+  ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+  (add-node-modules-path)
+  ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+  (centered-cursor-mode 1)
+  (subword-mode))
 
-(add-hook 'typescript-mode-hook #'setup-tide-mode)
-;(add-hook 'js-mode-hook #'setup-tide-mode)
+(add-hook 'typescript-mode-hook #'setup-typescript-mode)
+(add-hook 'typescript-ts-mode-hook #'setup-typescript-mode)
 
 (use-package exec-path-from-shell :ensure)
 (when (daemonp)
@@ -515,6 +552,7 @@ Including indent-buffer, which should not be called automatically on save."
 
 (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
   (add-hook 'typescript-mode-hook 'jest-test-mode)
+  (add-hook 'typescript-ts-mode-hook 'jest-test-mode)
   (add-hook 'js-mode-hook 'jest-test-mode)
   (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
 
@@ -526,20 +564,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 ;; shell / vterm
 (setq vterm-max-scrollback 100000)
-
-(defun lsp-go-install-save-hooks ()
-  (add-hook 'before-save-hook #'lsp-format-buffer t t)
-  (add-hook 'before-save-hook #'lsp-organize-imports t t))
-
-(add-hook 'go-mode-hook #'lsp-go-install-save-hooks)
-(add-hook 'go-mode-hook #'lsp-deferred)
-
-;; lsp-mode
-(use-package lsp-mode
-  :ensure)
-
-(use-package lsp-ui :ensure)
-(lsp-ui-mode)
 
 (defun my/align-whitespace (start end)
   "Align columns by whitespace"
@@ -590,10 +614,20 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package impatient-mode
   :ensure)
 
-;; auto-completen
+;; auto-complete
 (setq company-idle-delay 0)
 (setq company-minimum-prefix-length 1)
 (setq company-dabbrev-downcase nil)
+
+;; magic auto format shit
+(use-package apheleia
+  :ensure t
+  :config
+  (apheleia-global-mode +1))
+
+;; not having this will ruin your whole life
+(setq-default indent-tabs-mode nil)
+
 
 (use-package orderless
   :ensure t
@@ -812,6 +846,90 @@ Assume point is in the corresponding edit buffer."
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
+ '(connection-local-criteria-alist
+   '(((:application eshell)
+      eshell-connection-default-profile)
+     ((:application tramp)
+      tramp-connection-local-default-system-profile tramp-connection-local-default-shell-profile)))
+ '(connection-local-profile-alist
+   '((eshell-connection-default-profile
+      (eshell-path-env-list))
+     (tramp-connection-local-darwin-ps-profile
+      (tramp-process-attributes-ps-args "-acxww" "-o" "pid,uid,user,gid,comm=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" "-o" "state=abcde" "-o" "ppid,pgid,sess,tty,tpgid,minflt,majflt,time,pri,nice,vsz,rss,etime,pcpu,pmem,args")
+      (tramp-process-attributes-ps-format
+       (pid . number)
+       (euid . number)
+       (user . string)
+       (egid . number)
+       (comm . 52)
+       (state . 5)
+       (ppid . number)
+       (pgrp . number)
+       (sess . number)
+       (ttname . string)
+       (tpgid . number)
+       (minflt . number)
+       (majflt . number)
+       (time . tramp-ps-time)
+       (pri . number)
+       (nice . number)
+       (vsize . number)
+       (rss . number)
+       (etime . tramp-ps-time)
+       (pcpu . number)
+       (pmem . number)
+       (args)))
+     (tramp-connection-local-busybox-ps-profile
+      (tramp-process-attributes-ps-args "-o" "pid,user,group,comm=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" "-o" "stat=abcde" "-o" "ppid,pgid,tty,time,nice,etime,args")
+      (tramp-process-attributes-ps-format
+       (pid . number)
+       (user . string)
+       (group . string)
+       (comm . 52)
+       (state . 5)
+       (ppid . number)
+       (pgrp . number)
+       (ttname . string)
+       (time . tramp-ps-time)
+       (nice . number)
+       (etime . tramp-ps-time)
+       (args)))
+     (tramp-connection-local-bsd-ps-profile
+      (tramp-process-attributes-ps-args "-acxww" "-o" "pid,euid,user,egid,egroup,comm=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" "-o" "state,ppid,pgid,sid,tty,tpgid,minflt,majflt,time,pri,nice,vsz,rss,etimes,pcpu,pmem,args")
+      (tramp-process-attributes-ps-format
+       (pid . number)
+       (euid . number)
+       (user . string)
+       (egid . number)
+       (group . string)
+       (comm . 52)
+       (state . string)
+       (ppid . number)
+       (pgrp . number)
+       (sess . number)
+       (ttname . string)
+       (tpgid . number)
+       (minflt . number)
+       (majflt . number)
+       (time . tramp-ps-time)
+       (pri . number)
+       (nice . number)
+       (vsize . number)
+       (rss . number)
+       (etime . number)
+       (pcpu . number)
+       (pmem . number)
+       (args)))
+     (tramp-connection-local-default-shell-profile
+      (shell-file-name . "/bin/sh")
+      (shell-command-switch . "-c"))
+     (tramp-connection-local-default-system-profile
+      (path-separator . ":")
+      (null-device . "/dev/null"))))
+ '(custom-safe-themes
+   '("e2337309361eef29e91656c5e511a6cb8c54ce26231e11424a8873ea88d9093e" "75e027e3ab2892c5c1f152e3d9fae03718f75bee50d259040e56e7e7672a4872" default))
+ '(package-selected-packages
+   '(dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
  '(warning-suppress-log-types
    '((use-package)
      (auto-save)
@@ -826,7 +944,17 @@ Assume point is in the corresponding edit buffer."
      (auto-save)
      (auto-save)))
  '(warning-suppress-types
-   '((auto-save)
+   '((emacsql)
+     (comp)
+     (comp)
+     (comp)
+     (comp)
+     (comp)
+     (emacsql)
+     (emacsql)
+     (emacsql)
+     (emacsql)
+     (auto-save)
      (auto-save)
      (auto-save)
      (auto-save)

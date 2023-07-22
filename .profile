@@ -8,7 +8,7 @@ alias ls='ls --color=auto'
 PS1='[\u@\h \W]\$ '
 
 # local scripts and go path
-PATH=$PATH:~/.local/bin
+PATH=$PATH:~/.local/bin:~/go/bin
 
 export PATH
 

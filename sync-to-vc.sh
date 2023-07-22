@@ -2,15 +2,15 @@
 
 cd "$(dirname "${BASH_SOURCE}")";
 
-git pull origin master;
+ls -A > files-to-sync
 
 function doIt() {
-    rsync --exclude ".git/" \
+    rsync --files-from=files-to-sync \
+          --exclude ".git/" \
           --exclude "bootstrap.sh" \
           --exclude "sync-to-vc.sh" \
           --exclude "README.md" \
-          -avh --no-perms . ~;
-    source ~/.profile;
+          -ar ~ .;
 }
 
 if [ "$1" == "--force" -o "$1" == "-f" ]; then
@@ -23,3 +23,5 @@ else
     fi;
 fi;
 unset doIt;
+
+rm files-to-sync

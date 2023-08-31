@@ -538,8 +538,19 @@ Including indent-buffer, which should not be called automatically on save."
   (centered-cursor-mode 1)
   (subword-mode))
 
+(defun setup-javascript-mode ()
+  "Setup function for javascript."
+  (interactive)
+  (eglot-ensure)
+  ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+  (add-node-modules-path)
+  ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+  (centered-cursor-mode 1)
+  (subword-mode))
+
 (add-hook 'typescript-mode-hook #'setup-typescript-mode)
 (add-hook 'typescript-ts-mode-hook #'setup-typescript-mode)
+(add-hook 'js-base-mode-hook #'setup-javascript-mode)
 
 (use-package exec-path-from-shell :ensure)
 (when (daemonp)
@@ -942,7 +953,7 @@ Assume point is in the corresponding edit buffer."
  '(custom-safe-themes
    '("e2337309361eef29e91656c5e511a6cb8c54ce26231e11424a8873ea88d9093e" "75e027e3ab2892c5c1f152e3d9fae03718f75bee50d259040e56e7e7672a4872" default))
  '(package-selected-packages
-   '(dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
+   '(good-scroll org-ai dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
  '(warning-suppress-log-types
    '((use-package)
      (auto-save)

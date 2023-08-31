@@ -3,6 +3,8 @@
 (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/"))
 (package-initialize)
 
+(setq-default pgtk-wait-for-event-timeout)
+
 
 ;;(server-start)
 
@@ -187,7 +189,6 @@ Including indent-buffer, which should not be called automatically on save."
 
 
 (global-unset-key (kbd "C-x C-r"))
-(global-set-key (kbd "C-x C-r") 'counsel-recentf)
 
 (defun dired-get-size ()
   (interactive)
@@ -314,23 +315,299 @@ Including indent-buffer, which should not be called automatically on save."
 (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
 ;; ivy
-(use-package ivy
+;; (use-package ivy
+;;   :ensure
+;;   :config
+;;   (ivy-mode 1)
+;;   (setq ivy-height 10)
+;;   (global-set-key (kbd "M-x") 'counsel-M-x)
+;;   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
+
+;; (use-package counsel
+;;   :ensure)
+
+;; (global-set-key (kbd "M-i") 'counsel-ag)
+
+;; (use-package swiper
+;;   :ensure
+;;   :config
+;;   (global-set-key "\C-s" 'swiper))
+
+
+
+;; vertico, embark as replacement for ivy, counsel
+;; Enable vertico
+(use-package vertico
   :ensure
-  :config
-  (ivy-mode 1)
-  (setq ivy-height 10)
-  (global-set-key (kbd "M-x") 'counsel-M-x)
-  (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
+  :init
+  (vertico-mode)
 
-(use-package counsel
-  :ensure)
+  ;; Different scroll margin
+  ;; (setq vertico-scroll-margin 0)
 
-(global-set-key (kbd "M-i") 'counsel-ag)
+  ;; Show more candidates
+  ;; (setq vertico-count 20)
 
-(use-package swiper
+  ;; Grow and shrink the Vertico minibuffer
+  ;; (setq vertico-resize t)
+
+  ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
+  ;; (setq vertico-cycle t)
+  )
+
+;; Persist history over Emacs restarts. Vertico sorts by history position.
+(use-package savehist
   :ensure
+  :init
+  (savehist-mode))
+
+;; Optionally use the `orderless' completion style.
+(use-package orderless
+  :ensure
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
+
+(use-package corfu
+  :ensure
+  ;; Optional customizations
+  ;;:custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  ;; (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  ;; Enable Corfu only for certain modes.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
+
+  ;; Recommended: Enable Corfu globally.
+  ;; This is recommended since Dabbrev can be used globally (M-/).
+  ;; See also `global-corfu-modes'.
+  :init
+  (global-corfu-mode))
+
+
+;; Add extensions
+(use-package cape
+  :ensure
+  ;; Bind dedicated completion commands
+  ;; Alternative prefix keys: C-c p, M-p, M-+, ...
+  ;; :bind (("C-c p p" . completion-at-point) ;; capf
+  ;;        ("C-c p t" . complete-tag)        ;; etags
+  ;;        ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
+  ;;        ("C-c p h" . cape-history)
+  ;;        ("C-c p f" . cape-file)
+  ;;        ("C-c p k" . cape-keyword)
+  ;;        ("C-c p s" . cape-elisp-symbol)
+  ;;        ("C-c p e" . cape-elisp-block)
+  ;;        ("C-c p a" . cape-abbrev)
+  ;;        ("C-c p l" . cape-line)
+  ;;        ("C-c p w" . cape-dict)
+  ;;        ("C-c p \\" . cape-tex)
+  ;;        ("C-c p _" . cape-tex)
+  ;;        ("C-c p ^" . cape-tex)
+  ;;        ("C-c p &" . cape-sgml)
+  ;;        ("C-c p r" . cape-rfc1345))
+  :init
+  ;; Add to the global default value of `completion-at-point-functions' which is
+  ;; used by `completion-at-point'.  The order of the functions matters, the
+  ;; first function returning a result wins.  Note that the list of buffer-local
+  ;; completion functions takes precedence over the global list.
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block)
+  ;;(add-to-list 'completion-at-point-functions #'cape-history)
+  ;;(add-to-list 'completion-at-point-functions #'cape-keyword)
+  ;;(add-to-list 'completion-at-point-functions #'cape-tex)
+  ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+  ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+  ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+  ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+  ;;(add-to-list 'completion-at-point-functions #'cape-elisp-symbol)
+  ;;(add-to-list 'completion-at-point-functions #'cape-line)
+  )
+
+;; Enable rich annotations using the Marginalia package
+(use-package marginalia
+  :ensure
+  ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
+  ;; available in the *Completions* buffer, add it to the
+  ;; `completion-list-mode-map'.
+  :bind (:map minibuffer-local-map
+         ("M-A" . marginalia-cycle))
+
+  ;; The :init section is always executed.
+  :init
+
+  ;; Marginalia must be activated in the :init section of use-package such that
+  ;; the mode gets enabled right away. Note that this forces loading the
+  ;; package.
+  (marginalia-mode))
+
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :ensure ; only need to install it, embark loads it after consult if found
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
+;; Example configuration for Consult
+(use-package consult
+  :ensure
+  ;; Replace bindings. Lazily loaded due by `use-package'.
+  :bind (;; C-c bindings in `mode-specific-map'
+         ;; ("C-c M-x" . consult-mode-command)
+         ;; ("C-c h" . consult-history)
+         ;; ("C-c k" . consult-kmacro)
+         ;; ("C-c m" . consult-man)
+         ;; ("C-c i" . consult-info)
+         ;; ([remap Info-search] . consult-info)
+         ;; ;; C-x bindings in `ctl-x-map'
+         ;; ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
+         ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
+         ;; ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
+         ;; ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
+         ;; ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
+         ;; ("C-x p b" . consult-project-buffer)      ;; orig. project-switch-to-buffer
+         ;; ;; Custom M-# bindings for fast register access
+         ;; ("M-#" . consult-register-load)
+         ;; ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
+         ;; ("C-M-#" . consult-register)
+         ;; ;; Other custom bindings
+         ;; ("M-y" . consult-yank-pop)                ;; orig. yank-pop
+         ;; ;; M-g bindings in `goto-map'
+         ;; ("M-g e" . consult-compile-error)
+         ;; ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
+         ;; ("M-g g" . consult-goto-line)             ;; orig. goto-line
+         ;; ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
+         ;; ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
+         ;; ("M-g m" . consult-mark)
+         ;; ("M-g k" . consult-global-mark)
+         ;; ("M-g i" . consult-imenu)
+         ;; ("M-g I" . consult-imenu-multi)
+         ;; ;; M-s bindings in `search-map'
+         ;; ("M-s d" . consult-find)
+         ;; ("M-s D" . consult-locate)
+         ;; ("M-s g" . consult-grep)
+         ;;("M-s G" . consult-git-grep)
+         ("M-i" . consult-ripgrep)
+         ("C-s" . consult-line)
+         ;; ("M-s L" . consult-line-multi)
+         ;; ("M-s k" . consult-keep-lines)
+         ;; ("M-s u" . consult-focus-lines)
+         ;; ;; Isearch integration
+         ;; ("M-s e" . consult-isearch-history)
+         ;; :map isearch-mode-map
+         ;; ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
+         ;; ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
+         ;; ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
+         ;; ("M-s L" . consult-line-multi)            ;; needed by consult-line to detect isearch
+         ;; ;; Minibuffer history
+         ;; :map minibuffer-local-map
+         ;; ("M-s" . consult-history)                 ;; orig. next-matching-history-element
+         ;; ("M-r" . consult-history)                ;; orig. previous-matching-history-element
+         )
+
+  ;; Enable automatic preview at point in the *Completions* buffer. This is
+  ;; relevant when you use the default completion UI.
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+
+  ;; The :init configuration is always executed (Not lazy)
+  :init
+
+  ;; Optionally configure the register formatting. This improves the register
+  ;; preview for `consult-register', `consult-register-load',
+  ;; `consult-register-store' and the Emacs built-ins.
+  (setq register-preview-delay 0.5
+        register-preview-function #'consult-register-format)
+
+  ;; Optionally tweak the register preview window.
+  ;; This adds thin lines, sorting and hides the mode line of the window.
+  (advice-add #'register-preview :override #'consult-register-window)
+
+  ;; Use Consult to select xref locations with preview
+  (setq xref-show-xrefs-function #'consult-xref
+        xref-show-definitions-function #'consult-xref)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
   :config
-  (global-set-key "\C-s" 'swiper))
+
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key "M-.")
+  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key "M-."
+   :preview-key '(:debounce 0.4 any))
+
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; "C-+"
+
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+
+  ;; By default `consult-project-function' uses `project-root' from project.el.
+  ;; Optionally configure a different project root function.
+  ;;;; 1. project.el (the default)
+  ;; (setq consult-project-function #'consult--default-project--function)
+  ;;;; 2. vc.el (vc-root-dir)
+  ;; (setq consult-project-function (lambda (_) (vc-root-dir)))
+  ;;;; 3. locate-dominating-file
+  ;; (setq consult-project-function (lambda (_) (locate-dominating-file "." ".git")))
+  ;;;; 4. projectile.el (projectile-project-root)
+  ;; (autoload 'projectile-project-root "projectile")
+  ;; (setq consult-project-function (lambda (_) (projectile-project-root)))
+  ;;;; 5. No project support
+  ;; (setq consult-project-function nil)
+  )
+
+(use-package embark
+  :ensure t
+
+  :bind
+  (("C-." . embark-act)         ;; pick some comfortable binding
+   ("C-;" . embark-dwim)        ;; good alternative: M-.
+   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+  :init
+
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+
+  ;; Show the Embark target at point via Eldoc.  You may adjust the Eldoc
+  ;; strategy, if you want to see the documentation from multiple providers.
+  (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+  ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+  :config
+
+  ;; Hide the mode line of the Embark live/completions buffers
+  (add-to-list 'display-buffer-alist
+               '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                 nil
+                 (window-parameters (mode-line-format . none)))))
+
 
 (use-package wgrep
   :ensure)
@@ -471,7 +748,6 @@ Including indent-buffer, which should not be called automatically on save."
   (flycheck-mode +1)
   (setq flycheck-check-syntax-automatically '(save mode-enabled))
   (eldoc-mode +1)
-  (company-mode +1)
   (tide-hl-identifier-mode +1)
   ;;(add-hook 'before-save-hook 'tide-format-before-save)
   (prettier-js-mode +1)
@@ -508,11 +784,20 @@ Including indent-buffer, which should not be called automatically on save."
 
 (use-package eglot :ensure)
 
+(setq completion-category-overrides '((eglot (styles orderless))))
 (use-package lsp-mode
+  :custom
+  (lsp-completion-provider :none) ;; we use Corfu!
   :init
   ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
   (setq lsp-keymap-prefix "C-c l")
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+  :hook
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
   :commands lsp)
+
 
 ;; optionally
 (use-package lsp-ui :commands lsp-ui-mode)
@@ -625,10 +910,10 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package impatient-mode
   :ensure)
 
-;; auto-complete
-(setq company-idle-delay 0)
-(setq company-minimum-prefix-length 1)
-(setq company-dabbrev-downcase nil)
+;; ;; auto-complete
+;; (setq company-idle-delay 0)
+;; (setq company-minimum-prefix-length 1)
+;; (setq company-dabbrev-downcase nil)
 
 ;; magic auto format shit
 (use-package apheleia
@@ -953,7 +1238,7 @@ Assume point is in the corresponding edit buffer."
  '(custom-safe-themes
    '("e2337309361eef29e91656c5e511a6cb8c54ce26231e11424a8873ea88d9093e" "75e027e3ab2892c5c1f152e3d9fae03718f75bee50d259040e56e7e7672a4872" default))
  '(package-selected-packages
-   '(good-scroll org-ai dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
+   '(embark-consult embark consult marginalia cape corfu vertico good-scroll org-ai dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
  '(warning-suppress-log-types
    '((use-package)
      (auto-save)

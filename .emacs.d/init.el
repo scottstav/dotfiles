@@ -804,24 +804,16 @@ Including indent-buffer, which should not be called automatically on save."
 ;; if you are ivy user
 (use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
 
-;; optionally if you want to use debugger
-(use-package dap-mode :ensure)
-(use-package dap-node :ensure)
-
-(defun my-setup-dap-node ()
-  "Require dap-node feature and run dap-node-setup if VSCode module isn't already installed"
-  (require 'dap-node)
-  (unless (file-exists-p dap-node-debug-path) (dap-node-setup)))
 
 (defun setup-typescript-mode ()
   "Setup function for typescript."
   (interactive)
-  (eglot-ensure)
   ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
   (add-node-modules-path)
   ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
   (centered-cursor-mode 1)
-  (subword-mode))
+  (subword-mode)
+  (eglot-ensure))
 
 (defun setup-javascript-mode ()
   "Setup function for javascript."
@@ -1023,12 +1015,12 @@ Including indent-buffer, which should not be called automatically on save."
   (global-set-key (kbd "C-c C-d") #'helpful-at-point)
   )
 
-(use-package key-chord
-  :ensure)
-(key-chord-mode 1)
+;; (use-package key-chord
+;;   :ensure)
+;; (key-chord-mode 1)
 
-(key-chord-define-global ";;" "\C-e;")
-(key-chord-define-global "vv" "\C-^")
+;; (key-chord-define-global ";;" "\C-e;")
+;; (key-chord-define-global "vv" "\C-^")
 ;; (key-chord-define-global "hj"     'undo)
 ;; (key-chord-define-global [?h ?j]  'undo)  ; the same
 ;; (key-chord-define-global "jk"     'dabbrev-expand)

@@ -778,11 +778,12 @@ Including indent-buffer, which should not be called automatically on save."
 ;; so exec-path-from-shell does not find node modules correctly
 (setq exec-path (append exec-path '("~/.nvm/versions/node/v14.17.5/bin/")))
 
-(use-package treesit-auto
-  :config
-  (global-treesit-auto-mode))
-
 (use-package eglot :ensure)
+
+(use-package go-mode
+  :ensure)
+
+(add-hook 'go-mode-hook 'eglot-ensure)
 
 (setq completion-category-overrides '((eglot (styles orderless))))
 (use-package lsp-mode
@@ -803,7 +804,6 @@ Including indent-buffer, which should not be called automatically on save."
 (use-package lsp-ui :commands lsp-ui-mode)
 ;; if you are ivy user
 (use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
-
 
 (defun setup-typescript-mode ()
   "Setup function for typescript."
@@ -921,11 +921,14 @@ Including indent-buffer, which should not be called automatically on save."
   :ensure t
   :custom (completion-styles '(orderless)))
 
-;(use-package yasnippet
-;  :ensure
-;  :config
-;  (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
-;  (yas-global-mode 1))
+(use-package yasnippet
+ :ensure
+ :config
+ (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+ (global-set-key (kbd "C-c i") 'yas-insert-snippet)
+ (setq yas/indent-line nil)
+ (setq markdown-fontify-code-blocks-natively t)
+ (yas-global-mode 1))
 
 
 ;;---------------------------------------------------------------
@@ -1136,12 +1139,6 @@ Assume point is in the corresponding edit buffer."
 (setq global-display-line-numbers-mode t)
 (setq markdown-command "/usr/local/bin/pandoc")
 (setq global-visual-line-mode t)
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(blamer-face ((t :foreground "#7a88cf" :background nil :height 140 :italic t)) t))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -1227,42 +1224,11 @@ Assume point is in the corresponding edit buffer."
      (tramp-connection-local-default-system-profile
       (path-separator . ":")
       (null-device . "/dev/null"))))
- '(custom-safe-themes
-   '("e2337309361eef29e91656c5e511a6cb8c54ce26231e11424a8873ea88d9093e" "75e027e3ab2892c5c1f152e3d9fae03718f75bee50d259040e56e7e7672a4872" default))
  '(package-selected-packages
-   '(embark-consult embark consult marginalia cape corfu vertico good-scroll org-ai dired-toggle-sudo tree-sitter treesit-auto apheleia dap-mode centered-cursor-mode typescript-mode orderless yaml-mode which-key wgrep vterm use-package tide terraform-mode robe restclient prettier-js paredit org-roam ob-mongo ob-http ob-graphql nodejs-repl multiple-cursors mood-line modus-themes lsp-ui key-chord jest-test-mode impatient-mode helpful golden-ratio git-gutter+ forge flymake-ruby expand-region exec-path-from-shell elpy dockerfile-mode counsel-projectile browse-at-remote blamer add-node-modules-path ace-window ace-jump-mode))
- '(warning-suppress-log-types
-   '((use-package)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)))
- '(warning-suppress-types
-   '((emacsql)
-     (comp)
-     (comp)
-     (comp)
-     (comp)
-     (comp)
-     (emacsql)
-     (emacsql)
-     (emacsql)
-     (emacsql)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save)
-     (auto-save))))
+   '(dired-preview go-mode vertico apheleia multiple-cursors dired-toggle-sudo org-roam cape yaml-mode tide counsel-projectile golden-ratio flymake-ruby add-node-modules-path elpy org-ai orderless centered-cursor-mode dockerfile-mode git-gutter+ mood-line ob-graphql helpful paredit forge restclient impatient-mode dap-mode blamer vterm modus-themes corfu embark-consult browse-at-remote wgrep robe ace-jump-mode jest-test-mode ob-http key-chord nodejs-repl expand-region marginalia prettier-js which-key ob-mongo terraform-mode exec-path-from-shell)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )

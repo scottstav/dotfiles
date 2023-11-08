@@ -655,8 +655,6 @@ Including indent-buffer, which should not be called automatically on save."
 	("my-website" :components ("org-media" "org-pages" "org-static" "org-pdfs"))
 	))
 
-;; jira (ifit)
-
 
 ;; this doesnt work
 ;; (defun org-capture-journal-location ()

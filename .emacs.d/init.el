@@ -203,6 +203,17 @@ Including indent-buffer, which should not be called automatically on save."
 (define-key dired-mode-map (kbd "?") 'dired-get-size)
 ;;(define-key dired-mode-map (kbd "V") 'dired-get-size)
 
+;; open mkv files with xdg-open, add more to the string-suffix-p function call to open others files in xdg open
+(defun open-file-or-xdg-open ()
+  "Open file with `xdg-open` if it's an `mkv` file, otherwise open it in Emacs."
+  (interactive)
+  (let ((file (dired-get-file-for-visit)))
+    (if (string-suffix-p ".mkv" file)
+        (call-process "xdg-open" nil 0 nil file)
+      (dired-find-file))))
+
+(define-key dired-mode-map [return] 'open-file-or-xdg-open)
+
 (defun file-info ()
   "Show the info for just the current file."
   (interactive)
@@ -1131,6 +1142,8 @@ Assume point is in the corresponding edit buffer."
           ;;)
           (forward-line)))
       (buffer-string))))))
+
+(setenv "XDG_RUNTIME_DIR" "/run/user/$(id -u)")
 
 ;; customize keep
 (setq show-paren-mode t)

@@ -6,7 +6,7 @@
     "spacing": 4, // Gaps between modules (4px)
     // Choose the order of the modules
     "modules-left": ["hyprland/workspaces"],
-    "modules-right": ["tray", "idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "battery","battery#bat2", "clock"],
+    "modules-right": ["tray", "custom/bluetooth", "idle_inhibitor", "pulseaudio", "network", "cpu", "memory", "temperature", "battery","battery#bat2", "clock"],
     // Modules configuration
     // "sway/workspaces": {
     //     "disable-scroll": true,
@@ -160,5 +160,12 @@
         "escape": true,
         "exec": "$HOME/.config/waybar/mediaplayer.py 2> /dev/null" // Script in resources folder
         // "exec": "$HOME/.config/waybar/mediaplayer.py --player spotify 2> /dev/null" // Filter player based on name
-    }
+    },
+   "custom/bluetooth": {
+       "interval": 5,
+       "format": "",
+       "format-active": "",
+       "format-inactive": "",
+       "on-click": "$HOME/.local/bin/choose_bluetooth_device"
+   }
 }

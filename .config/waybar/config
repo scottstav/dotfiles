@@ -166,6 +166,6 @@
        "format": "",
        "format-active": "",
        "format-inactive": "",
-       "on-click": "$HOME/.local/bin/choose_bluetooth_device"
+       //"on-click": "$HOME/.local/bin/choose_bluetooth_device"
    }
 }

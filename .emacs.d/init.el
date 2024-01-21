@@ -297,7 +297,11 @@ Including indent-buffer, which should not be called automatically on save."
 (setq org-roam-dailies-capture-templates
       '(("d" "default" entry
          "\n* %?"
-         :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))
+         :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))
+        ("w" "work" entry
+         "\n* %?"
+         :target (file+head "./work/%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))
+
 ;; publishing
 (setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
 (setq org-html-postamble-format
@@ -626,45 +630,6 @@ Including indent-buffer, which should not be called automatically on save."
 ;; this ensures code highlighting on export... and probably other stuff
 (use-package htmlize
   :ensure)
-
-(require 'ox-publish)
-(setq org-publish-project-alist
-      '(
-	;; static files that should be at the base of the website
-	("org-static"
-	 :base-directory "~/projects/scotty.dance/static/"
-	 :base-extension any
-	 :publishing-directory "~/public_html/"
-	 :recursive t
-	 :publishing-function org-publish-attachment
-	 )
-	;; convert org documents to pdfs
-	("org-pdfs"
-	 :base-directory "~/projects/scotty.dance/pdfs/"
-	 :base-extension "org"
-	 :publishing-directory "~/public_html/"
-	 :recursive t
-	 :publishing-function org-latex-publish-to-pdf
-	 )
-	;; all other org files in nested directories i.e. posts/
-	("org-pages"
-	 :base-directory "~/projects/scotty.dance/"
-	 :base-extension "org"
-	 :publishing-directory "~/public_html/"
-	 :recursive t
-	 :publishing-function org-html-publish-to-html
-	 :headline-levels 4
-	 :auto-preamble t
-	 )
-	("org-media"
-	 :base-directory "~/projects/scotty.dance/media/"
-	 :base-extension any
-	 :publishing-directory "~/public_html/media/"
-	 :recursive t
-	 :publishing-function org-publish-attachment
-	 )
-	("my-website" :components ("org-media" "org-pages" "org-static" "org-pdfs"))
-	))
 
 
 ;; this doesnt work
@@ -1236,7 +1201,145 @@ Assume point is in the corresponding edit buffer."
       (path-separator . ":")
       (null-device . "/dev/null"))))
  '(package-selected-packages
-   '(dired-preview go-mode vertico apheleia multiple-cursors dired-toggle-sudo org-roam cape yaml-mode tide counsel-projectile golden-ratio flymake-ruby add-node-modules-path elpy org-ai orderless centered-cursor-mode dockerfile-mode git-gutter+ mood-line ob-graphql helpful paredit forge restclient impatient-mode dap-mode blamer vterm modus-themes corfu embark-consult browse-at-remote wgrep robe ace-jump-mode jest-test-mode ob-http key-chord nodejs-repl expand-region marginalia prettier-js which-key ob-mongo terraform-mode exec-path-from-shell)))
+   '(dired-preview go-mode vertico apheleia multiple-cursors dired-toggle-sudo org-roam cape yaml-mode tide counsel-projectile golden-ratio flymake-ruby add-node-modules-path elpy org-ai orderless centered-cursor-mode dockerfile-mode git-gutter+ mood-line ob-graphql helpful paredit forge restclient impatient-mode dap-mode blamer vterm modus-themes corfu embark-consult browse-at-remote wgrep robe ace-jump-mode jest-test-mode ob-http key-chord nodejs-repl expand-region marginalia prettier-js which-key ob-mongo terraform-mode exec-path-from-shell))
+ '(safe-local-variable-values
+   '((eval setq org-capture-templates
+           '(("p" "Post" plain
+              (file
+               (lambda nil
+                 (concat "./posts/"
+                         (format-time-string "%Y-%m-%d")
+                         ".org")))
+              "#+TITLE: %<%Y-%m-%d>\12\12* %<%Y-%m-%d>")))
+     (eval setq org-capture-templates
+           '(("p" "Post" plain
+              (file
+               (lambda nil
+                 (concat "./posts/"
+                         (format-time-string "%Y-%m-%d")
+                         ".org")))
+              (lambda nil
+                (concat "#+TITLE: "
+                        (format-time-string "%Y-%m-%d"))))))
+     (eval setq org-capture-templates
+           '(("p" "Post" plain
+              (file
+               (lambda nil
+                 (concat "./posts/"
+                         (format-time-string "%Y-%m-%d")
+                         ".org")))
+              "some text")))
+     (eval progn
+           (defun org-capture-file-path nil
+             (concat "./posts/"
+                     (format-time-string "%Y-%m-%d")
+                     ".org"))
+           (setq-local org-capture-templates
+                       `(("p" "Post" entry
+                          (file #'org-capture-file-path)
+                          "* %<%Y-%m-%d>\12\12"))))
+     (eval progn
+           (defun org-capture-file-path nil
+             (concat "./posts/"
+                     (format-time-string "%Y-%m-%d")
+                     ".org"))
+           (setq-local org-capture-templates
+                       `(("p" "Post" entry
+                          (file+function
+                           (lambda nil
+                             (org-capture-file-path)))
+                          "* %<%Y-%m-%d>\12\12"))))
+     (eval progn
+           (defun org-capture-file-path nil
+             (concat "./posts/"
+                     (format-time-string "%Y-%m-%d")
+                     ".org"))
+           (setq org-capture-templates
+                 `(("p" "Post" plain #'org-capture-file-path "%(format-time-string \"* %Y-%m-%d\")\12\12"))))
+     (eval
+      (setq org-capture-templates
+            '(("p" "Post" plain
+               (file
+                (lambda nil
+                  (concat "./posts/"
+                          (format-time-string "%Y-%m-%d")
+                          ".org")))
+               "%(format-time-string \"* %Y-%m-%d\")\12\12"))))
+     (eval setq org-capture-templates
+           '(("p" "Post" plain
+              (file
+               (lambda nil
+                 (concat "./posts/"
+                         (format-time-string "%Y-%m-%d")
+                         ".org"))))))
+     (eval setq org-capture-templates
+           '(("p" "Post" plain
+              (file+function "./posts/%(format-time-string \"%Y-%m-%d\").org" find-file)
+              "")))
+     (eval setq org-capture-templates
+           '(("p" "Post" entry
+              (file+olp "./posts/%(format-time-string \"%Y-%m-%d\").org" "Posts")
+              "* %<%Y-%m-%d>\12\12\12")))
+     (eval setq org-capture-templates
+           '(("p" "Post" entry
+              (file+olp "./posts/%(format-time-string \"%Y-%m-%d\").org" "Posts")
+              "* %\\1%n")))
+     (org-capture-templates
+      '(("p" "Post" entry
+         (file+olp "./posts/%(format-time-string \"%Y-%m-%d\").org" "Posts")
+         "* %\\1%n")))
+     (eval setq org-publish-project-alist
+           '(("org-static" :base-directory "./static/" :base-extension any :publishing-directory "./public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "./pdfs/" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "./" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "./media/" :base-extension any :publishing-directory "./public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("org-app" :base-directory "./js/" :base-extension any :publishing-directory "./public_html/js/" :recursive t :publishing-function org-publish-attachment)
+             ("Generate beanpuckdotcom" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs" "org-app"))))
+     (eval setq org-publish-project-alist
+           '(("org-static" :base-directory "./static/" :base-extension any :publishing-directory "./public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "./pdfs/" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "./" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "./media/" :base-extension any :publishing-directory "./public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("org-app" :base-directory "./js/" :base-extension any :publishing-directory "./public_html/js/" :recursive t :publishing-function org-publish-attachment)
+             ("Regenerate website-name.com!" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs" "org-app"))))
+     (eval setq org-publish-project-alist
+           '(("org-static" :base-directory "./static/" :base-extension any :publishing-directory "./public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "./pdfs/" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "./" :base-extension "org" :publishing-directory "./public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "./media/" :base-extension any :publishing-directory "./public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("Regenerate website-name.com!" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs"))))
+     (eval setq org-publish-project-alist
+           '(("org-static" :base-directory "~/projects/scotty.dance/static/" :base-extension any :publishing-directory "~/public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "~/projects/scotty.dance/pdfs/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "~/projects/scotty.dance/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "~/projects/scotty.dance/media/" :base-extension any :publishing-directory "~/public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("Generate website" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs"))))
+     (org-publish-project-alist
+      '(("org-static" :base-directory "~/projects/scotty.dance/static/" :base-extension any :publishing-directory "~/public_html/" :recursive t :publishing-function org-publish-attachment)
+        ("org-pdfs" :base-directory "~/projects/scotty.dance/pdfs/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+        ("org-pages" :base-directory "~/projects/scotty.dance/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+        ("org-media" :base-directory "~/projects/scotty.dance/media/" :base-extension any :publishing-directory "~/public_html/media/" :recursive t :publishing-function org-publish-attachment)
+        ("Generate website-name.com!" :components
+         ("org-media" "org-pages" "org-static" "org-pdfs"))))
+     (eval setq org-publish-project-alist
+           '(("org-static" :base-directory "~/projects/scotty.dance/static/" :base-extension any :publishing-directory "~/public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "~/projects/scotty.dance/pdfs/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "~/projects/scotty.dance/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "~/projects/scotty.dance/media/" :base-extension any :publishing-directory "~/public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("Generate website-name.com!" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs"))))
+     (setq org-publish-project-alist
+           '(("org-static" :base-directory "~/projects/scotty.dance/static/" :base-extension any :publishing-directory "~/public_html/" :recursive t :publishing-function org-publish-attachment)
+             ("org-pdfs" :base-directory "~/projects/scotty.dance/pdfs/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-latex-publish-to-pdf)
+             ("org-pages" :base-directory "~/projects/scotty.dance/" :base-extension "org" :publishing-directory "~/public_html/" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t)
+             ("org-media" :base-directory "~/projects/scotty.dance/media/" :base-extension any :publishing-directory "~/public_html/media/" :recursive t :publishing-function org-publish-attachment)
+             ("website_name" :components
+              ("org-media" "org-pages" "org-static" "org-pdfs"))))
+     (require 'ox-publish))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.

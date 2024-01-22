@@ -119,13 +119,10 @@
         modus-themes-region '(bg-only no-extend)
 	modus-themes-subtle-line-numbers t))
 
-                                        ;(load-theme 'modus-operandi)            ; Light theme
+;(load-theme 'modus-operandi)            ; Light theme
 (load-theme 'modus-vivendi :no-confirm)             ; Dark theme
 
 ;; transparency
-;; this lags my shit out on native wayland :shrug:
-;;(set-frame-parameter (selected-frame) 'alpha '(90 90))
-;;(add-to-list 'default-frame-alist '(alpha 90 90))
 
 ;; never used
 (tool-bar-mode -1)
@@ -166,9 +163,9 @@ Including indent-buffer, which should not be called automatically on save."
   (indent-buffer))
 
 (defun crontab-e ()
-  "Run `crontab -e' in a Emacs buffer."
-  (interactive)
-  (with-editor-async-shell-command "crontab -e"))
+    "Run `crontab -e' in a Emacs buffer."
+    (interactive)
+    (with-editor-async-shell-command "crontab -e"))
 
 ;; dired
 (require 'dired-x)
@@ -235,7 +232,7 @@ Including indent-buffer, which should not be called automatically on save."
 (setq mouse-wheel-follow-mouse 't) ;; scroll window under mouse
 
 (setq scroll-step 1) ;; keyboard scroll one line at a time
-                                        ;(global-set-key (kbd "M-l") 'centered-cursor-mode)
+;(global-set-key (kbd "M-l") 'centered-cursor-mode)
 
 ;; url
 

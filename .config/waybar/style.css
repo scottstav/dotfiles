@@ -7,12 +7,13 @@
 }
 
 window#waybar {
-  background: transparent;
+  /* background: transparent; */
   color: #008000;
+  background-color: #ffffe2;
 }
 
 #window {
-  font-weight: bold;
+  /* font-weight: bold; */
   font-family: "Iosevka";
 }
 /*
@@ -61,10 +62,16 @@ window#waybar {
 }
 
 #clock {
-  font-weight: bold;
+    color: black;
 }
 
 #battery {
+}
+
+#bluetooth {
+    padding: 10px;
+    color: blue;
+    background-color: lightgray;
 }
 
 #battery icon {

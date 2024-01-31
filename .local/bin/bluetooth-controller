@@ -1,20 +1,20 @@
 #!/bin/bash
 
-
 # Get a list of available Bluetooth devices
 devices=$(bluetoothctl devices | awk '{print $2}')
 
 # Create a newline-separated list of device names for the dropdown menu
+
 options=$(for device in $devices; do
            name=$(bluetoothctl info $device | awk '/Name/ {print substr($0, index($0,$2))}')
            echo "$name"
-         done)
+          done)
+
 
 # Use `wofi` to create the dropdown menu
 selection=$(echo "$options" | fuzzel -d )
 
-# If a selection is made, execute the corresponding `bluetoothctl` command
-if [ -n "$selection" ]; then
-   device=$(echo "$devices" | awk -v sel="$selection" '$0 ~ sel {print $0}')
-   bluetoothctl connect $device
-fi
+device=$(bluetoothctl devices | grep "$selection" | awk '{print $2}')
+
+
+bluetoothctl connect $device

@@ -2,6 +2,11 @@
 #+AUTHOR: Scott Stavinoha
 #+PROPERTY: header-args :tangle yes
 
+
+#+begin_quote
+Emacs is not that hard, you can learn emacs in one day, everyday.
+#+end_quote
+
 * Configuration
 :PROPERTIES:
 :VISIBILITY: children

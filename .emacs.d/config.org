@@ -1,0 +1,1025 @@
+#+TITLE: Literate Emacs Configuration
+#+AUTHOR: Scott Stavinoha
+#+PROPERTY: header-args :tangle yes
+
+* Configuration
+:PROPERTIES:
+:VISIBILITY: children
+:END:
+
+** Table of Contents :TOC_3_gh:
+- [[#configuration][Configuration]]
+  - [[#personal-information][Personal Information]]
+  - [[#settings][Settings]]
+    - [[#initialization][Initialization]]
+    - [[#constants][Constants]]
+    - [[#sanity-defaults][Sanity Defaults]]
+    - [[#package-management][Package Management]]
+    - [[#auth][Auth]]
+    - [[#region][Region]]
+    - [[#cursor][Cursor]]
+    - [[#dired][Dired]]
+    - [[#org][Org]]
+    - [[#ai][AI]]
+    - [[#ui][UI]]
+    - [[#keybinds][Keybinds]]
+  - [[#packages][Packages]]
+    - [[#vterm][vterm]]
+    - [[#toc-org][toc-org]]
+    - [[#htmlize][htmlize]]
+    - [[#wgrep][wgrep]]
+    - [[#ace-jump][Ace Jump]]
+    - [[#helpful][Helpful]]
+  - [[#programming][Programming]]
+    - [[#general][General]]
+    - [[#eldoc][Eldoc]]
+    - [[#projectile][Projectile]]
+    - [[#git][Git]]
+    - [[#parens][Parens]]
+    - [[#languages][Languages]]
+- [[#misc-functions][Misc Functions]]
+
+** Personal Information
+Let's set some variables with basic user information.
+
+#+BEGIN_SRC emacs-lisp
+(setq user-full-name "Scott Stavinoha"
+      user-mail-address "scottstavinoha@gmail.com")
+#+END_SRC
+
+** Settings
+*** Initialization
+
+I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= /after/ my WM starts using =focus-in-hook=
+#+begin_src emacs-lisp
+  (use-package exec-path-from-shell :ensure)
+
+  (defun my/focus-in-hook ()
+    "Do exec-path-from-shell-initialize, then remove self from `focus-in-hook'; need to run this just once."
+    (exec-path-from-shell-initialize)
+    (remove-hook 'focus-in-hook #'my/focus-in-hook))
+  (add-hook 'focus-in-hook #'my/focus-in-hook)
+#+end_src
+*** Constants
+#+BEGIN_SRC emacs-lisp
+  (defconst EMACS27+   (> emacs-major-version 26))
+  (defconst EMACS28+   (> emacs-major-version 27))
+  (defconst IS-MAC     (eq system-type 'darwin))
+  (defconst IS-LINUX   (eq system-type 'gnu/linux))
+  (defconst IS-WINDOWS (memq system-type '(cygwin windows-nt ms-dos)))
+  (defconst IS-BSD     (or IS-MAC (eq system-type 'berkeley-unix)))
+#+END_SRC
+
+*** Sanity Defaults
+#+BEGIN_SRC emacs-lisp
+  ;; random annoying message
+  (setq byte-compile-warnings '(cl-functions))
+
+  ;; menu shit remove
+  (mapc
+   (lambda (mode)
+     (when (fboundp mode)
+       (funcall mode -1)))
+   '(menu-bar-mode tool-bar-mode scroll-bar-mode))
+
+    ;;; Initialisation
+  (setq inhibit-default-init t
+        inhibit-startup-echo-area-message t
+        inhibit-startup-screen t
+        initial-scratch-message nil)
+
+  ;; warn when opening files bigger than 100MB
+  (setq large-file-warning-threshold 100000000)
+
+  (defconst gas-savefile-dir (expand-file-name "savefile" user-emacs-directory))
+
+  ;; create the savefile dir if it doesn't exist
+  (unless (file-exists-p gas-savefile-dir)
+    (make-directory gas-savefile-dir))
+
+    ;;; UI
+
+  ;; disable the annoying bell ring
+  (setq ring-bell-function 'ignore)
+
+  ;; disable startup screen
+  (setq inhibit-startup-screen t)
+
+  ;; nice scrolling
+  (setq scroll-margin 0
+        scroll-conservatively 100000
+        scroll-preserve-screen-position 1)
+
+  ;; mode line settings
+  (line-number-mode t)
+  (column-number-mode t)
+  (size-indication-mode t)
+
+  ;; enable y/n answers
+  (fset 'yes-or-no-p 'y-or-n-p)
+
+  ;; Productive default mode
+  (setq initial-major-mode 'org-mode)
+
+  ;; Keep emacs Custom-settings in separate file.
+  (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+  (when (file-exists-p custom-file)
+    (load custom-file))
+
+  ;; store all backup and autosave files in the tmp dir
+  (setq backup-directory-alist
+        `((".*" . ,temporary-file-directory)))
+  (setq auto-save-file-name-transforms
+        `((".*" ,temporary-file-directory t)))
+
+  (setq version-control t     ;; Use version numbers for backups.
+        kept-new-versions 10  ;; Number of newest versions to keep.
+        kept-old-versions 0   ;; Number of oldest versions to keep.
+        delete-old-versions t ;; Don't ask to delete excess backup versions.
+        backup-by-copying t)  ;; Copy all files, don't rename them.
+
+  ;; revert buffers automatically when underlying files are changed externally
+  (global-auto-revert-mode t)
+
+  ;; Make backups of files, even when they're in version control.
+  (setq vc-make-backup-files t)
+
+  ;; Fix empty pasteboard error.
+  (setq save-interprogram-paste-before-kill nil)
+
+
+#+END_SRC
+*** Package Management
+**** Package Settings
+We're going to set the =load-path= ourselves and avoid calling =(package-initilize)= (for
+performance reasons) so we need to set =package--init-file-ensured= to true to tell =package.el=
+to not automatically call it on our behalf. Additionally we're setting
+=package-enable-at-startup= to nil so that packages will not automatically be loaded for us since
+=use-package= will be handling that.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-and-compile
+    (setq load-prefer-newer t
+          package-user-dir "~/.emacs.d/elpa"
+          package--init-file-ensured t
+          package-enable-at-startup nil)
+
+    (unless (file-directory-p package-user-dir)
+      (make-directory package-user-dir t)))
+#+END_SRC
+
+**** Use-Package Settings
+Tell =use-package= to always defer loading packages unless explicitly told otherwise. This speeds up
+initialization significantly as many packages are only loaded later when they are explicitly used.
+
+#+BEGIN_SRC emacs-lisp
+  (setq use-package-always-defer t
+        use-package-verbose t)
+#+END_SRC
+
+**** Manually Set Load Path
+We're going to set the load path ourselves so that we don't have to call =package-initialize= at
+runtime and incur a large performance hit. This load-path will actually be faster than the one
+created by =package-initialize= because it appends the elpa packages to the end of the load path.
+Otherwise any time a builtin package was required it would have to search all of third party paths
+first.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-and-compile
+    (setq load-path (append load-path (directory-files package-user-dir t "^[^.]" t))))
+#+END_SRC
+
+**** Initialise Package Management
+Next we are going to require =package.el= and add our additional package archives, 'melpa' and 'org'.
+Afterwards we need to initialize our packages and then ensure that =use-package= is installed, which
+we promptly install if it's missing. Finally we load =use-package= and tell it to always install any
+missing packages.
+
+Note that this entire block is wrapped in =eval-when-compile=. The effect of this is to perform all
+of the package initialization during compilation so that when byte compiled, all of this time consuming
+code is skipped. This can be done because the result of byte compiling =use-package= statements results
+in the macro being fully expanded at which point =use-package= isn't actually required any longer.
+
+Since the code is automatically compiled during runtime, if the configuration hasn't already been
+previously compiled manually then all of the package initialization will still take place at startup.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-when-compile
+    (require 'package)
+
+    (unless (assoc-default "melpa" package-archives)
+      (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
+    (unless (assoc-default "org" package-archives)
+      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/") t))
+
+    (package-initialize)
+    (unless (package-installed-p 'use-package)
+      (package-refresh-contents)
+      (package-install 'use-package))
+    (unless (package-installed-p 'bind-key)
+      (package-refresh-contents)
+      (package-install 'bind-key))
+    (require 'use-package)
+    (require 'bind-key)
+    (setq use-package-always-ensure t))
+#+END_SRC
+*** Auth
+
+#+begin_src emacs-lisp
+  ;; auth
+  (setq auth-sources '("~/.authinfo"))
+#+end_src
+*** Region
+#+begin_src emacs-lisp
+  (use-package expand-region
+    :ensure
+    :config
+    (global-set-key (kbd "C-\\") 'er/expand-region)
+    )
+
+#+end_src
+*** Cursor
+
+#+begin_src emacs-lisp
+  ;; set the cursor color
+  (setq default-frame-alist '((cursor-color . "white")))
+
+
+  ;; install multiple cursors
+  (use-package multiple-cursors
+    :ensure t
+    :config
+    (global-set-key (kbd "C-c m c") 'mc/edit-lines)
+    (global-set-key (kbd "C-=")  'mc/mark-next-like-this)
+    (global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
+    (global-set-key (kbd "C-<")  'mc/mark-previous-like-this)
+    )
+#+end_src
+*** Dired
+#+begin_src emacs-lisp
+  (defun dired-get-size ()
+    (interactive)
+    (let ((files (dired-get-marked-files)))
+      (with-temp-buffer
+        (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+        (message "Size of all marked files: %s"
+                 (progn
+                   (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+                   (match-string 1))))))
+
+  (define-key dired-mode-map (kbd "?") 'dired-get-size)
+  ;;(define-key dired-mode-map (kbd "V") 'dired-get-size)
+
+  ;; open mkv files with xdg-open, add more to the string-suffix-p function call to open others files in xdg open
+  (defun open-file-or-xdg-open ()
+    "Open file with `xdg-open` if it's an `mkv` file, otherwise open it in Emacs."
+    (interactive)
+    (let ((file (dired-get-file-for-visit)))
+      (if (string-suffix-p ".mkv" file)
+          (call-process "xdg-open" nil 0 nil file)
+        (dired-find-file))))
+
+  (define-key dired-mode-map [return] 'open-file-or-xdg-open)
+
+  (defun file-info ()
+    "Show the info for just the current file."
+    (interactive)
+    (let ((dired-listing-switches "-alh"))
+      (dired-other-window buffer-file-name)))
+#+end_src
+*** Org
+#+begin_src emacs-lisp
+  (use-package org
+    :ensure org-plus-contrib
+    :delight org-mode "✎"
+    :pin org
+    :defer t
+    :config
+    (setq org-directory "~/Dropbox/org")
+    (setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))
+    (setq org-modules
+          (quote
+           (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m)))
+
+    (setq org-clock-persist 'history)
+    (setq org-export-with-section-numbers nil)
+    (org-clock-persistence-insinuate))
+
+      ;; ;; org babel
+      (use-package ob-http :ensure)
+      (use-package ob-mongo :ensure)
+      (use-package ob-graphql :ensure)
+
+      (org-babel-do-load-languages
+       'org-babel-load-languages
+       '((shell . t)
+         (emacs-lisp . t)
+         (latex . t)
+         (js . t)
+         (python . t)
+         ))
+
+
+      (defun my-org-confirm-babel-evaluate (lang body)
+        (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell"))))
+
+      (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
+
+#+end_src
+**** Roam
+#+begin_src emacs-lisp
+  (use-package org-roam
+    :ensure
+    :bind (("C-c n l" . org-roam-buffer-toggle)
+           ("C-c n f" . org-roam-node-find)
+           ("C-c n i" . org-roam-node-insert)
+           ("C-c n I" . org-roam-node-insert-immediate)
+           :map org-mode-map
+           ("C-M-i" . completion-at-point)
+           :map org-roam-dailies-map
+           ("Y" . org-roam-dailies-capture-yesterday)
+           ("T" . org-roam-dailies-capture-tomorrow))
+    :bind-keymap
+    ("C-c n d" . org-roam-dailies-map)
+    :config
+    (setq org-roam-directory (file-truename "~/Dropbox/org/roam"))
+    (org-roam-db-autosync-mode)
+    (require 'org-roam-dailies)
+
+    (setq org-roam-capture-templates '(("p" "project" plain
+                                        "\n%?"
+                                        :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
+                                        :unnarrowed t)
+                                       ("w" "work" plain
+                                        "\n%?"
+                                        :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
+                                        :unnarrowed t))))
+
+  (setq org-roam-dailies-capture-templates
+        '(("d" "default" entry
+           "\n* %?"
+           :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))
+          ("w" "work" entry
+           "\n* %?"
+           :target (file+head "./work/%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))
+#+end_src
+**** Exporting / Publishing
+#+begin_src emacs-lisp
+  (setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
+  (setq org-html-postamble-format
+        '(("en"
+           "<p class=\"date\">Created: %d </p><p class=\"updated\">Last Updated: %C</p><p class=\"creator\">Generated by %c</p>")))
+  (setq org-html-postamble t)
+#+end_src
+*** AI
+#+begin_src emacs-lisp
+  ;; Chat GPT
+  (use-package org-ai
+    :ensure t
+    :commands (org-ai-mode
+               org-ai-global-mode)
+    :init
+    (add-hook 'org-mode-hook #'org-ai-mode) ; enable org-ai in org-mode
+    (org-ai-global-mode) ; installs global keybindings on C-c M-a
+    :config
+    (setq org-ai-default-chat-model "gpt-3.5-turbo") ; if you are on the gpt-4 beta:
+                                          ;  (org-ai-install-yasnippets)) ; if you are using yasnippet and want `ai` snippets
+    )
+#+end_src
+
+*** UI
+**** Completion
+***** Vertico and friends
+#+begin_src emacs-lisp
+  (use-package vertico
+    :ensure
+    :init
+    (vertico-mode)
+
+    ;; Different scroll margin
+    ;; (setq vertico-scroll-margin 0)
+
+    ;; Show more candidates
+    ;; (setq vertico-count 20)
+
+    ;; Grow and shrink the Vertico minibuffer
+    ;; (setq vertico-resize t)
+
+    ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
+    ;; (setq vertico-cycle t)
+    )
+
+  ;; Persist history over Emacs restarts. Vertico sorts by history position.
+  (use-package savehist
+    :ensure
+    :init
+    (savehist-mode))
+
+  ;; Optionally use the `orderless' completion style.
+  (use-package orderless
+    :ensure
+    :init
+    ;; Configure a custom style dispatcher (see the Consult wiki)
+    ;; (setq orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch)
+    ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+    (setq completion-styles '(orderless basic)
+          completion-category-defaults nil
+          completion-category-overrides '((file (styles partial-completion)))))
+#+end_src
+***** Corfu and Friends
+This is in-buffer completion (autocomplete)
+
+#+begin_src emacs-lisp
+  (use-package corfu
+      :ensure
+      ;; Optional customizations
+      :custom
+      ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+      (corfu-auto t)                 ;; Enable auto completion
+      ;; (corfu-separator ?\s)          ;; Orderless field separator
+      ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+      ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+      ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+      ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+      ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+      ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+      ;; Enable Corfu only for certain modes.
+      ;; :hook ((prog-mode . corfu-mode)
+      ;;        (shell-mode . corfu-mode)
+      ;;        (eshell-mode . corfu-mode))
+
+      ;; Recommended: Enable Corfu globally.
+      ;; This is recommended since Dabbrev can be used globally (M-/).
+      ;; See also `global-corfu-modes'.
+      :init
+      (global-corfu-mode))
+
+      (use-package cape
+        :ensure
+        ;; Bind dedicated completion commands
+        ;; Alternative prefix keys: C-c p, M-p, M-+, ...
+        ;; :bind (("C-c p p" . completion-at-point) ;; capf
+        ;;        ("C-c p t" . complete-tag)        ;; etags
+        ;;        ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
+        ;;        ("C-c p h" . cape-history)
+        ;;        ("C-c p f" . cape-file)
+        ;;        ("C-c p k" . cape-keyword)
+        ;;        ("C-c p s" . cape-elisp-symbol)
+        ;;        ("C-c p e" . cape-elisp-block)
+        ;;        ("C-c p a" . cape-abbrev)
+        ;;        ("C-c p l" . cape-line)
+        ;;        ("C-c p w" . cape-dict)
+        ;;        ("C-c p \\" . cape-tex)
+        ;;        ("C-c p _" . cape-tex)
+        ;;        ("C-c p ^" . cape-tex)
+        ;;        ("C-c p &" . cape-sgml)
+        ;;        ("C-c p r" . cape-rfc1345))
+        :init
+        ;; Add to the global default value of `completion-at-point-functions' which is
+        ;; used by `completion-at-point'.  The order of the functions matters, the
+        ;; first function returning a result wins.  Note that the list of buffer-local
+        ;; completion functions takes precedence over the global list.
+        (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+        (add-to-list 'completion-at-point-functions #'cape-file)
+        (add-to-list 'completion-at-point-functions #'cape-elisp-block)
+        ;;(add-to-list 'completion-at-point-functions #'cape-history)
+        ;;(add-to-list 'completion-at-point-functions #'cape-keyword)
+        ;;(add-to-list 'completion-at-point-functions #'cape-tex)
+        ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+        ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+        ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+        ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+        ;;(add-to-list 'completion-at-point-functions #'cape-elisp-symbol)
+        ;;(add-to-list 'completion-at-point-functions #'cape-line)
+        )
+#+end_src
+***** General
+#+begin_src emacs-lisp
+  (use-package orderless
+    :ensure t
+    :custom (completion-styles '(orderless)))
+
+  (use-package yasnippet
+   :ensure
+   :config
+   (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+   (global-set-key (kbd "C-c i") 'yas-insert-snippet)
+   (setq yas/indent-line nil)
+   (setq markdown-fontify-code-blocks-natively t)
+   (yas-global-mode 1))
+
+  (setq completion-category-overrides '((eglot (styles orderless))))
+#+end_src
+**** Font
+#+begin_src emacs-lisp
+  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 14" ))
+  (set-frame-font "Iosevka Extended 14" nil t)
+#+end_src
+**** Annotations
+#+begin_src emacs-lisp
+  ;; Enable rich annotations using the Marginalia package
+  (use-package marginalia
+    :ensure
+    ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
+    ;; available in the *Completions* buffer, add it to the
+    ;; `completion-list-mode-map'.
+    :bind (:map minibuffer-local-map
+                ("M-A" . marginalia-cycle))
+
+    ;; The :init section is always executed.
+    :init
+
+    ;; Marginalia must be activated in the :init section of use-package such that
+    ;; the mode gets enabled right away. Note that this forces loading the
+    ;; package.
+    (marginalia-mode))
+#+end_src
+**** Navigation
+#+begin_src emacs-lisp
+  ;; Consult users will also want the embark-consult package.
+  (use-package embark-consult
+    :ensure ; only need to install it, embark loads it after consult if found
+    :hook
+    (embark-collect-mode . consult-preview-at-point-mode))
+
+  ;; Example configuration for Consult
+  (use-package consult
+    :ensure
+    ;; Replace bindings. Lazily loaded due by `use-package'.
+    :bind (;; C-c bindings in `mode-specific-map'
+           ;; ("C-c M-x" . consult-mode-command)
+           ;; ("C-c h" . consult-history)
+           ;; ("C-c k" . consult-kmacro)
+           ;; ("C-c m" . consult-man)
+           ;; ("C-c i" . consult-info)
+           ;; ([remap Info-search] . consult-info)
+           ;; ;; C-x bindings in `ctl-x-map'
+           ;; ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
+           ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
+           ;; ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
+           ;; ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
+           ;; ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
+           ;; ("C-x p b" . consult-project-buffer)      ;; orig. project-switch-to-buffer
+           ;; ;; Custom M-# bindings for fast register access
+           ;; ("M-#" . consult-register-load)
+           ;; ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
+           ;; ("C-M-#" . consult-register)
+           ;; ;; Other custom bindings
+           ;; ("M-y" . consult-yank-pop)                ;; orig. yank-pop
+           ;; ;; M-g bindings in `goto-map'
+           ;; ("M-g e" . consult-compile-error)
+           ;; ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
+           ;; ("M-g g" . consult-goto-line)             ;; orig. goto-line
+           ;; ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
+           ;; ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
+           ;; ("M-g m" . consult-mark)
+           ;; ("M-g k" . consult-global-mark)
+           ;; ("M-g i" . consult-imenu)
+           ;; ("M-g I" . consult-imenu-multi)
+           ;; ;; M-s bindings in `search-map'
+           ;; ("M-s d" . consult-find)
+           ;; ("M-s D" . consult-locate)
+           ;; ("M-s g" . consult-grep)
+           ;;("M-s G" . consult-git-grep)
+           ("M-i" . consult-ripgrep)
+           ("C-s" . consult-line)
+           ;; ("M-s L" . consult-line-multi)
+           ;; ("M-s k" . consult-keep-lines)
+           ;; ("M-s u" . consult-focus-lines)
+           ;; ;; Isearch integration
+           ;; ("M-s e" . consult-isearch-history)
+           ;; :map isearch-mode-map
+           ;; ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
+           ;; ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
+           ;; ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
+           ;; ("M-s L" . consult-line-multi)            ;; needed by consult-line to detect isearch
+           ;; ;; Minibuffer history
+           ;; :map minibuffer-local-map
+           ;; ("M-s" . consult-history)                 ;; orig. next-matching-history-element
+           ;; ("M-r" . consult-history)                ;; orig. previous-matching-history-element
+           )
+
+    ;; Enable automatic preview at point in the *Completions* buffer. This is
+    ;; relevant when you use the default completion UI.
+    :hook (completion-list-mode . consult-preview-at-point-mode)
+
+    ;; The :init configuration is always executed (Not lazy)
+    :init
+
+    ;; Optionally configure the register formatting. This improves the register
+    ;; preview for `consult-register', `consult-register-load',
+    ;; `consult-register-store' and the Emacs built-ins.
+    (setq register-preview-delay 0.5
+          register-preview-function #'consult-register-format)
+
+    ;; Optionally tweak the register preview window.
+    ;; This adds thin lines, sorting and hides the mode line of the window.
+    (advice-add #'register-preview :override #'consult-register-window)
+
+    ;; Use Consult to select xref locations with preview
+    (setq xref-show-xrefs-function #'consult-xref
+          xref-show-definitions-function #'consult-xref)
+
+    ;; Configure other variables and modes in the :config section,
+    ;; after lazily loading the package.
+    :config
+
+    ;; Optionally configure preview. The default value
+    ;; is 'any, such that any key triggers the preview.
+    ;; (setq consult-preview-key 'any)
+    ;; (setq consult-preview-key "M-.")
+    ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+    ;; For some commands and buffer sources it is useful to configure the
+    ;; :preview-key on a per-command basis using the `consult-customize' macro.
+    (consult-customize
+     consult-theme :preview-key '(:debounce 0.2 any)
+     consult-ripgrep consult-git-grep consult-grep
+     consult-bookmark consult-recent-file consult-xref
+     consult--source-bookmark consult--source-file-register
+     consult--source-recent-file consult--source-project-recent-file
+     ;; :preview-key "M-."
+     :preview-key '(:debounce 0.4 any))
+
+    ;; Optionally configure the narrowing key.
+    ;; Both < and C-+ work reasonably well.
+    (setq consult-narrow-key "<") ;; "C-+"
+
+    ;; Optionally make narrowing help available in the minibuffer.
+    ;; You may want to use `embark-prefix-help-command' or which-key instead.
+    ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+
+    ;; By default `consult-project-function' uses `project-root' from project.el.
+    ;; Optionally configure a different project root function.
+        ;;;; 1. project.el (the default)
+    ;; (setq consult-project-function #'consult--default-project--function)
+        ;;;; 2. vc.el (vc-root-dir)
+    ;; (setq consult-project-function (lambda (_) (vc-root-dir)))
+        ;;;; 3. locate-dominating-file
+    ;; (setq consult-project-function (lambda (_) (locate-dominating-file "." ".git")))
+        ;;;; 4. projectile.el (projectile-project-root)
+    ;; (autoload 'projectile-project-root "projectile")
+    ;; (setq consult-project-function (lambda (_) (projectile-project-root)))
+        ;;;; 5. No project support
+    ;; (setq consult-project-function nil)
+    )
+
+  (use-package embark
+    :ensure t
+
+    :bind
+    (("C-." . embark-act)         ;; pick some comfortable binding
+     ("C-;" . embark-dwim)        ;; good alternative: M-.
+     ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+    :init
+
+    ;; Optionally replace the key help with a completing-read interface
+    (setq prefix-help-command #'embark-prefix-help-command)
+
+    ;; Show the Embark target at point via Eldoc.  You may adjust the Eldoc
+    ;; strategy, if you want to see the documentation from multiple providers.
+    (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+    ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+    :config
+
+    ;; Hide the mode line of the Embark live/completions buffers
+    (add-to-list 'display-buffer-alist
+                 '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
+                   nil
+                   (window-parameters (mode-line-format . none)))))
+#+end_src
+*** Keybinds
+
+#+begin_src emacs-lisp
+  (global-set-key (kbd "M-o") 'other-window)
+
+  (use-package which-key
+    :ensure
+    :config
+    (which-key-mode 1))
+
+#+end_src
+** Packages
+*** vterm
+
+#+begin_src emacs-lisp
+
+  (use-package vterm
+    :ensure t)
+#+end_src
+
+*** toc-org
+Let's install and load the =toc-org= package after org mode is loaded. This is the
+package that automatically generates an up to date table of contents for us.
+
+#+BEGIN_SRC emacs-lisp
+(use-package toc-org
+  :after org
+  :init (add-hook 'org-mode-hook #'toc-org-enable))
+#+END_SRC
+
+*** htmlize
+#+begin_src emacs-lisp
+    ;; this ensures code highlighting on export... and probably other stuff
+    (use-package htmlize
+      :ensure)
+#+end_src
+
+*** wgrep
+#+begin_src emacs-lisp
+    (use-package wgrep
+      :ensure)
+#+end_src
+
+*** Ace Jump
+#+begin_src emacs-lisp
+  (use-package ace-jump-mode
+    :ensure
+    :config
+    (define-key global-map (kbd "C-;") 'ace-jump-mode))
+
+#+end_src
+*** Helpful
+#+begin_src emacs-lisp
+  (use-package helpful
+    :ensure
+    :config
+    (global-set-key (kbd "C-h f") #'helpful-callable)
+    (global-set-key (kbd "C-h v") #'helpful-variable)
+    (global-set-key (kbd "C-h k") #'helpful-key)
+    (global-set-key (kbd "C-c C-d") #'helpful-at-point))
+#+end_src
+** Programming
+*** General
+Commenting keybinds works on most languages
+#+begin_src emacs-lisp
+  (global-set-key "\C-c\C-u" 'uncomment-region)
+  (global-set-key "\C-c\C-p" 'comment-region)
+
+  ;; not having this will ruin your whole life
+  (setq-default indent-tabs-mode nil)
+
+  ;; remove trailing whitespace
+  (add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+  ;; magic auto format shit
+  (use-package apheleia
+    :ensure t
+    :config
+    (apheleia-global-mode +1))
+
+  (delete-selection-mode 1)
+#+end_src
+
+Eglot as my main LSP client
+
+#+begin_src emacs-lisp
+  (use-package eglot :ensure)
+#+end_src
+
+Good to keep LSP mode around, though
+
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :custom
+    (lsp-completion-provider :none) ;; we use Corfu!
+    :init
+    ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+    (setq lsp-keymap-prefix "C-c l")
+    (defun my/lsp-mode-setup-completion ()
+      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+            '(orderless))) ;; Configure orderless
+    :hook
+    (lsp-completion-mode . my/lsp-mode-setup-completion)
+    :commands lsp)
+
+
+  ;; optionally
+  (use-package lsp-ui :ensure :commands lsp-ui-mode)
+  ;; if you are ivy user
+  (use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+#+end_src
+*** Eldoc
+#+BEGIN_SRC emacs-lisp
+(use-package eldoc
+  :defer     t
+  :diminish  eldoc-mode)
+#+END_SRC
+*** Projectile
+#+begin_src emacs-lisp
+  (use-package projectile
+    :ensure
+    :config
+    (projectile-mode +1)
+    (setq projectile-switch-project-action 'magit-status)
+    (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+    ;;(setq projectile-indexing-method 'native)
+    (setq projectile-indexing-method 'alien))
+#+end_src
+*** Git
+**** Magit
+#+begin_src emacs-lisp
+  (use-package magit
+    :ensure
+    :config
+    (setq magit-display-buffer-function
+          (lambda (buffer)
+            (display-buffer
+             buffer (if (and (derived-mode-p 'magit-mode)
+                             (memq (with-current-buffer buffer major-mode)
+                                   '(magit-process-mode
+                                     magit-revision-mode
+                                     magit-diff-mode
+                                     magit-stash-mode
+                                     magit-status-mode)))
+                        nil
+                      '(display-buffer-same-window)))))
+    (global-set-key (kbd "C-x g") 'magit-status)
+    )
+#+end_src
+**** Other
+#+begin_src emacs-lisp
+  (use-package browse-at-remote :ensure)
+
+
+  (use-package forge
+    :ensure
+    :after magit)
+  (setq forge-owned-accounts '(("scottstav")))
+
+  (use-package git-gutter+
+    :ensure
+    :config
+    (define-key git-gutter+-mode-map (kbd "M-g k") 'git-gutter+-revert-hunk)
+    (define-key git-gutter+-mode-map (kbd "M-g n") 'git-gutter+-next-hunk))
+  (global-git-gutter+-mode)
+#+end_src
+*** Parens
+
+
+#+BEGIN_SRC emacs-lisp
+  (show-paren-mode 1)
+  (electric-pair-mode 1)
+  (global-set-key (kbd "C-c C-k") 'paredit-splice-sexp)
+#+END_SRC
+
+use rainbow delimiters
+#+BEGIN_SRC emacs-lisp
+(use-package rainbow-delimiters
+  :ensure t)
+
+;; Don't show anything for rainbow-mode.
+(use-package rainbow-mode
+  :delight)
+#+END_SRC
+
+#+END_SRC
+*** Languages
+**** Javascript / Typescript
+#+begin_src emacs-lisp
+  (use-package prettier-js
+  :ensure)
+
+  (defun setup-typescript-mode ()
+    "Setup function for typescript."
+    (interactive)
+    ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+    (add-node-modules-path)
+    ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+    (centered-cursor-mode 1)
+    (subword-mode)
+    (eglot-ensure))
+
+  (defun setup-javascript-mode ()
+    "Setup function for javascript."
+    (interactive)
+    (eglot-ensure)
+    ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+    (add-node-modules-path)
+    ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+    (centered-cursor-mode 1)
+    (subword-mode))
+
+  (add-hook 'typescript-mode-hook #'setup-typescript-mode)
+  (add-hook 'typescript-ts-mode-hook #'setup-typescript-mode)
+  (add-hook 'js-base-mode-hook #'setup-javascript-mode)
+
+  (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
+    (add-hook 'typescript-mode-hook 'jest-test-mode)
+    (add-hook 'typescript-ts-mode-hook 'jest-test-mode)
+    (add-hook 'js-mode-hook 'jest-test-mode)
+    (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
+
+  (setq js-indent-level 2)
+  (setq typescript-indent-level 2)
+#+end_src
+**** Lisp
+#+begin_src emacs-lisp
+#+end_src
+**** Python
+#+begin_src emacs-lisp
+#+end_src
+**** GraphQL
+#+begin_src emacs-lisp
+  (use-package graphql-mode
+    :ensure)
+#+end_src
+**** Golang
+#+begin_src emacs-lisp
+  (use-package go-mode
+    :ensure
+    :config
+    (add-hook 'go-mode-hook 'eglot-ensure))
+#+end_src
+**** JSON mode
+#+BEGIN_SRC emacs-lisp
+(use-package json-mode
+  :ensure    json-mode
+  :config    (bind-keys :map json-mode-map
+                        ("C-c i" . json-mode-beautify))
+  :mode      ("\\.\\(json\\)$" . json-mode))
+
+#+END_SRC
+**** YAML
+#+BEGIN_SRC emacs-lisp
+(use-package yaml-mode
+  :mode ("\\.\\(yml\\|yaml\\|\\config\\|sls\\)$" . yaml-mode)
+  :ensure yaml-mode
+  :defer t)
+
+#+END_SRC
+**** C
+#+BEGIN_SRC emacs-lisp
+ (use-package cc-mode
+  :config
+  (progn
+    (add-hook 'c-mode-hook (lambda () (c-set-style "bsd")))
+    (add-hook 'java-mode-hook (lambda () (c-set-style "bsd")))
+    (setq tab-width 2)
+    (setq c-basic-offset 2)))
+#+END_SRC
+**** CSS
+#+BEGIN_SRC emacs-lisp
+(use-package css-mode
+  :config (setq css-indent-offset 2)
+)
+#+END_SRC
+**** Terraform
+#+BEGIN_SRC emacs-lisp
+  (use-package terraform-mode
+    :ensure
+    :config
+    (defun tf-before-save ()
+      (when (eq major-mode 'terraform-mode)
+        (message (concat "Running tf format " buffer-file-name))
+        (call-process-shell-command (concat "terraform fmt -list=false -write=true " buffer-file-name "&"))))
+    (add-hook 'before-save-hook #'tf-before-save)
+    )
+#+END_SRC
+
+#+RESULTS:
+**** Markdown
+#+begin_src emacs-lisp
+  ;; markdown
+  ;; may need to:
+  ;; * yay -S pandoc
+  (use-package markdown-mode
+    :ensure t
+    :commands (markdown-mode gfm-mode)
+    :mode (("README\\.md\\'" . gfm-mode)
+           ("\\.md\\'" . markdown-mode)
+           ("\\.markdown\\'" . markdown-mode))
+    :init (setq markdown-command "pandoc"))
+#+end_src
+**** Docker
+#+begin_src emacs-lisp
+  (use-package dockerfile-mode
+    :ensure)
+#+end_src
+* Misc Functions
+#+begin_src emacs-lisp
+  (defun untabify-buffer ()
+    "De-indent current buffer."
+    (interactive)
+    (untabify (point-min) (point-max)))
+
+  (defun indent-buffer ()
+    "Indent the entire buffer according to current mode."
+    (interactive)
+    (indent-region (point-min) (point-max)))
+
+  (defun cleanup-buffer ()
+    "Perform a bunch of operations on the whitespace content of a buffer.
+  Including indent-buffer, which should not be called automatically on save."
+    (interactive)
+    (untabify-buffer)
+    (delete-trailing-whitespace)
+    (indent-buffer))
+
+  (defun crontab-e ()
+    "Run `crontab -e' in a Emacs buffer."
+    (interactive)
+    (with-editor-async-shell-command "crontab -e"))
+#+end_src

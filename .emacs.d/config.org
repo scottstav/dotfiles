@@ -11,10 +11,10 @@
 - [[#configuration][Configuration]]
   - [[#personal-information][Personal Information]]
   - [[#settings][Settings]]
+    - [[#package-management][Package Management]]
     - [[#initialization][Initialization]]
     - [[#constants][Constants]]
     - [[#sanity-defaults][Sanity Defaults]]
-    - [[#package-management][Package Management]]
     - [[#auth][Auth]]
     - [[#region][Region]]
     - [[#cursor][Cursor]]
@@ -48,6 +48,80 @@ Let's set some variables with basic user information.
 #+END_SRC
 
 ** Settings
+*** Package Management
+**** Package Settings
+We're going to set the =load-path= ourselves and avoid calling =(package-initilize)= (for
+performance reasons) so we need to set =package--init-file-ensured= to true to tell =package.el=
+to not automatically call it on our behalf. Additionally we're setting
+=package-enable-at-startup= to nil so that packages will not automatically be loaded for us since
+=use-package= will be handling that.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-and-compile
+    (setq load-prefer-newer t
+          package-user-dir "~/.emacs.d/elpa"
+          package--init-file-ensured t
+          package-enable-at-startup nil)
+
+    (unless (file-directory-p package-user-dir)
+      (make-directory package-user-dir t)))
+#+END_SRC
+
+**** Use-Package Settings
+Tell =use-package= to always defer loading packages unless explicitly told otherwise. This speeds up
+initialization significantly as many packages are only loaded later when they are explicitly used.
+
+#+BEGIN_SRC emacs-lisp
+  (setq use-package-always-defer t
+        use-package-verbose t)
+#+END_SRC
+
+**** Manually Set Load Path
+We're going to set the load path ourselves so that we don't have to call =package-initialize= at
+runtime and incur a large performance hit. This load-path will actually be faster than the one
+created by =package-initialize= because it appends the elpa packages to the end of the load path.
+Otherwise any time a builtin package was required it would have to search all of third party paths
+first.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-and-compile
+    (setq load-path (append load-path (directory-files package-user-dir t "^[^.]" t))))
+#+END_SRC
+
+**** Initialise Package Management
+Next we are going to require =package.el= and add our additional package archives, 'melpa' and 'org'.
+Afterwards we need to initialize our packages and then ensure that =use-package= is installed, which
+we promptly install if it's missing. Finally we load =use-package= and tell it to always install any
+missing packages.
+
+Note that this entire block is wrapped in =eval-when-compile=. The effect of this is to perform all
+of the package initialization during compilation so that when byte compiled, all of this time consuming
+code is skipped. This can be done because the result of byte compiling =use-package= statements results
+in the macro being fully expanded at which point =use-package= isn't actually required any longer.
+
+Since the code is automatically compiled during runtime, if the configuration hasn't already been
+previously compiled manually then all of the package initialization will still take place at startup.
+
+#+BEGIN_SRC emacs-lisp
+  (eval-when-compile
+    (require 'package)
+
+    (unless (assoc-default "melpa" package-archives)
+      (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
+    (unless (assoc-default "org" package-archives)
+      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/") t))
+
+    (package-initialize)
+    (unless (package-installed-p 'use-package)
+      (package-refresh-contents)
+      (package-install 'use-package))
+    (unless (package-installed-p 'bind-key)
+      (package-refresh-contents)
+      (package-install 'bind-key))
+    (require 'use-package)
+    (require 'bind-key)
+    (setq use-package-always-ensure t))
+#+END_SRC
 *** Initialization
 
 I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= /after/ my WM starts using =focus-in-hook=
@@ -148,80 +222,6 @@ I need to make sure emacs knows about all my environment variables. Many of the 
   (setq save-interprogram-paste-before-kill nil)
 
 
-#+END_SRC
-*** Package Management
-**** Package Settings
-We're going to set the =load-path= ourselves and avoid calling =(package-initilize)= (for
-performance reasons) so we need to set =package--init-file-ensured= to true to tell =package.el=
-to not automatically call it on our behalf. Additionally we're setting
-=package-enable-at-startup= to nil so that packages will not automatically be loaded for us since
-=use-package= will be handling that.
-
-#+BEGIN_SRC emacs-lisp
-  (eval-and-compile
-    (setq load-prefer-newer t
-          package-user-dir "~/.emacs.d/elpa"
-          package--init-file-ensured t
-          package-enable-at-startup nil)
-
-    (unless (file-directory-p package-user-dir)
-      (make-directory package-user-dir t)))
-#+END_SRC
-
-**** Use-Package Settings
-Tell =use-package= to always defer loading packages unless explicitly told otherwise. This speeds up
-initialization significantly as many packages are only loaded later when they are explicitly used.
-
-#+BEGIN_SRC emacs-lisp
-  (setq use-package-always-defer t
-        use-package-verbose t)
-#+END_SRC
-
-**** Manually Set Load Path
-We're going to set the load path ourselves so that we don't have to call =package-initialize= at
-runtime and incur a large performance hit. This load-path will actually be faster than the one
-created by =package-initialize= because it appends the elpa packages to the end of the load path.
-Otherwise any time a builtin package was required it would have to search all of third party paths
-first.
-
-#+BEGIN_SRC emacs-lisp
-  (eval-and-compile
-    (setq load-path (append load-path (directory-files package-user-dir t "^[^.]" t))))
-#+END_SRC
-
-**** Initialise Package Management
-Next we are going to require =package.el= and add our additional package archives, 'melpa' and 'org'.
-Afterwards we need to initialize our packages and then ensure that =use-package= is installed, which
-we promptly install if it's missing. Finally we load =use-package= and tell it to always install any
-missing packages.
-
-Note that this entire block is wrapped in =eval-when-compile=. The effect of this is to perform all
-of the package initialization during compilation so that when byte compiled, all of this time consuming
-code is skipped. This can be done because the result of byte compiling =use-package= statements results
-in the macro being fully expanded at which point =use-package= isn't actually required any longer.
-
-Since the code is automatically compiled during runtime, if the configuration hasn't already been
-previously compiled manually then all of the package initialization will still take place at startup.
-
-#+BEGIN_SRC emacs-lisp
-  (eval-when-compile
-    (require 'package)
-
-    (unless (assoc-default "melpa" package-archives)
-      (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
-    (unless (assoc-default "org" package-archives)
-      (add-to-list 'package-archives '("org" . "http://orgmode.org/elpa/") t))
-
-    (package-initialize)
-    (unless (package-installed-p 'use-package)
-      (package-refresh-contents)
-      (package-install 'use-package))
-    (unless (package-installed-p 'bind-key)
-      (package-refresh-contents)
-      (package-install 'bind-key))
-    (require 'use-package)
-    (require 'bind-key)
-    (setq use-package-always-ensure t))
 #+END_SRC
 *** Auth
 

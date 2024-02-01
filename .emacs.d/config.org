@@ -290,7 +290,7 @@ previously compiled manually then all of the package initialization will still t
 *** Org
 #+begin_src emacs-lisp
   (use-package org
-    :ensure org-plus-contrib
+    :ensure t
     :delight org-mode "✎"
     :pin org
     :defer t

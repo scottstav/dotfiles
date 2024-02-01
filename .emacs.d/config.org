@@ -267,7 +267,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
                    (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
                    (match-string 1))))))
 
-  (define-key dired-mode-map (kbd "?") 'dired-get-size)
+  ;;(define-key dired-mode-map (kbd "?") 'dired-get-size)
   ;;(define-key dired-mode-map (kbd "V") 'dired-get-size)
 
   ;; open mkv files with xdg-open, add more to the string-suffix-p function call to open others files in xdg open
@@ -279,7 +279,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
           (call-process "xdg-open" nil 0 nil file)
         (dired-find-file))))
 
-  (define-key dired-mode-map [return] 'open-file-or-xdg-open)
+  ;;(define-key dired-mode-map [return] 'open-file-or-xdg-open)
 
   (defun file-info ()
     "Show the info for just the current file."

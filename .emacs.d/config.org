@@ -117,15 +117,27 @@ first.
 #+END_SRC
 *** Initialization
 
-I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= /after/ my WM starts using =focus-in-hook=
+I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= and =copyenv= /after/ my WM starts using =focus-in-hook=
 #+begin_src emacs-lisp
-  (use-package exec-path-from-shell :ensure)
-
-  (defun my/focus-in-hook ()
-    "Do exec-path-from-shell-initialize, then remove self from `focus-in-hook'; need to run this just once."
-    (exec-path-from-shell-initialize)
-    (remove-hook 'focus-in-hook #'my/focus-in-hook))
-  (add-hook 'focus-in-hook #'my/focus-in-hook)
+;;  (use-package exec-path-from-shell :ensure)
+;;
+;;  (defun my/focus-in-hook ()
+;;    "Do exec-path-from-shell-initialize, then remove self from `focus-in-hook'; need to run this just once."
+;;    (exec-path-from-shell-initialize)
+;;    (let ((str
+;;           (with-temp-buffer
+;;             (insert-file-contents "env.txt")
+;;             (buffer-string))) lst)
+;;      (setq lst (split-string str "\000"))
+;;      (while lst
+;;        (setq cur (car lst))
+;;        (when (string-match "^\\(.*?\\)=\\(.*\\)" cur)
+;;          (setq var (match-string 1 cur))
+;;          (setq value (match-string 2 cur))
+;;          (setenv var value))
+;;        (setq lst (cdr lst))))
+;;    (remove-hook 'focus-in-hook #'my/focus-in-hook))
+;;  (add-hook 'focus-in-hook #'my/focus-in-hook)
 #+end_src
 *** Constants
 #+BEGIN_SRC emacs-lisp
@@ -226,7 +238,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 #+begin_src emacs-lisp
   (use-package expand-region
     :ensure
-    :config
+    :init
     (global-set-key (kbd "C-\\") 'er/expand-region)
     )
 
@@ -241,11 +253,12 @@ I need to make sure emacs knows about all my environment variables. Many of the 
   ;; install multiple cursors
   (use-package multiple-cursors
     :ensure t
-    :config
+    :init
     (global-set-key (kbd "C-c m c") 'mc/edit-lines)
     (global-set-key (kbd "C-=")  'mc/mark-next-like-this)
     (global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
     (global-set-key (kbd "C-<")  'mc/mark-previous-like-this)
+    (multiple-cursors-mode)
     )
 #+end_src
 *** Dired
@@ -298,25 +311,26 @@ I need to make sure emacs knows about all my environment variables. Many of the 
     (setq org-export-with-section-numbers nil)
     (org-clock-persistence-insinuate))
 
-      ;; ;; org babel
-      (use-package ob-http :ensure)
-      (use-package ob-mongo :ensure)
-      (use-package ob-graphql :ensure)
+  ;; ;; org babel
+  (use-package ob-http :ensure t)
+  (use-package ob-mongo :ensure t)
+  (use-package ob-graphql :ensure t)
 
-      (org-babel-do-load-languages
-       'org-babel-load-languages
-       '((shell . t)
-         (emacs-lisp . t)
-         (latex . t)
-         (js . t)
-         (python . t)
-         ))
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '((shell . t)
+     (emacs-lisp . t)
+     (latex . t)
+     (js . t)
+     (python . t)
+     (http . t)
+     ))
 
 
-      (defun my-org-confirm-babel-evaluate (lang body)
-        (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell"))))
+  (defun my-org-confirm-babel-evaluate (lang body)
+    (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell"))))
 
-      (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
+  (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
 #+end_src
 **** Roam

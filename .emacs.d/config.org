@@ -285,7 +285,8 @@ I need to make sure emacs knows about all my environment variables. Many of the 
           (call-process "xdg-open" nil 0 nil file)
         (dired-find-file))))
 
-  ;;(define-key dired-mode-map [return] 'open-file-or-xdg-open)
+  (define-key dired-mode-map [return] 'open-file-or-xdg-open)
+  (define-key dired-mode-map (kbd "<mouse-2>") 'open-file-or-xdg-open)
 
   (defun file-info ()
     "Show the info for just the current file."
@@ -390,7 +391,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
     (org-ai-global-mode) ; installs global keybindings on C-c M-a
     :config
     (setq org-ai-default-chat-model "gpt-3.5-turbo") ; if you are on the gpt-4 beta:
-                                          ;  (org-ai-install-yasnippets)) ; if you are using yasnippet and want `ai` snippets
+
     )
 #+end_src
 
@@ -509,7 +510,7 @@ This is in-buffer completion (autocomplete)
 
   (use-package yasnippet
    :ensure
-   :config
+   :init
    (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
    (global-set-key (kbd "C-c i") 'yas-insert-snippet)
    (setq yas/indent-line nil)
@@ -980,13 +981,7 @@ use rainbow delimiters
 #+END_SRC
 **** C
 #+BEGIN_SRC emacs-lisp
- (use-package cc-mode
-  :config
-  (progn
-    (add-hook 'c-mode-hook (lambda () (c-set-style "bsd")))
-    (add-hook 'java-mode-hook (lambda () (c-set-style "bsd")))
-    (setq tab-width 2)
-    (setq c-basic-offset 2)))
+  (add-hook 'c-mode-common-hook '(lambda () (lsp)))
 #+END_SRC
 **** CSS
 #+BEGIN_SRC emacs-lisp

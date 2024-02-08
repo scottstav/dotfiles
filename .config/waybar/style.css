@@ -115,6 +115,7 @@ window#waybar {
 }
 
 #pulseaudio.muted {
+    color: #f53c3c;
 }
 
 #custom-spotify {

@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Spotify
+GenericName=Music
+Comment=Music
+Exec=open-spotify
+Icon=spotify
+Type=Application
+Terminal=false

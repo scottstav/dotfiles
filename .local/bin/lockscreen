@@ -1,0 +1,5 @@
+#!/bin/bash
+swayidle -w \
+         timeout 300 'swaylock --ring-color 2d6bb5 --key-hl-color 082b4b --line-color 00000000 --inside-color 5ca9af' \
+         timeout 1500 'hyprctl dispatch dpms off' \
+         resume 'hyprctl dispatch dpms on'

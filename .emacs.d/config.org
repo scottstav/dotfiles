@@ -232,8 +232,9 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 
 #+begin_src emacs-lisp
   ;; auth
-  (setq auth-sources '("~/.authinfo"))
+  (setq auth-sources '("~/.authinfo.gpg"))
   (setq epg-gpg-program "gpg")
+  (setf epa-pinentry-mode 'loopback)
 #+end_src
 *** Region
 #+begin_src emacs-lisp

@@ -12,38 +12,6 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 :VISIBILITY: children
 :END:
 
-** Table of Contents :TOC_3_gh:
-- [[#configuration][Configuration]]
-  - [[#personal-information][Personal Information]]
-  - [[#settings][Settings]]
-    - [[#package-management][Package Management]]
-    - [[#initialization][Initialization]]
-    - [[#constants][Constants]]
-    - [[#sanity-defaults][Sanity Defaults]]
-    - [[#auth][Auth]]
-    - [[#region][Region]]
-    - [[#cursor][Cursor]]
-    - [[#dired][Dired]]
-    - [[#org][Org]]
-    - [[#ai][AI]]
-    - [[#ui][UI]]
-    - [[#keybinds][Keybinds]]
-  - [[#packages][Packages]]
-    - [[#vterm][vterm]]
-    - [[#toc-org][toc-org]]
-    - [[#htmlize][htmlize]]
-    - [[#wgrep][wgrep]]
-    - [[#ace-jump][Ace Jump]]
-    - [[#helpful][Helpful]]
-  - [[#programming][Programming]]
-    - [[#general][General]]
-    - [[#eldoc][Eldoc]]
-    - [[#projectile][Projectile]]
-    - [[#git][Git]]
-    - [[#parens][Parens]]
-    - [[#languages][Languages]]
-- [[#misc-functions][Misc Functions]]
-
 ** Personal Information
 Let's set some variables with basic user information.
 
@@ -744,16 +712,6 @@ This is in-buffer completion (autocomplete)
   (use-package vterm
     :ensure t)
 #+end_src
-
-*** toc-org
-Let's install and load the =toc-org= package after org mode is loaded. This is the
-package that automatically generates an up to date table of contents for us.
-
-#+BEGIN_SRC emacs-lisp
-(use-package toc-org
-  :after org
-  :init (add-hook 'org-mode-hook #'toc-org-enable))
-#+END_SRC
 
 *** htmlize
 #+begin_src emacs-lisp

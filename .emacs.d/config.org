@@ -8,12 +8,7 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 #+end_quote
 
 * Configuration
-:PROPERTIES:
-:VISIBILITY: children
-:END:
-
 ** Personal Information
-Let's set some variables with basic user information.
 
 #+BEGIN_SRC emacs-lisp
 (setq user-full-name "Scott Stavinoha"
@@ -23,11 +18,6 @@ Let's set some variables with basic user information.
 ** Settings
 *** Package Management
 **** Package Settings
-We're going to set the =load-path= ourselves and avoid calling =(package-initilize)= (for
-performance reasons) so we need to set =package--init-file-ensured= to true to tell =package.el=
-to not automatically call it on our behalf. Additionally we're setting
-=package-enable-at-startup= to nil so that packages will not automatically be loaded for us since
-=use-package= will be handling that.
 
 #+BEGIN_SRC emacs-lisp
   (eval-and-compile
@@ -41,20 +31,8 @@ to not automatically call it on our behalf. Additionally we're setting
 #+END_SRC
 
 **** Use-Package Settings
-Tell =use-package= to always defer loading packages unless explicitly told otherwise. This speeds up
-initialization significantly as many packages are only loaded later when they are explicitly used.
-
-#+BEGIN_SRC emacs-lisp
-  (setq use-package-always-defer t
-        use-package-verbose t)
-#+END_SRC
 
 **** Manually Set Load Path
-We're going to set the load path ourselves so that we don't have to call =package-initialize= at
-runtime and incur a large performance hit. This load-path will actually be faster than the one
-created by =package-initialize= because it appends the elpa packages to the end of the load path.
-Otherwise any time a builtin package was required it would have to search all of third party paths
-first.
 
 #+BEGIN_SRC emacs-lisp
   (eval-and-compile
@@ -87,25 +65,9 @@ first.
 
 I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= and =copyenv= /after/ my WM starts using =focus-in-hook=
 #+begin_src emacs-lisp
-;;  (use-package exec-path-from-shell :ensure)
-;;
-;;  (defun my/focus-in-hook ()
-;;    "Do exec-path-from-shell-initialize, then remove self from `focus-in-hook'; need to run this just once."
-;;    (exec-path-from-shell-initialize)
-;;    (let ((str
-;;           (with-temp-buffer
-;;             (insert-file-contents "env.txt")
-;;             (buffer-string))) lst)
-;;      (setq lst (split-string str "\000"))
-;;      (while lst
-;;        (setq cur (car lst))
-;;        (when (string-match "^\\(.*?\\)=\\(.*\\)" cur)
-;;          (setq var (match-string 1 cur))
-;;          (setq value (match-string 2 cur))
-;;          (setenv var value))
-;;        (setq lst (cdr lst))))
-;;    (remove-hook 'focus-in-hook #'my/focus-in-hook))
-;;  (add-hook 'focus-in-hook #'my/focus-in-hook)
+   (use-package exec-path-from-shell :ensure :init (exec-path-from-shell-initialize))
+
+
 #+end_src
 *** Constants
 #+BEGIN_SRC emacs-lisp
@@ -891,43 +853,45 @@ use rainbow delimiters
 *** Languages
 **** Javascript / Typescript
 #+begin_src emacs-lisp
-  (use-package add-node-modules-path
-    :ensure)
+    (use-package add-node-modules-path
+      :ensure)
 
-    (use-package prettier-js
-    :ensure)
+      (use-package prettier-js
+      :ensure)
 
-  (defun setup-typescript-mode ()
-      "Setup function for typescript."
-      (interactive)
-      ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
-      (add-node-modules-path)
-      ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
-      ;;(centered-cursor-mode 1)
-      (subword-mode)
-      (lsp))
+    (defun setup-typescript-mode ()
+        "Setup function for typescript."
+        (interactive)
+        ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+        (add-node-modules-path)
+        ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+        ;;(centered-cursor-mode 1)
+        (subword-mode)
+        (display-line-numbers-mode)
+        (lsp))
 
-    (defun setup-javascript-mode ()
-      "Setup function for javascript."
-      (interactive)
-      (lsp)
-      ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
-      (add-node-modules-path)
-      ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
-      ;;(centered-cursor-mode 1)
-      (subword-mode))
-    (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
-    (add-hook 'typescript-mode-hook #'setup-typescript-mode)
-    (add-hook 'js-base-mode-hook #'setup-javascript-mode)
+      (defun setup-javascript-mode ()
+        "Setup function for javascript."
+        (interactive)
+        (lsp)
+        ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+        (add-node-modules-path)
+        ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+        ;;(centered-cursor-mode 1)
+        (subword-mode)
+        (display-line-numbers-mode))
+      (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
+      (add-hook 'typescript-mode-hook #'setup-typescript-mode)
+      (add-hook 'js-base-mode-hook #'setup-javascript-mode)
 
-    (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
-      (add-hook 'typescript-mode-hook 'jest-test-mode)
-      (add-hook 'typescript-ts-mode-hook 'jest-test-mode)
-      (add-hook 'js-mode-hook 'jest-test-mode)
-      (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
+      (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
+        (add-hook 'typescript-mode-hook 'jest-test-mode)
+        (add-hook 'typescript-ts-mode-hook 'jest-test-mode)
+        (add-hook 'js-mode-hook 'jest-test-mode)
+        (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
 
-    (setq js-indent-level 2)
-    (setq typescript-indent-level 2)
+      (setq js-indent-level 2)
+      (setq typescript-indent-level 2)
 #+end_src
 **** Lisp
 #+begin_src emacs-lisp

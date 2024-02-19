@@ -15,7 +15,15 @@ application/xhtml+xml=firefox.desktop
 application/x-extension-xhtml=firefox.desktop
 application/x-extension-xht=firefox.desktop
 video/x-matroska=mpv.desktop
-image/png=feh.desktop
+video/x-flv=mpv.desktop
+video/mp4=mpv.desktop
+application/x-mpegURL=mpv.desktop
+video/MP2T=mpv.desktop
+video/3gpp=mpv.desktop
+video/quicktime=mpv.desktop
+video/x-msvideo=mpv.desktop
+video/x-ms-wmv=mpv.desktop
+image/png=feh.desktop=mpv.desktop
 
 [Added Associations]
 x-scheme-handler/http=firefox.desktop;

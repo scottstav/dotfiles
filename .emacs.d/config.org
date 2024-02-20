@@ -89,7 +89,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
    (lambda (mode)
      (when (fboundp mode)
        (funcall mode -1)))
-   '(menu-bar-mode tool-bar-mode scroll-bar-mode))
+   '(menu-bar-mode tool-bar-mode scroll-bar-mode toggle-scroll-bar))
 
     ;;; Initialisation
   (setq inhibit-default-init t
@@ -256,6 +256,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
   (use-package ob-graphql :ensure t)
   (use-package ox-gfm :ensure t)
 
+  (require 'org-tempo)
   (org-babel-do-load-languages
    'org-babel-load-languages
    '((shell . t)
@@ -673,6 +674,14 @@ This is in-buffer completion (autocomplete)
   (use-package mood-line :ensure
     :init
     (mood-line-mode))
+#+end_src
+**** Theme
+
+thx Prot
+#+begin_src emacs-lisp
+    (use-package modus-themes :ensure
+      :init
+      (load-theme 'modus-vivendi))
 #+end_src
 *** Keybinds
 

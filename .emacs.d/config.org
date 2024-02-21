@@ -89,7 +89,9 @@ I need to make sure emacs knows about all my environment variables. Many of the 
    (lambda (mode)
      (when (fboundp mode)
        (funcall mode -1)))
-   '(menu-bar-mode tool-bar-mode scroll-bar-mode toggle-scroll-bar))
+   '(menu-bar-mode tool-bar-mode))
+
+  (scroll-bar-mode 0)
 
     ;;; Initialisation
   (setq inhibit-default-init t

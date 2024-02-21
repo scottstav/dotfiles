@@ -681,7 +681,7 @@ thx Prot
 #+begin_src emacs-lisp
     (use-package modus-themes :ensure
       :init
-      (load-theme 'modus-vivendi))
+      (load-theme 'modus-vivendi :no-confirm))
 #+end_src
 *** Keybinds
 

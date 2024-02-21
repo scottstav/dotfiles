@@ -91,8 +91,6 @@ I need to make sure emacs knows about all my environment variables. Many of the 
        (funcall mode -1)))
    '(menu-bar-mode tool-bar-mode))
 
-  (scroll-bar-mode 0)
-
     ;;; Initialisation
   (setq inhibit-default-init t
         inhibit-startup-echo-area-message t
@@ -1024,4 +1022,6 @@ use rainbow delimiters
     "Run `crontab -e' in a Emacs buffer."
     (interactive)
     (with-editor-async-shell-command "crontab -e"))
+
+  (scroll-bar-mode 0)
 #+end_src

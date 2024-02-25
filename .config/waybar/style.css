@@ -125,6 +125,10 @@ window#waybar {
   color: #f53c3c;
 }
 
+#pulseaudio.source-muted {
+  color: #f53c3c;
+}
+
 #custom-spotify {
   color: rgb(102, 220, 105);
 }

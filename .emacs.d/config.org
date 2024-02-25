@@ -81,80 +81,85 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 
 *** Sanity Defaults
 #+BEGIN_SRC emacs-lisp
-  ;; random annoying message
-  (setq byte-compile-warnings '(cl-functions))
 
-  ;; menu shit remove
-  (mapc
-   (lambda (mode)
-     (when (fboundp mode)
-       (funcall mode -1)))
-   '(menu-bar-mode tool-bar-mode))
+    ;; default browser
+  (setq browse-url-browser-function (quote browse-url-generic))
+  (setq browse-url-generic-program "firefox")
 
-    ;;; Initialisation
-  (setq inhibit-default-init t
-        inhibit-startup-echo-area-message t
-        inhibit-startup-screen t
-        initial-scratch-message nil)
+    ;; random annoying message
+    (setq byte-compile-warnings '(cl-functions))
 
-  ;; warn when opening files bigger than 100MB
-  (setq large-file-warning-threshold 100000000)
+    ;; menu shit remove
+    (mapc
+     (lambda (mode)
+       (when (fboundp mode)
+         (funcall mode -1)))
+     '(menu-bar-mode tool-bar-mode))
 
-  (defconst gas-savefile-dir (expand-file-name "savefile" user-emacs-directory))
+      ;;; Initialisation
+    (setq inhibit-default-init t
+          inhibit-startup-echo-area-message t
+          inhibit-startup-screen t
+          initial-scratch-message nil)
 
-  ;; create the savefile dir if it doesn't exist
-  (unless (file-exists-p gas-savefile-dir)
-    (make-directory gas-savefile-dir))
+    ;; warn when opening files bigger than 100MB
+    (setq large-file-warning-threshold 100000000)
 
-    ;;; UI
+    (defconst gas-savefile-dir (expand-file-name "savefile" user-emacs-directory))
 
-  ;; disable the annoying bell ring
-  (setq ring-bell-function 'ignore)
+    ;; create the savefile dir if it doesn't exist
+    (unless (file-exists-p gas-savefile-dir)
+      (make-directory gas-savefile-dir))
 
-  ;; disable startup screen
-  (setq inhibit-startup-screen t)
+      ;;; UI
 
-  ;; nice scrolling
-  (setq scroll-margin 0
-        scroll-conservatively 100000
-        scroll-preserve-screen-position 1)
+    ;; disable the annoying bell ring
+    (setq ring-bell-function 'ignore)
 
-  ;; mode line settings
-  (line-number-mode t)
-  (column-number-mode t)
-  (size-indication-mode t)
+    ;; disable startup screen
+    (setq inhibit-startup-screen t)
 
-  ;; enable y/n answers
-  (fset 'yes-or-no-p 'y-or-n-p)
+    ;; nice scrolling
+    (setq scroll-margin 0
+          scroll-conservatively 100000
+          scroll-preserve-screen-position 1)
 
-  ;; Productive default mode
-  (setq initial-major-mode 'org-mode)
+    ;; mode line settings
+    (line-number-mode t)
+    (column-number-mode t)
+    (size-indication-mode t)
 
-  ;; Keep emacs Custom-settings in separate file.
-  (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-  (when (file-exists-p custom-file)
-    (load custom-file))
+    ;; enable y/n answers
+    (fset 'yes-or-no-p 'y-or-n-p)
 
-  ;; store all backup and autosave files in the tmp dir
-  (setq backup-directory-alist
-        `((".*" . ,temporary-file-directory)))
-  (setq auto-save-file-name-transforms
-        `((".*" ,temporary-file-directory t)))
+    ;; Productive default mode
+    (setq initial-major-mode 'org-mode)
 
-  (setq version-control t     ;; Use version numbers for backups.
-        kept-new-versions 10  ;; Number of newest versions to keep.
-        kept-old-versions 0   ;; Number of oldest versions to keep.
-        delete-old-versions t ;; Don't ask to delete excess backup versions.
-        backup-by-copying t)  ;; Copy all files, don't rename them.
+    ;; Keep emacs Custom-settings in separate file.
+    (setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+    (when (file-exists-p custom-file)
+      (load custom-file))
 
-  ;; revert buffers automatically when underlying files are changed externally
-  (global-auto-revert-mode t)
+    ;; store all backup and autosave files in the tmp dir
+    (setq backup-directory-alist
+          `((".*" . ,temporary-file-directory)))
+    (setq auto-save-file-name-transforms
+          `((".*" ,temporary-file-directory t)))
 
-  ;; Make backups of files, even when they're in version control.
-  (setq vc-make-backup-files t)
+    (setq version-control t     ;; Use version numbers for backups.
+          kept-new-versions 10  ;; Number of newest versions to keep.
+          kept-old-versions 0   ;; Number of oldest versions to keep.
+          delete-old-versions t ;; Don't ask to delete excess backup versions.
+          backup-by-copying t)  ;; Copy all files, don't rename them.
 
-  ;; Fix empty pasteboard error.
-  (setq save-interprogram-paste-before-kill nil)
+    ;; revert buffers automatically when underlying files are changed externally
+    (global-auto-revert-mode t)
+
+    ;; Make backups of files, even when they're in version control.
+    (setq vc-make-backup-files t)
+
+    ;; Fix empty pasteboard error.
+    (setq save-interprogram-paste-before-kill nil)
 
 
 #+END_SRC
@@ -694,6 +699,22 @@ thx Prot
     (which-key-mode 1))
 
 #+end_src
+*** Buffers
+#+begin_src emacs-lisp
+  (setq display-buffer-alist
+        '(
+          ((or . ((major-mode . vterm-mode)))
+           (display-buffer-pop-up-frame))
+          ((or . ((derived-mode . flymake-diagnostics-buffer-mode)
+                  (derived-mode . flymake-project-diagnostics-mode)
+                  (derived-mode . messages-buffer-mode)))
+           (display-buffer-reuse-mode-window display-buffer-at-bottom)
+           (window-height . 0.3)
+           (dedicated . t)
+           (preserve-size . (t . t)))
+          )
+        )
+#+end_src
 ** Packages
 *** vterm
 
@@ -702,7 +723,33 @@ thx Prot
   (use-package vterm
     :ensure t)
 #+end_src
+*** ERC
+#+begin_src emacs-lisp
+  (require 'erc)
+  (require 'erc-desktop-notifications)
+  (require 'erc-track)
+  (require 'notifications)
 
+  (erc-track-mode)
+  (setq erc-track-position-in-mode-line 't)
+
+  (defun my-on-action-function (id key)
+    (message "Message %d, key \"%s\" pressed" id key))
+
+
+  (defun my-on-close-function (id reason)
+    (message "Message %d, closed due to \"%s\"" id reason))
+
+  (defun erc-notifications-notify (nick msg)
+    (interactive)
+    "Notify that NICK send some MSG via notify-send."
+    (notifications-notify
+   :title nick
+   :body msg
+   :actions '("Confirm" "Reply" "Refuse" "Close")
+   :on-action 'my-on-action-function
+   :on-close 'my-on-close-function))
+#+end_src
 *** htmlize
 #+begin_src emacs-lisp
     ;; this ensures code highlighting on export... and probably other stuff
@@ -734,6 +781,7 @@ thx Prot
     (global-set-key (kbd "C-h k") #'helpful-key)
     (global-set-key (kbd "C-c C-d") #'helpful-at-point))
 #+end_src
+**
 ** Programming
 *** General
 
@@ -817,6 +865,7 @@ Good to keep LSP mode around, though
     (projectile-mode +1)
     (setq projectile-switch-project-action 'magit-status)
     (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+    (define-key projectile-command-map (kbd "x v") 'projectile-run-vterm-other-window)
     ;;(setq projectile-indexing-method 'native)
     (setq projectile-indexing-method 'alien))
 #+end_src
@@ -926,6 +975,8 @@ use rainbow delimiters
 #+end_src
 **** Python
 #+begin_src emacs-lisp
+  (add-hook 'python-mode-hook
+    (lambda () (lsp)))
 #+end_src
 **** GraphQL
 #+begin_src emacs-lisp

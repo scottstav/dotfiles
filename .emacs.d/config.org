@@ -976,7 +976,7 @@ use rainbow delimiters
 **** Python
 #+begin_src emacs-lisp
   (add-hook 'python-mode-hook
-    (lambda () (lsp)))
+    (lambda () (lsp) (display-line-numbers-mode)))
 #+end_src
 **** GraphQL
 #+begin_src emacs-lisp

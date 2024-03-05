@@ -656,11 +656,7 @@ This is in-buffer completion (autocomplete)
 
     :config
 
-    ;; Hide the mode line of the Embark live/completions buffers
-    (add-to-list 'display-buffer-alist
-                 '("\\`\\*Embark Collect \\(Live\\|Completions\\)\\*"
-                   nil
-                   (window-parameters (mode-line-format . none)))))
+    )
 #+end_src
 **** Window
 #+begin_src emacs-lisp

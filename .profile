@@ -5,7 +5,7 @@
 
 alias tf="terraform"
 alias ls='ls --color=auto'
-PS1='[\u@\h \W]\$ '
+export PS1="\[\e[36m\]\u\[\e[m\]@\[\e[32m\]\W\[\e[m\] \[\e[33m\]\\$\[\e[m\] "
 
 # local scripts and go path
 PATH=$PATH:~/.local/bin:~/go/bin

@@ -699,8 +699,8 @@ thx Prot
 #+begin_src emacs-lisp
   (setq display-buffer-alist
         '(
-          ((or . ((major-mode . vterm-mode)))
-           (display-buffer-pop-up-frame))
+          ;; ((or . ((major-mode . vterm-mode)))
+          ;;  (display-buffer-pop-up-frame))
           ((or . ((derived-mode . flymake-diagnostics-buffer-mode)
                   (derived-mode . flymake-project-diagnostics-mode)
                   (derived-mode . messages-buffer-mode)))

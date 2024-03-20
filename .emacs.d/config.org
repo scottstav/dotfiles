@@ -145,6 +145,11 @@ I need to make sure emacs knows about all my environment variables. Many of the 
           `((".*" . ,temporary-file-directory)))
     (setq auto-save-file-name-transforms
           `((".*" ,temporary-file-directory t)))
+    ;; dont auto save in tramp
+    (add-to-list 'backup-directory-alist
+           (cons tramp-file-name-regexp nil))
+
+
 
     (setq version-control t     ;; Use version numbers for backups.
           kept-new-versions 10  ;; Number of newest versions to keep.
@@ -218,7 +223,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
     "Open file with `xdg-open` if it's an `mkv` file, otherwise open it in Emacs."
     (interactive)
     (let ((file (dired-get-file-for-visit)))
-      (if (string-suffix-p ".mkv" file)
+      (if (or (string-suffix-p ".mkv" file) (string-suffix-p ".mp4" file))
           (call-process "xdg-open" nil 0 nil file)
         (dired-find-file))))
 
@@ -236,6 +241,33 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 
   ;; be able to switch current user to root
   (use-package dired-toggle-sudo :ensure t)
+#+end_src
+**** ffmpeg
+#+begin_src emacs-lisp
+(defun shell-double-quote (s)
+  "Double quotes for the string that shall be fed to shell command"
+  (replace-regexp-in-string "\"" "\\\\\"" s))
+
+(defun ffmpeg-cut-dired ()
+  "Dired function to cut video files from specific begin time for
+specific duration. You can cut many files at once if marked, or
+the function will work only on the specific file. Customize the
+list of video extensions below."
+  (interactive)
+  (let* ((files (dired-get-marked-files))
+     (allowed-extensions '("mp4" "ogv" "3gp")))
+    (dolist (file files)
+      (let* ((file-sans-ext (file-name-sans-extension file))
+         (file-ext (file-name-extension file)))
+    (when (seq-contains allowed-extensions file-ext)
+      (let* ((output (concat file-sans-ext "-cut." file-ext))
+         (begin-time (read-from-minibuffer "Begin time in format 00:00:00: " "00:00:00"))
+         (duration (read-from-minibuffer "Duration in format 00:00:00: " "00:00:10"))
+         (command (format "ffmpeg -i \"%s\" -ss %s -t %s -async 1 \"%s\""
+                  (shell-double-quote file)
+                  begin-time duration
+                  (shell-double-quote output))))
+        (shell-command command)))))))
 #+end_src
 *** Org
 #+begin_src emacs-lisp

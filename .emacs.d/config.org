@@ -978,7 +978,7 @@ use rainbow delimiters
       (defun setup-javascript-mode ()
         "Setup function for javascript."
         (interactive)
-        (lsp)
+        (eglot)
         ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
         (add-node-modules-path)
         ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)

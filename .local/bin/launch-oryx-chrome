@@ -1,2 +1,2 @@
 #!/bin/bash
-google-chrome-stable "https://configure.zsa.io/voyager/layouts/QlpOz/latest/3"
+google-chrome-stable "https://configure.zsa.io/voyager/layouts/QlpOz/latest/3" &

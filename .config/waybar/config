@@ -6,7 +6,7 @@
     "spacing": 4, // Gaps between modules (4px)
     // Choose the order of the modules
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["bluetooth", "pulseaudio"],
+    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio"],
     "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
     // Modules configuration
     // "sway/workspaces": {

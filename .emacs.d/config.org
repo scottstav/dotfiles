@@ -517,8 +517,8 @@ This is in-buffer completion (autocomplete)
 #+end_src
 **** Font
 #+begin_src emacs-lisp
-  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 14" ))
-  (set-frame-font "Iosevka Extended 14" nil t)
+  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 10" ))
+  (set-frame-font "Iosevka Extended 10" nil t)
 #+end_src
 **** Annotations
 #+begin_src emacs-lisp
@@ -844,8 +844,7 @@ thx Prot
     (use-package apheleia
       :ensure t
       :pin "melpa"
-      :config
-      (apheleia-global-mode +1))
+      )
 
     (delete-selection-mode 1)
 

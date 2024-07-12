@@ -42,6 +42,14 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 **** Initialise Package Management
 
 #+BEGIN_SRC emacs-lisp
+  (use-package quelpa
+    :ensure)
+
+  (use-package quelpa-use-package
+    :demand
+    :config
+    (quelpa-use-package-activate-advice))
+
   (eval-when-compile
     (require 'package)
 
@@ -520,6 +528,16 @@ This is in-buffer completion (autocomplete)
   (add-to-list 'default-frame-alist '(font . "Iosevka Extended 10" ))
   (set-frame-font "Iosevka Extended 10" nil t)
 #+end_src
+**** Copilot
+#+begin_src emacs-lisp
+  (use-package copilot
+    :quelpa (copilot :fetcher github
+                     :repo "copilot-emacs/copilot.el"
+                     :branch "main"
+                     :files ("*.el")))
+  ;; you can utilize :map :hook and :config to customize copilot
+  (add-hook 'prog-mode-hook 'copilot-mode)
+#+end_src
 **** Annotations
 #+begin_src emacs-lisp
   ;; Enable rich annotations using the Marginalia package
@@ -865,7 +883,7 @@ Good to keep LSP mode around, though
     :init
     ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
     (setq lsp-keymap-prefix "C-c l")
-    (setq lsp-response-timeout 2)
+    (setq lsp-response-timeout 1)
     (defun my/lsp-mode-setup-completion ()
       (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
             '(orderless))) ;; Configure orderless

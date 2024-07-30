@@ -537,6 +537,9 @@ This is in-buffer completion (autocomplete)
                      :files ("*.el")))
   ;; you can utilize :map :hook and :config to customize copilot
   (add-hook 'prog-mode-hook 'copilot-mode)
+
+  ;; bind copilot-accept-completion to <backtab> in prog-mode
+  (define-key prog-mode-map (kbd "<backtab>") 'copilot-accept-completion)
 #+end_src
 **** Annotations
 #+begin_src emacs-lisp

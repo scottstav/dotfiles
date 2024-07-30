@@ -1,0 +1,3 @@
+#!/bin/bash
+
+emacsclient -a emacs -q --eval "(progn (org-roam-dailies-capture-today t \"d\") (delete-other-windows) (save-buffer))"

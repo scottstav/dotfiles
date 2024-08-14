@@ -398,7 +398,20 @@ list of video extensions below."
 
     )
 #+end_src
+**** Speech
+#+begin_src emacs-lisp
+  (use-package whisper
+    :load-path "./elisp/whisper.el"
+    :bind ("M-s-r" . whisper-run))
 
+  (use-package greader :ensure)
+  (require 'whisper)
+  (require 'org-ai-talk)
+
+  ;; macOS speech settings, optional
+  (setq org-ai-talk-say-words-per-minute 210)
+  (setq org-ai-talk-say-voice "Karen")
+#+end_src
 *** UI
 **** Completion
 ***** Vertico and friends
@@ -843,6 +856,7 @@ thx Prot
        (go "https://github.com/tree-sitter/tree-sitter-go")
        (html "https://github.com/tree-sitter/tree-sitter-html")
        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+       (rust "https://github.com/tree-sitter/tree-sitter-rust" "master" "src")
        (json "https://github.com/tree-sitter/tree-sitter-json")
        (make "https://github.com/alemuller/tree-sitter-make")
        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
@@ -993,6 +1007,7 @@ use rainbow delimiters
     ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
     ;;(centered-cursor-mode 1)
     (subword-mode)
+
     (display-line-numbers-mode)
     (apheleia-mode)
     (lsp))
@@ -1040,6 +1055,28 @@ use rainbow delimiters
     :ensure
     :config
     (add-hook 'go-mode-hook 'eglot-ensure))
+#+end_src
+**** Rust
+#+begin_src emacs-lisp
+  (use-package rust-mode
+    :ensure
+    :init
+    (setq rust-mode-treesitter-derive t))
+
+
+  (use-package tree-sitter
+    :ensure
+    :config
+    (require 'tree-sitter-langs)
+    (global-tree-sitter-mode)
+    (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+
+  (add-hook 'rust-mode-hook
+            (lambda () (setq indent-tabs-mode nil) (display-line-numbers-mode)))
+
+  (setq rust-format-on-save t)
+
+  (add-hook 'rust-mode-hook #'lsp)
 #+end_src
 **** JSON mode
 #+BEGIN_SRC emacs-lisp

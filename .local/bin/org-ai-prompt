@@ -1,0 +1,3 @@
+#!/bin/bash
+
+emacsclient -c -a emacs -q --eval "(progn (call-interactively 'org-ai-prompt-in-new-buffer) (delete-other-windows))"

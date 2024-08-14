@@ -396,22 +396,7 @@ list of video extensions below."
     (org-ai-global-mode) ; installs global keybindings on C-c M-a
     :config
     (setq org-ai-default-chat-model "gpt-3.5-turbo") ; if you are on the gpt-4 beta:
-
     )
-#+end_src
-**** Speech
-#+begin_src emacs-lisp
-  (use-package whisper
-    :load-path "./elisp/whisper.el"
-    :bind ("M-s-r" . whisper-run))
-
-  (use-package greader :ensure)
-  (require 'whisper)
-  (require 'org-ai-talk)
-
-  ;; macOS speech settings, optional
-  (setq org-ai-talk-say-words-per-minute 210)
-  (setq org-ai-talk-say-voice "Karen")
 #+end_src
 *** UI
 **** Completion

@@ -329,8 +329,9 @@ list of video extensions below."
   (defun my/org-roam-node-find ()
     (interactive)
     (if (equal current-prefix-arg nil) ; no C-u
+      (org-roam-node-find)
       (org-roam-node-find t nil 'my/org-roam-filter))
-      (org-roam-node-find))
+      )
 
   (use-package org-roam
     :ensure

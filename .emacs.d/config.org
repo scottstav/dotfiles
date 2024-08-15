@@ -379,10 +379,12 @@ list of video extensions below."
 #+end_src
 **** Images
 #+begin_src emacs-lisp
-    (use-package org-download :ensure
-      :init
-      (setq org-download-method 'attach)
-  )
+  (use-package org-download :ensure
+    :init
+    (setq org-download-method 'attach)
+    # convert input.jpg -resize 800x600 output.jpg
+    (setq org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s")
+    )
 #+end_src
 *** AI
 #+begin_src emacs-lisp

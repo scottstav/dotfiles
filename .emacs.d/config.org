@@ -534,9 +534,10 @@ This is in-buffer completion (autocomplete)
     :quelpa (copilot :fetcher github
                      :repo "copilot-emacs/copilot.el"
                      :branch "main"
-                     :files ("*.el")))
-  ;; you can utilize :map :hook and :config to customize copilot
-  (add-hook 'prog-mode-hook 'copilot-mode)
+                     :files ("*.el"))
+    :hook
+    (prog-mode . copilot-mode)
+    )
 
   ;; bind copilot-accept-completion to <backtab> in prog-mode
   (define-key prog-mode-map (kbd "<backtab>") 'copilot-accept-completion)
@@ -549,11 +550,9 @@ This is in-buffer completion (autocomplete)
     ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
     ;; available in the *Completions* buffer, add it to the
     ;; `completion-list-mode-map'.
-    :bind (:map minibuffer-local-map
-                ("M-A" . marginalia-cycle))
 
     ;; The :init section is always executed.
-    :init
+    :config
 
     ;; Marginalia must be activated in the :init section of use-package such that
     ;; the mode gets enabled right away. Note that this forces loading the
@@ -642,10 +641,6 @@ This is in-buffer completion (autocomplete)
     ;; This adds thin lines, sorting and hides the mode line of the window.
     (advice-add #'register-preview :override #'consult-register-window)
 
-    ;; Use Consult to select xref locations with preview
-    (setq xref-show-xrefs-function #'consult-xref
-          xref-show-definitions-function #'consult-xref)
-
     ;; Configure other variables and modes in the :config section,
     ;; after lazily loading the package.
     :config
@@ -704,10 +699,11 @@ This is in-buffer completion (autocomplete)
 
     ;; Show the Embark target at point via Eldoc.  You may adjust the Eldoc
     ;; strategy, if you want to see the documentation from multiple providers.
-    (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+
     ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
 
     :config
+    (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
 
     )
 #+end_src
@@ -722,11 +718,11 @@ This is in-buffer completion (autocomplete)
 **** Modeline
 #+begin_src emacs-lisp
   (use-package minions :ensure
-    :init
+    :config
     (minions-mode))
 
   (use-package mood-line :ensure
-    :init
+    :config
     (mood-line-mode))
 #+end_src
 **** Theme

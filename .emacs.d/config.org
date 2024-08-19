@@ -42,21 +42,8 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 **** Initialise Package Management
 
 #+BEGIN_SRC emacs-lisp
-  (use-package quelpa
-    :ensure)
-
-  (use-package quelpa-use-package
-    :demand
-    :config
-    (quelpa-use-package-activate-advice))
-
   (eval-when-compile
     (require 'package)
-
-    (unless (assoc-default "gnu" package-archives)
-      (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
-    (unless (assoc-default "melpa" package-archives)
-      (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
 
     (package-initialize)
     (unless (package-installed-p 'use-package)
@@ -68,6 +55,19 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
     (require 'use-package)
     (require 'bind-key)
     (setq use-package-always-ensure t))
+
+  (unless (assoc-default "gnu" package-archives)
+    (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
+  (unless (assoc-default "melpa" package-archives)
+    (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
+
+  (use-package quelpa
+    :ensure)
+
+  (use-package quelpa-use-package
+    :demand
+    :config
+    (quelpa-use-package-activate-advice))
 #+END_SRC
 *** Initialization
 
@@ -517,7 +517,6 @@ This is in-buffer completion (autocomplete)
    :init
    (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
    (global-set-key (kbd "C-c i") 'yas-insert-snippet)
-   (setq yas/indent-line nil)
    (setq markdown-fontify-code-blocks-natively t)
    (yas-global-mode 1))
 
@@ -535,8 +534,8 @@ This is in-buffer completion (autocomplete)
                      :repo "copilot-emacs/copilot.el"
                      :branch "main"
                      :files ("*.el"))
-    :hook
-    (prog-mode . copilot-mode)
+    ;;:hook
+    ;;(prog-mode . copilot-mode)
     )
 
   ;; bind copilot-accept-completion to <backtab> in prog-mode
@@ -766,7 +765,10 @@ thx Prot
 #+begin_src emacs-lisp
 
   (use-package vterm
-    :ensure t)
+    :ensure t
+    :config
+    (setq vterm-always-compile-module t)
+    )
 #+end_src
 *** ERC
 #+begin_src emacs-lisp

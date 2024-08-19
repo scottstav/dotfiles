@@ -534,8 +534,8 @@ This is in-buffer completion (autocomplete)
                      :repo "copilot-emacs/copilot.el"
                      :branch "main"
                      :files ("*.el"))
-    ;;:hook
-    ;;(prog-mode . copilot-mode)
+    :hook
+    (prog-mode . copilot-mode)
     )
 
   ;; bind copilot-accept-completion to <backtab> in prog-mode
@@ -763,11 +763,9 @@ thx Prot
 *** vterm
 
 #+begin_src emacs-lisp
-
+  (setq vterm-always-compile-module t)
   (use-package vterm
     :ensure t
-    :config
-    (setq vterm-always-compile-module t)
     )
 #+end_src
 *** ERC

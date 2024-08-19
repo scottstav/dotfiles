@@ -878,13 +878,6 @@ thx Prot
 
 #+end_src
 
-Eglot as my main LSP client
-
-#+begin_src emacs-lisp
-  (use-package eglot :ensure)
-#+end_src
-
-Good to keep LSP mode around, though
 
 #+begin_src emacs-lisp
   (use-package lsp-mode
@@ -1005,21 +998,6 @@ use rainbow delimiters
     (display-line-numbers-mode)
     (apheleia-mode)
     (lsp))
-
-  (defun setup-javascript-mode ()
-    "Setup function for javascript."
-    (interactive)
-    (eglot)
-    ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
-    (add-node-modules-path)
-    ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
-    ;;(centered-cursor-mode 1)
-    (subword-mode)
-    (apheleia-mode)
-    (display-line-numbers-mode))
-  (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-mode))
-  (add-hook 'typescript-mode-hook #'setup-typescript-mode)
-  (add-hook 'js-base-mode-hook #'setup-javascript-mode)
 
   (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
     (add-hook 'typescript-mode-hook 'jest-test-mode)

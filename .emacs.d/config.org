@@ -384,8 +384,9 @@ list of video extensions below."
           ("org-attachments" :base-directory "~/Dropbox/org/roam/data/" :base-extension any :publishing-directory "/ssh:root@pi.hole:/var/www/html/org/data/" :recursive t :publishing-function org-publish-attachment)
           ("org-daily-attachments" :base-directory "~/Dropbox/org/roam/daily/data/" :base-extension any :publishing-directory "/ssh:root@pi.hole:/var/www/html/org/daily/data" :recursive t :publishing-function org-publish-attachment)
           ("org-app" :base-directory "~/Dropbox/org/roam/js/" :base-extension any :publishing-directory "/ssh:root@pi.hole:/var/www/html/org/js/" :recursive t :publishing-function org-publish-attachment)
+          ("lantana-index" :base-directory "~/Dropbox/org/" :base-extension "org" :publishing-directory "/ssh:root@pi.hole:/var/www/html/" :publishing-function org-html-publish-to-html)
           ("LANtana" :components
-           ("org-attachments" "org-daily-attachments" "org-pages" "org-app"))))
+           ("org-attachments" "org-daily-attachments" "org-pages" "org-app" "lantana-index"))))
 #+end_src
 **** Images
 #+begin_src emacs-lisp

@@ -314,9 +314,16 @@ list of video extensions below."
 
 
   (defun my-org-confirm-babel-evaluate (lang body)
-    (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell"))))
+    (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell" "javascript"))))
 
   (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
+
+  (add-to-list 'org-src-lang-modes '("inline-js" . javascript))
+  (defvar org-babel-default-header-args:inline-js
+    '((:results . "html")
+      (:exports . "results")))
+  (defun org-babel-execute:inline-js (body _params)
+    (format "<script type=\"text/javascript\">\n%s\n</script>" body))
 
 #+end_src
 **** Roam

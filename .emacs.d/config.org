@@ -1081,9 +1081,7 @@ use rainbow delimiters
 #+END_SRC
 **** C
 #+BEGIN_SRC emacs-lisp
-  (use-package ccls
-    :hook ((c-mode c++-mode objc-mode cuda-mode) .
-           (lambda () (require 'ccls) (lsp))))
+  (add-hook 'c-mode-common-hook '(lambda () (lsp)))
 #+END_SRC
 **** CSS
 #+BEGIN_SRC emacs-lisp

@@ -73,8 +73,9 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 
 I need to make sure emacs knows about all my environment variables. Many of the important ones are set in my WM config but emacs-client is started by systemd before that. Therefore, I need to run =exec-path-from-shell-initialize= and =copyenv= /after/ my WM starts using =focus-in-hook=
 #+begin_src emacs-lisp
-   (use-package exec-path-from-shell :ensure :init (exec-path-from-shell-initialize))
+  (use-package exec-path-from-shell :ensure :init (exec-path-from-shell-initialize))
 
+  (setq warning-minimum-level :emergency)
 
 #+end_src
 *** Constants
@@ -1016,6 +1017,7 @@ use rainbow delimiters
     (display-line-numbers-mode)
     (apheleia-mode)
     (lsp))
+  (add-hook 'typescript-mode-hook 'setup-typescript-mode)
 
   (use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
     (add-hook 'typescript-mode-hook 'jest-test-mode)
@@ -1079,7 +1081,9 @@ use rainbow delimiters
 #+END_SRC
 **** C
 #+BEGIN_SRC emacs-lisp
-  (add-hook 'c-mode-common-hook '(lambda () (lsp)))
+  (use-package ccls
+    :hook ((c-mode c++-mode objc-mode cuda-mode) .
+           (lambda () (require 'ccls) (lsp))))
 #+END_SRC
 **** CSS
 #+BEGIN_SRC emacs-lisp

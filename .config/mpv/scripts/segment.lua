@@ -11,12 +11,11 @@ mp.add_key_binding("s", "segment", function()
 		end
 		local path = mp.get_property("path")
 		local ext = path:match("^.+%.(.+)$")
-		local name = path:match("^([^/]+)%..+$")
-		local ffmpeg = string.format("ffmpeg -i %q -ss %.2f -to %.2f ~/Dropbox/Videos/Clips/%s-%d.%s",
+		-- local name = path:match("^([^/]+)%..+$")
+		local ffmpeg = string.format("ffmpeg -i %q -ss %.2f -to %.2f ~/Dropbox/Videos/Clips/%d.%s",
 			path,
 			start,
 			to,
-			name,
 			os.time(),
 			ext
 		)

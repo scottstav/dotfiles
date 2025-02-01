@@ -425,7 +425,7 @@ list of video extensions below."
     (require 'auth-source)
     (defun gim/get-gptel-api-key ()
       "Retrieve the GPTel API key from the authinfo file."
-      (let ((auth (nth 0 (auth-source-search :host "api.perplexity.ai" :user "apikey" :max 1 :require '(:secret)))))
+      (let ((auth (nth 0 (auth-source-search :machine "api.perplexity.ai" :user "apikey" :max 1 :require '(:secret)))))
         (if auth
             (funcall (plist-get auth :secret))
           (error "No GPTel API key found in authinfo file"))))

@@ -972,6 +972,7 @@ thx Prot
                         nil
                       '(display-buffer-same-window)))))
     (global-set-key (kbd "C-x g") 'magit-status)
+    (setq magit-list-refs-sortby "-creatordate")
     )
 #+end_src
 **** Other

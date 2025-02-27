@@ -413,23 +413,24 @@ list of video extensions below."
     (require 'auth-source)
     (defun gim/get-gptel-api-key ()
       "Retrieve the GPTel API key from the authinfo file."
-      (let ((auth (nth 0 (auth-source-search :machine "api.perplexity.ai" :user "apikey" :max 1 :require '(:secret)))))
+      (let ((auth (nth 0 (auth-source-search :host "api.perplexity.ai" :user "apikey" :max 1 :require '(:secret)))))
         (if auth
             (funcall (plist-get auth :secret))
           (error "No GPTel API key found in authinfo file"))))
-    (setq gptel-model   'llama-3.1-sonar-huge-128k-online
+    (setq gptel-directives '((rewrite . gptel--rewrite-directive-default)
+                             (default . "You are my all-knowing personal assistant. You live in my emacs text editor. I might ask you questions about anything. Respond as briefly as possible. Be terse. Do not repeat information. Do not repeat obvious parts of my question back to me. Respond in all lower-case. Remember to respond as briefly as possible. Assume I already know the basics about the things I am asking you.")
+                             (programming . "You are a large language model and a careful programmer. Provide code and only code as output without any additional text, prompt or note.")
+                             (writing . "You are a large language model and a writing assistant. Respond concisely.")
+                             (chat . "You are a large language model and a conversation partner. Respond concisely.")))
+    (setq gptel-model   'sonar
           gptel-backend
           (gptel-make-openai "Perplexity"
             :host "api.perplexity.ai"
             :key (gim/get-gptel-api-key)
             :endpoint "/chat/completions"
             :stream t
-            :models '(llama-3.1-sonar-huge-128k-online)))
-    (global-set-key (kbd "C-c RET") 'gptel-send)
+            :models '(sonar)))
     )
-
-  (with-eval-after-load 'org
-    (define-key org-mode-map (kbd "C-c RET") 'gptel-send))
   (setq org-src-window-setup 'plain)
 #+end_src
 
@@ -1168,4 +1169,20 @@ use rainbow delimiters
     (with-editor-async-shell-command "crontab -e"))
 
   (scroll-bar-mode 0)
+#+end_src
+
+* My Special Minor Mode
+#+begin_src emacs-lisp
+  (defvar bean-minor-mode-map
+    (let ((map (make-sparse-keymap)))
+      (define-key map (kbd "C-c RET") 'gptel-send)
+      map)
+    "bean-minor-mode keymap.")
+
+  (define-minor-mode bean-minor-mode
+    "A minor mode so that my key settings override annoying major modes."
+    :init-value t
+    :lighter " bean")
+
+  (bean-minor-mode 1)
 #+end_src

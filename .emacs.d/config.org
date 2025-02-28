@@ -985,12 +985,10 @@ thx Prot
     :after magit)
   (setq forge-owned-accounts '(("scottstav")))
 
-  (use-package git-gutter+
+  (use-package git-gutter
     :ensure
     :config
-    (define-key git-gutter+-mode-map (kbd "M-g k") 'git-gutter+-revert-hunk)
-    (define-key git-gutter+-mode-map (kbd "M-g n") 'git-gutter+-next-hunk))
-  (global-git-gutter+-mode)
+    (global-git-gutter-mode +1))
 #+end_src
 *** Parens
 

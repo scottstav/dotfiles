@@ -1185,3 +1185,20 @@ use rainbow delimiters
 
   (bean-minor-mode 1)
 #+end_src
+
+   #+begin_src elisp
+     ;; Define a custom function to delete a word without copying it to the kill ring
+     (defun delete-word(arg)
+       "Delete characters forward until encountering the end of a word, without copying to the kill ring."
+       (interactive "p")
+       (delete-region (point) (progn (forward-word arg) (point))))
+
+     (defun backward-delete-word (arg)
+       "Delete characters backward until encountering the beginning of a word, without copying to the kill ring."
+       (interactive "p")
+       (delete-word-no-kill (- arg)))
+
+     ;; Rebind M-d to the custom function
+     (global-set-key (kbd "M-d") 'delete-word)
+     (global-set-key (kbd "M-DEL") 'backward-delete-word)
+   #+end_src

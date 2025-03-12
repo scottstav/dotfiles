@@ -250,6 +250,8 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 
   ;; be able to switch current user to root
   (use-package dired-toggle-sudo :ensure t)
+
+  (setq dired-listing-switches "-alh")
 #+end_src
 **** ffmpeg
 #+begin_src emacs-lisp

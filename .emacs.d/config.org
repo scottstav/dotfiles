@@ -1198,7 +1198,7 @@ use rainbow delimiters
      (defun backward-delete-word (arg)
        "Delete characters backward until encountering the beginning of a word, without copying to the kill ring."
        (interactive "p")
-       (delete-word-no-kill (- arg)))
+       (delete-word (- arg)))
 
      ;; Rebind M-d to the custom function
      (global-set-key (kbd "M-d") 'delete-word)

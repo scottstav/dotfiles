@@ -317,7 +317,7 @@ list of video extensions below."
 
 
   (defun my-org-confirm-babel-evaluate (lang body)
-    (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell" "javascript"))))
+    (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell" "javascript" "inline-js"))))
 
   (setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
 
@@ -382,6 +382,7 @@ list of video extensions below."
 **** Exporting / Publishing
 #+begin_src emacs-lisp
   (setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
+  (setq org-html-prefer-user-labels t)
   (setq org-export-with-broken-links t)
 
   (setq org-html-postamble-format

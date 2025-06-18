@@ -785,8 +785,10 @@ thx Prot
 #+begin_src emacs-lisp
   (setq display-buffer-alist
         '(
-          ;; ((or . ((major-mode . vterm-mode)))
-          ;;  (display-buffer-pop-up-frame))
+          ((or . ((major-mode . vterm-mode)))
+           (display-buffer-in-side-window)
+           (side . right)
+           (window-width . 0.4))
           ((or . ((derived-mode . flymake-diagnostics-buffer-mode)
                   (derived-mode . flymake-project-diagnostics-mode)
                   (derived-mode . messages-buffer-mode)))
@@ -864,7 +866,7 @@ thx Prot
     (global-set-key (kbd "C-h k") #'helpful-key)
     (global-set-key (kbd "C-c C-d") #'helpful-at-point))
 #+end_src
-**
+
 ** Programming
 *** General
 
@@ -1012,7 +1014,6 @@ use rainbow delimiters
   :delight)
 #+END_SRC
 
-#+END_SRC
 *** Languages
 
 **** Javascript / Typescript
@@ -1189,19 +1190,19 @@ use rainbow delimiters
   (bean-minor-mode 1)
 #+end_src
 
-   #+begin_src elisp
-     ;; Define a custom function to delete a word without copying it to the kill ring
-     (defun delete-word(arg)
-       "Delete characters forward until encountering the end of a word, without copying to the kill ring."
-       (interactive "p")
-       (delete-region (point) (progn (forward-word arg) (point))))
+#+begin_src emacs-lisp
+  ;; Define a custom function to delete a word without copying it to the kill ring
+  (defun delete-word(arg)
+    "Delete characters forward until encountering the end of a word, without copying to the kill ring."
+    (interactive "p")
+    (delete-region (point) (progn (forward-word arg) (point))))
 
-     (defun backward-delete-word (arg)
-       "Delete characters backward until encountering the beginning of a word, without copying to the kill ring."
-       (interactive "p")
-       (delete-word (- arg)))
+  (defun backward-delete-word (arg)
+    "Delete characters backward until encountering the beginning of a word, without copying to the kill ring."
+    (interactive "p")
+    (delete-word (- arg)))
 
-     ;; Rebind M-d to the custom function
-     (global-set-key (kbd "M-d") 'delete-word)
-     (global-set-key (kbd "M-DEL") 'backward-delete-word)
-   #+end_src
+  ;; Rebind M-d to the custom function
+  (global-set-key (kbd "M-d") 'delete-word)
+  (global-set-key (kbd "M-DEL") 'backward-delete-word)
+#+end_src

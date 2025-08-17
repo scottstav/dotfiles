@@ -1,5 +1,6 @@
 .DS_Store
 .projectile
+.aider*
 /.eslintrc
 /tsconfig.json
 /.rest-mode

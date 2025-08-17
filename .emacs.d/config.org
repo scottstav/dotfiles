@@ -296,7 +296,8 @@ list of video extensions below."
 
     (setq org-clock-persist 'history)
     (setq org-export-with-section-numbers nil)
-    (org-clock-persistence-insinuate))
+    (org-clock-persistence-insinuate)
+    (setq org-hide-block-startup t))
 
   ;; ;; org babel
   (use-package ob-http :ensure t)
@@ -414,12 +415,16 @@ list of video extensions below."
     :config
     (setq gptel-default-mode 'org-mode)
     (require 'auth-source)
+    (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "@user\n")
+    (setf (alist-get 'org-mode gptel-response-prefix-alist) "@assistant\n")
+    (add-hook 'gptel-post-response-functions 'gptel-end-of-response)
     (setq gptel-model   'sonnet
           gptel-backend
           (gptel-make-anthropic "Claude"
             :key ""
             :stream t)))
   (setq org-src-window-setup 'plain)
+  (setq gptel-org-branching-context t)
 #+end_src
 #+begin_src emacs-lisp
   (use-package aidermacs
@@ -432,6 +437,8 @@ list of video extensions below."
   :custom
   ; See the Configuration section below
   (aidermacs-default-model "sonnet"))
+  (setq aidermacs-show-diff-after-change nil)
+  (setq aidermacs-backend 'vterm)
 #+end_src
 *** UI
 **** Completion

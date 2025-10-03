@@ -1,3 +1,4 @@
 #!/bin/bash
 
+
 emacsclient -c -e '(my-gptel-send-with-context) (delete-other-windows)'

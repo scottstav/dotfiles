@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Check if OpenVPN session is already running
+if openvpn3 sessions-list | grep -q "Path"; then
+    # If session exists, disconnect it
+    echo "Disconnecting..." > /tmp/waybar-custom-output
+    disconnect-ifit-vpn-session
+    echo "" > /tmp/waybar-custom-output
+else
+    # Otherwise start a new session
+    echo "Starting " > /tmp/waybar-custom-output
+    openvpn3 session-start --config /home/ifit/Dropbox/iFIT/ifit-new.ovpn
+    echo "Connected" > /tmp/waybar-custom-output
+fi

@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/waybarstatus"],
+    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/waybarstatus", "custom/vpn"],
     "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
@@ -134,5 +134,12 @@
         "return-type": "html",
         "tooltip": "This is my custom module.",
         "on-click": "echo 'Module clicked!'"
+    },
+        "custom/vpn": {
+        "interval": 1,
+        "format": "VPN",
+        "return-type": "html",
+        "tooltip": "Connect to ifit vpn",
+        "on-click": "start-ifit-vpn-session"
     }
 }

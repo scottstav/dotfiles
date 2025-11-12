@@ -84,7 +84,7 @@ window#waybar {
 #custom-waybarstatus {
   padding: 5px;
   color: #d9b645;
-  background-color: red;
+  background-color: #64727d;
 }
 
 #battery icon {

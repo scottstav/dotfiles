@@ -1,0 +1,18 @@
+#!/bin/bash
+
+#!/bin/bash
+
+# Disconnect and capture output
+disconnect_output=$(openvpn3 session-manage --config ~/Dropbox/iFIT/ifit-new.ovpn --disconnect)
+
+# Extract bytes out using grep and sed
+bytes_out=$(echo "$disconnect_output" | grep "TUN_BYTES_OUT")
+
+# Show bytes out in waybar custom output
+echo "$bytes_out" > /tmp/waybar-custom-output
+
+# Sleep for 2 seconds
+sleep 2
+
+# Clear the custom output
+echo "" > /tmp/waybar-custom-output

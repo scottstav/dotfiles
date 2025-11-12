@@ -81,6 +81,12 @@ window#waybar {
   /* background-color: #64727d; */
 }
 
+#custom-waybarstatus {
+  padding: 5px;
+  color: #d9b645;
+  background-color: red;
+}
+
 #battery icon {
   color: red;
 }

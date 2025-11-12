@@ -1,29 +1,10 @@
 {
     "layer": "top", // Waybar at top layer
-    // "position": "bottom", // Waybar position (top|bottom|left|right)
     "height": 30, // Waybar height (to be removed for auto height)
-    // "width": 1280, // Waybar width
     "spacing": 4, // Gaps between modules (4px)
-    // Choose the order of the modules
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio"],
+    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/waybarstatus"],
     "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
-    // Modules configuration
-    // "sway/workspaces": {
-    //     "disable-scroll": true,
-    //     "all-outputs": true,
-    //     "format": "{name}: {icon}",
-    //     "format-icons": {
-    //         "1": "",
-    //         "2": "",
-    //         "3": "",
-    //         "4": "",
-    //         "5": "",
-    //         "urgent": "",
-    //         "focused": "",
-    //         "default": ""
-    //     }
-    // },
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -77,11 +58,9 @@
         }
     },
     "tray": {
-        // "icon-size": 21,
         "spacing": 10
     },
     "clock": {
-        // "timezone": "America/New_York",
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "format-alt": "{:%m/%d at %H:%M}",
         "format": "{:%m/%d at %H:%M:%S}",
@@ -95,21 +74,16 @@
         "format": "{}% "
     },
     "temperature": {
-        // "thermal-zone": 2,
-        // "hwmon-path": "/sys/class/hwmon/hwmon2/temp1_input",
         "critical-threshold": 180,
-        // "format-critical": "{temperatureC}°C {icon}",
         "format": "{temperatureF}°F {icon}",
         "format-icons": ["", "", ""]
     },
     "backlight": {
-        // "device": "acpi_video1",
         "format": "{percent}% {icon}",
         "format-icons": ["", "", "", "", "", "", "", "", ""]
     },
     "battery": {
         "states": {
-            // "good": 95,
             "warning": 15,
             "critical": 8
         },
@@ -117,25 +91,20 @@
         "format-charging": "",
         "format-plugged": "{capacity}% ",
         "format-alt": "{capacity}% {icon}",
-        // "format-good": "", // An empty format will hide the module
-        // "format-full": "",
         "format-icons": ["", "", "", "", ""]
     },
     "battery#bat2": {
         "bat": "BAT2"
     },
     "network": {
-        // "interface": "wlp2*", // (Optional) To force the use of this interface
         "format-wifi": "{essid} ",
         "format-ethernet": "{ipaddr}/{cidr} ",
         "tooltip-format": "{ifname} via {gwaddr} ",
         "format-linked": "{ifname} (No IP) ",
         "format-disconnected": "Disconnected ⚠",
-//        "format-alt": "{ifname}: {ipaddr}/{cidr} ({signalStrength}%)"
         "format-alt": "-"
     },
     "pulseaudio": {
-        // "scroll-step": 1, // %, can be a float
         "format": "{icon} {format_source}",
         "format-bluetooth": "{icon} [] {format_source}",
         "format-bluetooth-muted": " [] {format_source}",
@@ -151,7 +120,6 @@
         "format": "",
         "format-connected": " {device_alias}",
         "format-connected-battery": " {device_alias} {device_battery_percentage}%",
-        // "format-device-preference": [ "device1", "device2" ], // preference list deciding the displayed device
         "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
         "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
         "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
@@ -159,5 +127,12 @@
 
 
         "on-click": "sleep 0.2 && bluetooth-controller"
+    },
+    "custom/waybarstatus": {
+        "exec": "waybar-status",
+        "interval": 1,
+        "return-type": "html",
+        "tooltip": "This is my custom module.",
+        "on-click": "echo 'Module clicked!'"
     }
 }

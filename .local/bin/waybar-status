@@ -1,0 +1,11 @@
+#!/bin/bash
+
+#!/bin/bash
+
+# Read the custom text if the file exists, otherwise use an empty string
+custom_text=""
+if [ -f /tmp/waybar-custom-output ]; then
+    custom_text=$(cat /tmp/waybar-custom-output 2>/dev/null || echo "")
+fi
+
+echo $custom_text

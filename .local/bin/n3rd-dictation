@@ -1,0 +1,19 @@
+#!/bin/bash
+
+PIDFILE="/tmp/n3rd-dictation.pid"
+
+if [ -f "$PIDFILE" ]; then
+    # Dictation is running, suspend it
+    nerd-dictation end
+    rm "$PIDFILE"
+    rm /tmp/waybar-custom-output
+    # Remove from swaybar tray
+    pkill -f "dictation-status-notifier"
+else
+    # Dictation is not running, begin it
+    nerd-dictation begin --simulate-input-tool DOTOOL &
+    touch "$PIDFILE"
+    # Add to swaybar tray
+    echo "Listening..." > /tmp/waybar-custom-output && killall -SIGUSR2 waybar
+    echo $! > /tmp/dictation-status-notifier.pid
+fi

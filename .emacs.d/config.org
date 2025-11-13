@@ -354,6 +354,7 @@ list of video extensions below."
   (defun org-babel-execute:inline-js (body _params)
     (format "<script type=\"text/javascript\">\n%s\n</script>" body))
 
+  (setq org-src-window-setup 'current-window)
 #+end_src
 **** Roam
 #+begin_src emacs-lisp
@@ -417,8 +418,14 @@ list of video extensions below."
   (setq org-html-postamble t)
   (setq org-publish-project-alist
         '(
-          ("org-pages" :base-directory "~/Dropbox/org/roam/daily" :base-extension "org" :publishing-directory "/ssh:root@lantana.io:/var/www/html/org/daily" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t :exclude "daily/work/\\|iFIT\\|lantana.index.org" :auto-sitemap t :sitemap-filename "index.org" :sitemap-title "Hello" :sitemap-sort-files anti-chronologically)
+          ("org-pages" :base-directory "~/Dropbox/org/roam/daily" :base-extension "org" :publishing-directory "/ssh:root@lantana.io:/var/www/html/org/daily" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t :exclude "daily/work/\\|iFIT\\|lantana.index.org" :auto-sitemap t :sitemap-filename "index.org" :sitemap-title "Hello" :sitemap-sort-files anti-chronologically :html-head-include-scripts t :html-head-extra "<script src=\"../../test.js\"></script>")
           ("lantana-index" :base-directory "~/Dropbox/org/" :base-extension "org" :publishing-directory "/ssh:root@lantana.io:/var/www/html/" :publishing-function org-html-publish-to-html)
+          ("js"
+           :base-directory "~/Dropbox/org/js"
+           :base-extension "js"
+           :publishing-directory "/ssh:root@lantana.io:/var/www/html/"
+           :recursive t
+           :publishing-function org-publish-attachment)
           ("org-attachments"
            :base-directory "~/Dropbox/org/roam/daily/data" ; Or other attachment directories
            :base-extension "png\\|jpg\\|gif\\|css\\|js" ; Specify file types
@@ -428,6 +435,8 @@ list of video extensions below."
           ("LANtana" :components
            ("org-pages" "lantana-index" "org-attachments"))))
 #+end_src
+
+
 **** Images
 #+begin_src emacs-lisp
   (use-package org-download :ensure
@@ -436,23 +445,15 @@ list of video extensions below."
     (setq org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s")
     )
 #+end_src
-*** AI
-**** org-ai
+*** vterm
+
 #+begin_src emacs-lisp
-  (use-package org-ai
+  (setq vterm-always-compile-module t)
+  (use-package vterm
     :ensure t
-    :commands (org-ai-mode
-               org-ai-global-mode)
-    :init
-    (add-hook 'org-mode-hook #'org-ai-mode) ; enable org-ai in org-mode
-    (org-ai-global-mode) ; installs global keybindings on C-c M-a
-    :config
-    (setq org-ai-default-chat-model "gpt-4") ; if you are on the gpt-4 beta:
-    (org-ai-install-yasnippets)
-    (setq org-ai-image-directory (expand-file-name "org-ai-images/" org-directory))) ; if you are using yasnippet and want `ai` snippets
-
-
+    )
 #+end_src
+*** AI
 **** gptel
 #+begin_src emacs-lisp
   (use-package gptel
@@ -466,57 +467,65 @@ list of video extensions below."
     (setq gptel-model   'sonnet
           gptel-backend
           (gptel-make-anthropic "Claude"
-            :key ""
+            :key ,(auth-source-pick-first-password
+                            :host "api.claude.ai"
+                            :user "apikey")
             :stream t)))
 
-  (setq org-src-window-setup 'plain)
+
   (setq gptel-org-branching-context t)
 
 
   (setq gptel-track-media t)
 #+end_src
-**** gptel-tools
+**** gptel-tools, MCP
 #+begin_src emacs-lisp
-  (setq gptel-tools (list
-                     (gptel-make-tool
-                      :name "create_file"
-                      :function (lambda (path filename content)
-                                  (let ((full-path (expand-file-name filename path)))
-                                    (with-temp-buffer
-                                      (insert content)
-                                      (write-file full-path))
-                                    (format "Created file %s in %s" filename path)))
-                      :description "Create a new file with the specified content"
-                      :args (list '(:name "path"
-                                          :type string
-                                          :description "The directory where to create the file")
-                                  '(:name "filename"
-                                          :type string
-                                          :description "The name of the file to create")
-                                  '(:name "content"
-                                          :type string
-                                          :description "The content to write to the file"))
-                      :category "filesystem")
-                     (gptel-make-tool
-                      :name "read_url"
-                      :function (lambda (url)
-                                  (with-temp-buffer
-                                    (url-insert-file-contents url)
-                                    (buffer-string)))
-                      :description "Fetch and return the contents of the specified URL"
-                      :args (list '(:name "url"
-                                          :type string
-                                          :description "The URL to fetch content from"))
-                      :category "web")
-                     (gptel-make-tool
-                      :name "get_major_mode"
-                      :function (lambda ()
-                                  (symbol-name major-mode)
-                                  (message "got the major mode"))
-                      :description "Return the major mode of the current buffer to give coding language information."
-                      :args nil
-                      :category "buffer")))
+  (use-package mcp
+    :ensure t
+    :after gptel
+   :custom
+    (mcp-hub-servers
+     `(("github" . (:command "docker"
+                    :args ("run" "-i" "--rm"
+                           "-e"
+  "GITHUB_PERSONAL_ACCESS_TOKEN"
 
+  "ghcr.io/github/github-mcp-server")
+                    :env (:GITHUB_PERSONAL_ACCESS_TOKEN
+
+  ,(auth-source-pick-first-password
+                            :host "api.github.com"
+                            :user "apikey"))))
+       ;; Add other MCP servers here if needed
+       ))
+    :config (require 'mcp-hub)
+    :hook (after-init . mcp-hub-start-all-server))
+
+  (require 'gptel-integrations)
+  (gptel-mcp-connect)
+#+end_src
+**** claude code
+
+#+begin_src emacs-lisp
+  (use-package inheritenv
+    :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
+
+  ;; install claude-code.el
+  (use-package claude-code :ensure t
+    :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
+    :config
+    ;; optional IDE integration with Monet
+    (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
+    (monet-mode 1)
+
+    (claude-code-mode)
+    :bind-keymap ("C-c c" . claude-code-command-map))
+
+
+#+end_src
+**** presets/function/etc
+
+#+begin_src emacs-lisp
   (gptel-make-preset 'coder                       ;preset name, a symbol
     :description "A preset optimized for coding tasks" ;for your reference
     :backend "Claude"                     ;gptel backend or backend name
@@ -546,7 +555,7 @@ list of video extensions below."
                            (org-mode)
                            (gptel-mode)
                            (setq-local gptel-system-prompt
-                                       "give me very concise answers. i will ask you about code and linux configuration a lot. I will also ask you just general stuff. if i need a command, or code sample, then provide only the code or command. do not repeat my question back to me. do not over explain. most importantly, be as concise as possible while still giving me the relevent information."))
+                                       "give me very concise answers. i will ask you about code and linux configuration a lot. I will also ask you just general stuff. if i need a command, or code sample, then provide only the code or command. do not repeat my question back to me. do not over explain. most importantly, be as concise as possible while still giving me the relevent information. respond in all lower case."))
                          buf))))
 
       (with-current-buffer buffer
@@ -556,24 +565,8 @@ list of video extensions below."
         (insert full-prompt)
         (switch-to-buffer buffer)
         (gptel-send))))
-
-
 #+end_src
-**** aider
-#+begin_src emacs-lisp
-  (use-package aidermacs
-  :bind (("C-c a" . aidermacs-transient-menu))
-  :config
-  ; Set API_KEY in .bashrc, that will automatically picked up by aider or in elisp
-  (setenv "ANTHROPIC_API_KEY" "")
-  ; defun my-get-openrouter-api-key yourself elsewhere for security reasons
-  (setenv "OPENAI_API_KEY" "")
-  :custom
-  ; See the Configuration section below
-  (aidermacs-default-model "sonnet"))
-  (setq aidermacs-show-diff-after-change nil)
-  (setq aidermacs-backend 'vterm)
-#+end_src
+
 *** UI
 **** Completion
 ***** Vertico and friends
@@ -938,14 +931,6 @@ thx Prot
   (global-set-key (kbd "C-x C-b") 'ibuffer)
 #+end_src
 ** Packages
-*** vterm
-
-#+begin_src emacs-lisp
-  (setq vterm-always-compile-module t)
-  (use-package vterm
-    :ensure t
-    )
-#+end_src
 *** ERC
 #+begin_src emacs-lisp
   (require 'erc)
@@ -992,6 +977,13 @@ thx Prot
     :ensure
     :config
     (define-key global-map (kbd "C-;") 'ace-jump-mode))
+
+#+end_src
+*** Text to speech
+#+begin_src emacs-lisp
+  (use-package whisper
+    :vc (:url "https://github.com/natrys/whisper.el" :branch "master")
+    :bind ("C-c r" . whisper-run))
 
 #+end_src
 *** Helpful

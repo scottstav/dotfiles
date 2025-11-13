@@ -483,20 +483,20 @@ list of video extensions below."
   (use-package mcp
     :ensure t
     :after gptel
-   :custom
+    :custom
     (mcp-hub-servers
      `(("github" . (:command "docker"
-                    :args ("run" "-i" "--rm"
-                           "-e"
-  "GITHUB_PERSONAL_ACCESS_TOKEN"
+                             :args ("run" "-i" "--rm"
+                                    "-e"
+                                    "GITHUB_PERSONAL_ACCESS_TOKEN"
 
-  "ghcr.io/github/github-mcp-server")
-                    :env (:GITHUB_PERSONAL_ACCESS_TOKEN
-
-  ,(auth-source-pick-first-password
-                            :host "api.github.com"
-                            :user "apikey"))))
+                                    "ghcr.io/github/github-mcp-server")
+                             :env (:GITHUB_PERSONAL_ACCESS_TOKEN
+                                   ,(auth-source-pick-first-password
+                                     :host "api.github.com"
+                                     :user "apikey"))))
        ;; Add other MCP servers here if needed
+       ("context7" . (:url "https://mcp.context7.com/mcp"))
        ))
     :config (require 'mcp-hub)
     :hook (after-init . mcp-hub-start-all-server))
@@ -519,6 +519,7 @@ list of video extensions below."
     (monet-mode 1)
 
     (claude-code-mode)
+    (setq claude-code-terminal-backend 'vterm)
     :bind-keymap ("C-c c" . claude-code-command-map))
 
 

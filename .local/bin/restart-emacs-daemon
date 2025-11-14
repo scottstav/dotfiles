@@ -1,0 +1,33 @@
+#!/bin/bash
+
+log_message() {
+  echo "$1" > /tmp/waybar-custom-output
+}
+
+restart_emacs_daemon() {
+  log_message "Stopping existing emacs daemon..."
+  emacsclient --eval "(kill-emacs)" >/dev/null 2>&1
+}
+
+# Check if emacs daemon is already running
+if pgrep -f "emacs --daemon" >/dev/null; then
+  restart_emacs_daemon
+fi
+
+log_message "Starting emacs daemon..."
+
+# Start emacs daemon
+output=$(/usr/bin/emacs --daemon 2>&1)
+exit_code=$?
+
+if [ $exit_code -eq 0 ]; then
+  log_message "Emacs daemon initialized successfully!"
+  sleep 2
+  log_message ""
+else
+  # Extract first 50 characters of the error message
+  error_message=$(echo "$output" | head -c 50)
+  log_message "$error_message..."
+  sleep 2
+  log_message ""
+fi

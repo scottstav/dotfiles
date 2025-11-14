@@ -202,6 +202,7 @@ I need to make sure emacs knows about all my environment variables. Many of the 
 
 #+begin_src emacs-lisp
   ;; auth
+  (require 'auth-source)
   (setq auth-sources '("~/.authinfo.gpg"))
   (setq epg-gpg-program "gpg")
   (setf epa-pinentry-mode 'loopback)
@@ -456,6 +457,8 @@ list of video extensions below."
 *** AI
 **** gptel
 #+begin_src emacs-lisp
+  (auth-source-forget-all-cached)
+
   (use-package gptel
     :ensure t
     :config
@@ -512,12 +515,7 @@ list of video extensions below."
 
   ;; install claude-code.el
   (use-package claude-code :ensure t
-    :vc (:url "https://github.com/stevemolitor/claude-code.el" :rev :newest)
     :config
-    ;; optional IDE integration with Monet
-    (add-hook 'claude-code-process-environment-functions #'monet-start-server-function)
-    (monet-mode 1)
-
     (claude-code-mode)
     (setq claude-code-terminal-backend 'vterm)
     :bind-keymap ("C-c c" . claude-code-command-map))
@@ -537,7 +535,7 @@ list of video extensions below."
   - Do not ask for further clarification, and make any assumptions you need to follow instructions.
   - Get the current language by looking at the major mode in current emacs buffer
   - ONLY provide code in the current major modes language"
-    :tools '("get_major_mode")) ;gptel tools or tool names
+    :tools '("mcp-github" "mcp-context7")) ;gptel tools or tool names
 
   ;; evener better best so far
   (defun my-gptel-send-with-context ()

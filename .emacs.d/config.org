@@ -233,14 +233,17 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
                               (define-key dired-mode-map (kbd "<mouse-2>") 'open-file-or-xdg-open)
                               ))
 
-
   (defun file-info ()
     "Show the info for just the current file."
     (interactive)
     (let ((dired-listing-switches "-alh"))
       (dired-other-window buffer-file-name)))
 
-  (setq dired-listing-switches "-alh")
+
+  ;; @coder set dired default sort order to most recently edited at the top
+  (setq dired-listing-switches "-alht")
+
+
 #+end_src
 *** Org
 #+begin_src emacs-lisp
@@ -400,15 +403,16 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
     :ensure t
     :config
     (setq gptel-default-mode 'org-mode)
+    (setq gptel-use-tools 'ask)
     (require 'auth-source)
     (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "@user\n")
     (setf (alist-get 'org-mode gptel-response-prefix-alist) "@assistant\n")
     (add-hook 'gptel-post-response-functions 'gptel-end-of-response)
-    (setq gptel-model   'sonnet
+    (setq gptel-model 'claude-sonnet-4-20250514
           gptel-backend
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))
-          :stream t))
+        ))
 
 
   (setq gptel-org-branching-context t)
@@ -1221,7 +1225,29 @@ use rainbow delimiters
 
   (scroll-bar-mode 0)
 #+end_src
+** control center
+#+begin_src emacs-lisp
+  ;; @coder create an emacs-lisp function that will do the following
+  ;; ;; 1. Accept a single argument which is a blob of text. a string.
+  ;; ;; 2. call `gptel` to start a new session with a name that is a random number
+  ;; ;; 3. send the blob of text to the gptel session buffer
+  ;; ;; 4. open the gptel session buffer in another frame
+  ;; ;; 5. submit the text to the gptel backend
 
+  (defun gptel-send-to-new-session (text)
+    "Send TEXT to a new gptel session with a random name and submit it."
+    (let* ((session-name (format "*gptel-%d*" (random 100000)))
+           (gptel-buffer (gptel session-name)))
+      (with-current-buffer gptel-buffer
+        (goto-char (point-max))
+        (insert text)
+        (gptel-send))
+      (switch-to-buffer-other-frame gptel-buffer)))
+
+  (gptel-send-to-new-session "Hello, GPTel!")
+
+
+#+end_src
 * My Special Minor Mode
 #+begin_src emacs-lisp
   (defvar bean-minor-mode-map

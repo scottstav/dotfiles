@@ -1,0 +1,67 @@
+;; Variables for animation state
+(defvar control_center_open false)
+(defvar input_text "")
+
+;; Main control center widget
+(defwidget control_center []
+
+           (box :class "control-center ${control_center_open ? 'open' : 'closed'}"
+                :orientation "v"
+                :space-evenly false
+                :spacing 20
+                ;; Command Input section
+                (box :class "input-section"
+                     :orientation "v"
+                     :spacing 10
+                     (label :text "Command Input" :class "section-title")
+                     (box :orientation "h" :spacing 10
+                          (input :class "command-input"
+                                 :value input_text
+                                 :onaccept "eww-command-handler '{}' && eww update input_text='' && eww update control_center_open=false && eww close control_center"
+                                 )
+                          )
+                     )
+
+                ;; Header
+                (box :orientation "h"
+                     :class "header"
+                     :space-evenly false
+                     :halign "fill"
+                     (label :text "Control Center" :class "title" :halign "start")
+                     (box :hexpand true)
+                     (button :onclick "eww update control_center_open=false && eww close control_center"
+                             :class "close-btn"
+                             :halign "end"
+                             "✕"))
+
+
+                ;; Controls section
+                (box :class "controls-section"
+                     :orientation "v"
+                     :spacing 15
+                     (label :text "Quick Controls" :class "section-title")
+                     (box :orientation "h" :spacing 15 :space-evenly true
+                          (button :class "control-btn wifi" :onclick "echo 'WiFi toggled'" "📶")
+                          (button :class "control-btn bluetooth" :onclick "blueman-manager &" "🔵"))
+                     (box :orientation "h" :spacing 15 :space-evenly true
+                          (button :class "control-btn volume" :onclick "echo 'Volume control'" "🔊")
+                          (button :class "control-btn brightness" :onclick "echo 'Brightness control'" "☀️"))
+                     )
+                ))
+
+;; Removed overlay widget since we're using a fixed-width panel
+
+;; Main window
+(defwindow control_center
+           :monitor 0
+           :geometry (geometry :x "0px"
+                               :y "0px"
+                               :width "350px"
+                               :height "100%"
+                               :anchor "top right")
+           :stacking "overlay"
+           :windowtype "dock"
+           :wm-ignore true
+           :focusable true
+           ;; Just the control center panel, no overlay needed
+           (control_center))

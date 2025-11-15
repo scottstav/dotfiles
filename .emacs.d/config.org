@@ -11,8 +11,8 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 ** Personal Information
 
 #+BEGIN_SRC emacs-lisp
-(setq user-full-name "Scott Stavinoha"
-      user-mail-address "scottstavinoha@gmail.com")
+  (setq user-full-name "Scott Stavinoha"
+        user-mail-address "scottstavinoha@gmail.com")
 #+END_SRC
 ** Settings
 *** Package Management
@@ -297,16 +297,16 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 **** Roam
 #+begin_src emacs-lisp
   (defun my/org-roam-filter (node)
-      (interactive)
-      (let ((tags (org-roam-node-tags node)))
-        (not (member "ATTACH" tags))))
+    (interactive)
+    (let ((tags (org-roam-node-tags node)))
+      (not (member "ATTACH" tags))))
 
   (defun my/org-roam-node-find ()
     (interactive)
     (if (equal current-prefix-arg nil) ; no C-u
-      (org-roam-node-find)
+        (org-roam-node-find)
       (org-roam-node-find t nil 'my/org-roam-filter))
-      )
+    )
 
   (use-package org-roam
     :ensure
@@ -408,7 +408,7 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
           gptel-backend
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))
-            :stream t))
+          :stream t))
 
 
   (setq gptel-org-branching-context t)
@@ -419,40 +419,42 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 **** gptel-tools, MCP
 #+begin_src emacs-lisp
 
-    (use-package mcp
-      :ensure t
-      :after gptel
-      :custom
-      (mcp-hub-servers
-       `(("github" . (:command "docker"
-                               :args ("run" "-i" "--rm"
-                                      "-e"
-                                      "GITHUB_PERSONAL_ACCESS_TOKEN"
+  (use-package mcp
+    :ensure t
+    :after gptel
+    :custom
+    (mcp-hub-servers
+     `(("github" . (:command "docker"
+                             :args ("run" "-i" "--rm"
+                                    "-e"
+                                    "GITHUB_PERSONAL_ACCESS_TOKEN"
 
-                                      "ghcr.io/github/github-mcp-server")
-                               :env (:GITHUB_PERSONAL_ACCESS_TOKEN
-                                     (shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380")
-                                     )))
-         ;; Add other MCP servers here if needed
-         ("context7" . (:url "https://mcp.context7.com/mcp"))
-         ("brave-search" . (:command "docker"
-                                     :args ("run" "-i" "--rm"
-                                            "-e"
-                                            "BRAVE_API_KEY"
-                                            "docker.io/mcp/brave-search")
-                                     :env (:BRAVE_API_KEY
-                                           (shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca"))))
-         ("browser-control" . (:command "node"
-                                        :args ("/home/ifit/browser-control-mcp/mcp-server/dist/server.js")
-                                        :env (:EXTENSION_SECRET
-                                              "2ed34b9e-2d45-46e3-991c-e4bec401943f"
-                                              :EXTENSION_PORT "8089")))
-         ))
-      :config (require 'mcp-hub)
-      :hook (after-init . mcp-hub-start-all-server))
+                                    "ghcr.io/github/github-mcp-server")
+                             :env (:GITHUB_PERSONAL_ACCESS_TOKEN
+                                   (shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380")
+                                   )))
+       ;; Add other MCP servers here if needed
+       ("context7" . (:url "https://mcp.context7.com/mcp"))
+       ("brave-search" . (:command "docker"
+                                   :args ("run" "-i" "--rm"
+                                          "-e"
+                                          "BRAVE_API_KEY"
+                                          "docker.io/mcp/brave-search")
+                                   :env (:BRAVE_API_KEY
+                                         (shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca"))))
+       ("browser-control" . (:command "node"
+                                      :args ("/home/ifit/browser-control-mcp/mcp-server/dist/server.js")
+                                      :env (:EXTENSION_SECRET
+                                            "2ed34b9e-2d45-46e3-991c-e4bec401943f"
+                                            :EXTENSION_PORT "8089")))
+       ("filesystem" . (:command "npx"
+                 :args ("-y" "@modelcontextprotocol/server-filesystem" "~/Dropbox")))
+       ))
+    :config (require 'mcp-hub)
+    :hook (after-init . mcp-hub-start-all-server))
 
-    (require 'gptel-integrations)
-    (gptel-mcp-connect)
+  (require 'gptel-integrations)
+  (gptel-mcp-connect)
 #+end_src
 **** claude code
 
@@ -610,19 +612,19 @@ This is in-buffer completion (autocomplete)
     :custom (completion-styles '(orderless)))
 
   (use-package yasnippet
-   :ensure
-   :init
-   (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
-   (global-set-key (kbd "C-c i") 'yas-insert-snippet)
-   (setq markdown-fontify-code-blocks-natively t)
-   (yas-global-mode 1))
+    :ensure
+    :init
+    (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+    (global-set-key (kbd "C-c i") 'yas-insert-snippet)
+    (setq markdown-fontify-code-blocks-natively t)
+    (yas-global-mode 1))
 
   (setq completion-category-overrides '((eglot (styles orderless))))
 #+end_src
 **** Font
 #+begin_src emacs-lisp
-;;  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 10" ))
-;;  (set-frame-font "Iosevka Extended 10" nil t)
+  ;;  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 10" ))
+  ;;  (set-frame-font "Iosevka Extended 10" nil t)
 #+end_src
 
 **** Annotations
@@ -812,9 +814,9 @@ This is in-buffer completion (autocomplete)
 
 thx Prot
 #+begin_src emacs-lisp
-;;    (use-package modus-themes :ensure
-;;      :init
-;;      (load-theme 'modus-vivendi :no-confirm))
+  (use-package modus-themes :ensure
+    :init
+    (load-theme 'modus-vivendi :no-confirm))
 #+end_src
 *** Keybinds
 
@@ -868,23 +870,23 @@ thx Prot
     (interactive)
     "Notify that NICK send some MSG via notify-send."
     (notifications-notify
-   :title nick
-   :body msg
-   :actions '("Confirm" "Reply" "Refuse" "Close")
-   :on-action 'my-on-action-function
-   :on-close 'my-on-close-function))
+     :title nick
+     :body msg
+     :actions '("Confirm" "Reply" "Refuse" "Close")
+     :on-action 'my-on-action-function
+     :on-close 'my-on-close-function))
 #+end_src
 *** htmlize
 #+begin_src emacs-lisp
-    ;; this ensures code highlighting on export... and probably other stuff
-    (use-package htmlize
-      :ensure)
+  ;; this ensures code highlighting on export... and probably other stuff
+  (use-package htmlize
+    :ensure)
 #+end_src
 
 *** wgrep
 #+begin_src emacs-lisp
-    (use-package wgrep
-      :ensure)
+  (use-package wgrep
+    :ensure)
 #+end_src
 
 *** Ace Jump
@@ -988,9 +990,9 @@ thx Prot
 #+end_src
 *** Eldoc
 #+BEGIN_SRC emacs-lisp
-(use-package eldoc
-  :defer     t
-  :diminish  eldoc-mode)
+  (use-package eldoc
+    :defer     t
+    :diminish  eldoc-mode)
 #+END_SRC
 *** Projectile
 #+begin_src emacs-lisp
@@ -1052,12 +1054,12 @@ thx Prot
 
 use rainbow delimiters
 #+BEGIN_SRC emacs-lisp
-(use-package rainbow-delimiters
-  :ensure t)
+  (use-package rainbow-delimiters
+    :ensure t)
 
-;; Don't show anything for rainbow-mode.
-(use-package rainbow-mode
-  :delight)
+  ;; Don't show anything for rainbow-mode.
+  (use-package rainbow-mode
+    :delight)
 #+END_SRC
 
 *** Languages
@@ -1099,7 +1101,7 @@ use rainbow delimiters
 **** Python
 #+begin_src emacs-lisp
   (add-hook 'python-mode-hook
-    (lambda () (lsp) (display-line-numbers-mode)))
+            (lambda () (lsp) (display-line-numbers-mode)))
 #+end_src
 **** GraphQL
 #+begin_src emacs-lisp
@@ -1129,19 +1131,19 @@ use rainbow delimiters
 #+end_src
 **** JSON mode
 #+BEGIN_SRC emacs-lisp
-(use-package json-mode
-  :ensure    json-mode
-  :config    (bind-keys :map json-mode-map
-                        ("C-c i" . json-mode-beautify))
-  :mode      ("\\.\\(json\\)$" . json-mode))
+  (use-package json-mode
+    :ensure    json-mode
+    :config    (bind-keys :map json-mode-map
+                          ("C-c i" . json-mode-beautify))
+    :mode      ("\\.\\(json\\)$" . json-mode))
 
 #+END_SRC
 **** YAML
 #+BEGIN_SRC emacs-lisp
-(use-package yaml-mode
-  :mode ("\\.\\(yml\\|yaml\\|\\config\\|sls\\)$" . yaml-mode)
-  :ensure yaml-mode
-  :defer t)
+  (use-package yaml-mode
+    :mode ("\\.\\(yml\\|yaml\\|\\config\\|sls\\)$" . yaml-mode)
+    :ensure yaml-mode
+    :defer t)
 
 #+END_SRC
 **** C
@@ -1150,9 +1152,9 @@ use rainbow delimiters
 #+END_SRC
 **** CSS
 #+BEGIN_SRC emacs-lisp
-(use-package css-mode
-  :config (setq css-indent-offset 2)
-)
+  (use-package css-mode
+    :config (setq css-indent-offset 2)
+    )
 #+END_SRC
 **** Terraform
 #+BEGIN_SRC emacs-lisp

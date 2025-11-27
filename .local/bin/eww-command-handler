@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Echo the command that was sent to the script
-log_message "$1"
+
 # send the message to emacs-client gptel-send-to-new-session function
-emacsclient --eval "(gptel-send-to-new-session \"$1\")"
+log_message "thinking..."
+emacsclient -n --eval "(gptel-send-to-new-session \"$1\")"

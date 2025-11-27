@@ -399,66 +399,66 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 #+begin_src emacs-lisp
   (auth-source-forget-all-cached)
 
+  (defun log-message (beg end)
+    ;; Do something with the response between beg and end
+    (async-shell-command "log_message"))
+
   (use-package gptel
     :ensure t
     :config
     (setq gptel-default-mode 'org-mode)
     (setq gptel-use-tools 'ask)
     (require 'auth-source)
-    (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "@user\n")
-    (setf (alist-get 'org-mode gptel-response-prefix-alist) "@assistant\n")
-    (add-hook 'gptel-post-response-functions 'gptel-end-of-response)
-    (setq gptel-model 'claude-sonnet-4-20250514
+    (add-hook 'gptel-post-response-functions 'log-message)
+    (setq gptel-model 'claude-3-5-haiku-20241022
           gptel-backend
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))
-        ))
-
-
-  (setq gptel-org-branching-context t)
-
+          ))
 
   (setq gptel-track-media t)
 #+end_src
 **** gptel-tools, MCP
 #+begin_src emacs-lisp
 
-  (use-package mcp
-    :ensure t
-    :after gptel
-    :custom
-    (mcp-hub-servers
-     `(("github" . (:command "docker"
-                             :args ("run" "-i" "--rm"
-                                    "-e"
-                                    "GITHUB_PERSONAL_ACCESS_TOKEN"
+    (use-package mcp
+      :ensure t
+      :after gptel
+      :custom
+      (mcp-hub-servers
+       `(("github" . (:command "docker"
+                               :args ("run" "-i" "--rm"
+                                      "-e"
+                                      "GITHUB_PERSONAL_ACCESS_TOKEN"
 
-                                    "ghcr.io/github/github-mcp-server")
-                             :env (:GITHUB_PERSONAL_ACCESS_TOKEN
-                                   (shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380")
-                                   )))
-       ;; Add other MCP servers here if needed
-       ("context7" . (:url "https://mcp.context7.com/mcp"))
-       ("brave-search" . (:command "docker"
-                                   :args ("run" "-i" "--rm"
-                                          "-e"
-                                          "BRAVE_API_KEY"
-                                          "docker.io/mcp/brave-search")
-                                   :env (:BRAVE_API_KEY
-                                         (shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca"))))
-       ("browser-control" . (:command "node"
-                                      :args ("/home/ifit/browser-control-mcp/mcp-server/dist/server.js")
-                                      :env (:EXTENSION_SECRET
-                                            "2ed34b9e-2d45-46e3-991c-e4bec401943f"
-                                            :EXTENSION_PORT "8089")))
-       ("filesystem" . (:command "npx"
-                 :args ("-y" "@modelcontextprotocol/server-filesystem" "~/Dropbox")))
-       ))
-    :config (require 'mcp-hub)
-    :hook (after-init . mcp-hub-start-all-server))
+                                      "ghcr.io/github/github-mcp-server")
+                               :env (:GITHUB_PERSONAL_ACCESS_TOKEN
+                                     (shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380")
+                                     )))
+         ;; Add other MCP servers here if needed
+         ("context7" . (:url "https://mcp.context7.com/mcp"))
+         ("brave-search" . (:command "docker"
+                                     :args ("run" "-i" "--rm"
+                                            "-e"
+                                            "BRAVE_API_KEY"
+                                            "docker.io/mcp/brave-search")
+                                     :env (:BRAVE_API_KEY
+                                           (shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca")
+)))
+         ("browser-control" . (:command "node"
+                                        :args ("/home/ifit/browser-control-mcp/mcp-server/dist/server.js")
+                                        :env (:EXTENSION_SECRET
+                                              "2ed34b9e-2d45-46e3-991c-e4bec401943f"
+                                              :EXTENSION_PORT "8079")))
+         ("filesystem" . (:command "npx"
+                   :args ("-y" "@modelcontextprotocol/server-filesystem" "~/Dropbox")
+                   :roots ("/home/ifit/")))
+         ))
+      :config (require 'mcp-hub)
+      :hook (after-init . mcp-hub-start-all-server))
 
-  (require 'gptel-integrations)
-  (gptel-mcp-connect)
+    (require 'gptel-integrations)
+    (gptel-mcp-connect)
 #+end_src
 **** claude code
 
@@ -470,7 +470,6 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
   (use-package claude-code :ensure t
     :config
     (claude-code-mode)
-    (setq claude-code-terminal-backend 'vterm)
     :bind-keymap ("C-c c" . claude-code-command-map))
 
 
@@ -851,6 +850,10 @@ thx Prot
 
   ;; bind C-x C-b to ibuffer
   (global-set-key (kbd "C-x C-b") 'ibuffer)
+#+end_src
+*** Shell
+#+begin_src emacs-lisp
+  (add-to-list 'display-buffer-alist '("*Async Shell Command*" display-buffer-no-window (nil)))
 #+end_src
 ** Packages
 *** ERC
@@ -1235,16 +1238,15 @@ use rainbow delimiters
   ;; ;; 5. submit the text to the gptel backend
 
   (defun gptel-send-to-new-session (text)
-    "Send TEXT to a new gptel session with a random name and submit it."
-    (let* ((session-name (format "*gptel-%d*" (random 100000)))
+    "Send TEXT to a new gptel session with a name derived from the first 8 characters of input and submit it."
+    (let* ((session-name (format "*gptel-%s*" (substring text 0 (min 8 (length text)))))
            (gptel-buffer (gptel session-name)))
       (with-current-buffer gptel-buffer
         (goto-char (point-max))
         (insert text)
-        (gptel-send))
+        (gptel-send)
+        )
       (switch-to-buffer-other-frame gptel-buffer)))
-
-  (gptel-send-to-new-session "Hello, GPTel!")
 
 
 #+end_src

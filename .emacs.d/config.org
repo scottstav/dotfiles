@@ -341,8 +341,8 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 
   (setq org-roam-dailies-capture-templates
         '(("d" "default" entry
-           "\n* %?"
-           :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))
+           "\n\n\n\n%?"
+           :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>\n\n* %<%Y-%m-%d>"))
           ("w" "work" entry
            "\n* %?"
            :target (file+head "./work/%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))

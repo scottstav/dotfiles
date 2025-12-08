@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/waybarstatus", "custom/vpn"],
+    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget", "custom/waybarstatus"],
     "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
@@ -107,8 +107,8 @@
     "pulseaudio": {
         "format": "{icon} {format_source}",
         "format-bluetooth": "{icon} [] {format_source}",
-        "format-bluetooth-muted": " [] {format_source}",
-        "format-muted": " {format_source}",
+        "format-bluetooth-muted": "[] {format_source}",
+        "format-muted": "{format_source}",
         "format-source": "",
         "format-source-muted": "",
         "format-icons": {
@@ -119,7 +119,7 @@
     "bluetooth": {
         "format": "",
         "format-connected": " {device_alias}",
-        "format-connected-battery": " {device_alias} {device_battery_percentage}%",
+        "format-connected-battery": "* {device_battery_percentage}%",
         "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
         "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
         "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
@@ -133,7 +133,6 @@
         "interval": 1,
         "return-type": "html",
         "tooltip": "This is my custom module.",
-        "on-click": "echo 'Module clicked!'"
     },
         "custom/vpn": {
         "interval": 1,
@@ -141,5 +140,11 @@
         "return-type": "html",
         "tooltip": "Connect to ifit vpn",
         "on-click": "start-ifit-vpn-session"
+    },
+        "custom/mywidget": {
+        "interval": 5,
+        "format": "dorky",
+        "return-type": "json",
+        "on-click": "log_message hi && sleep 2 && log_message"
     }
 }

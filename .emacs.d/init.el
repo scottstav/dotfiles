@@ -1,17 +1,1099 @@
-;;; Package --- Summary
+(setq user-full-name "Scott Stavinoha"
+      user-mail-address "scottstavinoha@gmail.com")
 
-;;; Commentary:
-;; Emacs init file responsible for either loading a pre-compiled configuration
-;; file or tangling and loading a literate org configuration file.
+(eval-and-compile
+  (setq load-prefer-newer t
+        package-user-dir "~/.emacs.d/elpa"
+        package--init-file-ensured t
+        package-enable-at-startup nil)
 
-;; Don't attempt to find/apply special file handlers to files loaded during
-;; startup.
-(let ((file-name-handler-alist nil))
-  ;; If config is pre-compiled, then load that
-  (if (file-exists-p (expand-file-name "config.elc" user-emacs-directory))
-      (load-file (expand-file-name "config.elc" user-emacs-directory))
-    ;; Otherwise use org-babel to tangle and load the configuration
-    (require 'org)
-    (org-babel-load-file (expand-file-name "config.org" user-emacs-directory))))
+  (unless (file-directory-p package-user-dir)
+    (make-directory package-user-dir t)))
 
-;;; init.el ends here
+(eval-and-compile
+  (setq load-path (append load-path (directory-files package-user-dir t "^[^.]" t))))
+
+(eval-when-compile
+  (require 'package)
+
+  (package-initialize)
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
+  (unless (package-installed-p 'bind-key)
+    (package-refresh-contents)
+    (package-install 'bind-key))
+  (require 'use-package)
+  (require 'bind-key)
+  (setq use-package-always-ensure t))
+
+(unless (assoc-default "gnu" package-archives)
+  (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
+(unless (assoc-default "melpa" package-archives)
+  (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
+
+(use-package quelpa
+  :ensure)
+
+(use-package quelpa-use-package
+  :demand
+  :config
+  (quelpa-use-package-activate-advice))
+
+
+(defvar bootstrap-version)
+(let ((bootstrap-file
+       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
+      (bootstrap-version 6))
+  (unless (file-exists-p bootstrap-file)
+    (with-current-buffer
+        (url-retrieve-synchronously
+         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
+         'silent 'inhibit-cookies)
+      (goto-char (point-max))
+      (eval-print-last-sexp)))
+  (load bootstrap-file nil 'nomessage))
+
+;; default browser
+(setq browse-url-browser-function (quote browse-url-generic))
+(setq browse-url-generic-program "firefox")
+
+;; random annoying message
+(setq byte-compile-warnings '(cl-functions))
+
+;; menu shit remove
+(mapc
+ (lambda (mode)
+   (when (fboundp mode)
+     (funcall mode -1)))
+ '(menu-bar-mode tool-bar-mode))
+
+    ;;; Initialisation
+(setq inhibit-default-init t
+      inhibit-startup-echo-area-message t
+      inhibit-startup-screen t
+      initial-scratch-message nil)
+
+;; warn when opening files bigger than 100MB
+(setq large-file-warning-threshold 100000000)
+
+(defconst gas-savefile-dir (expand-file-name "savefile" user-emacs-directory))
+
+;; create the savefile dir if it doesn't exist
+(unless (file-exists-p gas-savefile-dir)
+  (make-directory gas-savefile-dir))
+
+    ;;; UI
+
+;; disable the annoying bell ring
+(setq ring-bell-function 'ignore)
+
+;; disable startup screen
+(setq inhibit-startup-screen t)
+
+;; nice scrolling
+(setq scroll-margin 0
+      scroll-conservatively 100000
+      scroll-preserve-screen-position 1)
+
+;; mode line settings
+(line-number-mode t)
+(column-number-mode t)
+(size-indication-mode t)
+
+;; enable y/n answers
+(fset 'yes-or-no-p 'y-or-n-p)
+
+;; Productive default mode
+(setq initial-major-mode 'org-mode)
+
+;; Keep emacs Custom-settings in separate file.
+(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
+(when (file-exists-p custom-file)
+  (load custom-file))
+
+;; store all backup and autosave files in the tmp dir
+(setq backup-directory-alist
+      `((".*" . ,temporary-file-directory)))
+(setq auto-save-file-name-transforms
+      `((".*" ,temporary-file-directory t)))
+;; dont auto save in tramp
+(add-to-list 'backup-directory-alist
+             (cons tramp-file-name-regexp nil))
+
+(setq version-control t     ;; Use version numbers for backups.
+      kept-new-versions 10  ;; Number of newest versions to keep.
+      kept-old-versions 0   ;; Number of oldest versions to keep.
+      delete-old-versions t ;; Don't ask to delete excess backup versions.
+      backup-by-copying t)  ;; Copy all files, don't rename them.
+
+;; revert buffers automatically when underlying files are changed externally
+(global-auto-revert-mode t)
+
+;; Make backups of files, even when they're in version control.
+(setq vc-make-backup-files t)
+
+;; Fix empty pasteboard error.
+(setq save-interprogram-paste-before-kill nil)
+
+;; auth
+(require 'auth-source)
+(setq auth-sources '("~/.authinfo.gpg"))
+(setq epg-gpg-program "gpg")
+(setf epa-pinentry-mode 'loopback)
+
+(use-package expand-region
+  :ensure
+  :init
+  (global-set-key (kbd "C-\\") 'er/expand-region)
+  )
+
+;; set the cursor color
+(setq default-frame-alist '((cursor-color . "white")))
+
+
+;; install multiple cursors
+(use-package multiple-cursors
+  :ensure t
+  :init
+  (global-set-key (kbd "C-c m c") 'mc/edit-lines)
+  (global-set-key (kbd "C-=")  'mc/mark-next-like-this)
+  (global-set-key (kbd "C--")  'mc/skip-to-next-like-this)
+  (global-set-key (kbd "C-<")  'mc/mark-previous-like-this)
+  (multiple-cursors-mode)
+  )
+
+(defun dired-get-size ()
+  (interactive)
+  (let ((files (dired-get-marked-files)))
+    (with-temp-buffer
+      (apply 'call-process "/usr/bin/du" nil t nil "-sch" files)
+      (message "Size of all marked files: %s"
+               (progn
+                 (re-search-backward "\\(^[0-9.,]+[A-Za-z]+\\).*total$")
+                 (match-string 1))))))
+
+;;(define-key dired-mode-map (kbd "?") 'dired-get-size)
+;;(define-key dired-mode-map (kbd "V") 'dired-get-size)
+
+;; open mkv files with xdg-open, add more to the string-suffix-p function call to open others files in xdg open
+(defun open-file-or-xdg-open ()
+  "Open file with `xdg-open` if it's an `mkv` file, otherwise open it in Emacs."
+  (interactive)
+  (let ((file (dired-get-file-for-visit)))
+    (if (or (string-suffix-p ".mkv" file) (string-suffix-p ".mp4" file))
+        (call-process "xdg-open" nil 0 nil file)
+      (dired-find-file))))
+
+(eval-after-load "dired" '(progn
+                            (define-key dired-mode-map [return] 'open-file-or-xdg-open)
+                            (define-key dired-mode-map (kbd "<mouse-2>") 'open-file-or-xdg-open)
+                            ))
+
+(defun file-info ()
+  "Show the info for just the current file."
+  (interactive)
+  (let ((dired-listing-switches "-alh"))
+    (dired-other-window buffer-file-name)))
+
+
+;; @coder set dired default sort order to most recently edited at the top
+(setq dired-listing-switches "-alht")
+
+(use-package org
+  :ensure t
+  :delight org-mode "✎"
+  :pin gnu
+  :defer t
+  :config
+  (define-key org-mode-map (kbd "C-c C-r") verb-command-map)
+  (setq org-directory "~/Dropbox/org")
+  (setq org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/"))
+  (setq org-modules
+        (quote
+         (ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m)))
+
+  (setq org-clock-persist 'history)
+  (setq org-export-with-section-numbers nil)
+  (org-clock-persistence-insinuate)
+  (setq org-hide-block-startup t))
+
+;; ;; org babel
+(use-package ob-http :ensure t)
+(use-package ob-mongo :ensure t)
+(use-package ob-graphql :ensure t)
+(use-package ox-gfm :ensure t)
+
+(require 'org-tempo)
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((shell . t)
+   (emacs-lisp . t)
+   (latex . t)
+   (js . t)
+   (python . t)
+   (http . t)
+   ))
+
+
+(defun my-org-confirm-babel-evaluate (lang body)
+  (not (member lang '("node" "http" "python" "emacs-lisp" "graphql" "sh" "bash" "js" "shell" "javascript" "inline-js"))))
+
+(setq org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate)
+
+(add-to-list 'org-src-lang-modes '("inline-js" . javascript))
+(defvar org-babel-default-header-args:inline-js
+  '((:results . "html")
+    (:exports . "results")))
+(defun org-babel-execute:inline-js (body _params)
+  (format "<script type=\"text/javascript\">\n%s\n</script>" body))
+
+(setq org-src-window-setup 'current-window)
+
+(defun my/org-roam-filter (node)
+  (interactive)
+  (let ((tags (org-roam-node-tags node)))
+    (not (member "ATTACH" tags))))
+
+(defun my/org-roam-node-find ()
+  (interactive)
+  (if (equal current-prefix-arg nil) ; no C-u
+      (org-roam-node-find)
+    (org-roam-node-find t nil 'my/org-roam-filter))
+  )
+
+(use-package org-roam
+  :ensure
+  :bind (("C-c n l" . org-roam-buffer-toggle)
+         ("C-c n f" . my/org-roam-node-find)
+         ("C-c n i" . org-roam-node-insert)
+         ("C-c n I" . org-roam-node-insert-immediate)
+         :map org-mode-map
+         ("C-M-i" . completion-at-point)
+         :map org-roam-dailies-map
+         ("Y" . org-roam-dailies-capture-yesterday)
+         ("T" . org-roam-dailies-capture-tomorrow))
+  :bind-keymap
+  ("C-c n d" . org-roam-dailies-map)
+  :config
+  (setq org-roam-directory (file-truename "~/Dropbox/org/roam"))
+  (org-roam-db-autosync-mode)
+  (require 'org-roam-dailies)
+
+  (setq org-roam-capture-templates '(("p" "project" plain
+                                      "\n%?"
+                                      :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
+                                      :unnarrowed t)
+                                     ("w" "work" plain
+                                      "\n%?"
+                                      :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
+                                      :unnarrowed t))))
+
+
+(setq org-roam-dailies-capture-templates
+      '(("d" "default" entry
+         "\n\n\n\n%?"
+         :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>\n\n* %<%Y-%m-%d>"))
+        ("w" "work" entry
+         "\n* %?"
+         :target (file+head "./work/%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>"))))
+
+(setq org-html-metadata-timestamp-format "%a %Y/%m/%d")
+(setq org-html-prefer-user-labels t)
+(setq org-export-with-broken-links t)
+
+(setq org-html-postamble-format
+      '(("en"
+         "<p class=\"date\">Created: %d </p><p class=\"updated\">Last Updated: %C</p><p class=\"creator\">Generated by %c</p>")))
+(setq org-html-postamble t)
+(setq org-publish-project-alist
+      '(
+        ("org-pages" :base-directory "~/Dropbox/org/roam/daily" :base-extension "org" :publishing-directory "/ssh:root@lantana.io:/var/www/html/org/daily" :recursive t :publishing-function org-html-publish-to-html :headline-levels 4 :auto-preamble t :exclude "daily/work/\\|iFIT\\|lantana.index.org" :auto-sitemap t :sitemap-filename "index.org" :sitemap-title "Hello" :sitemap-sort-files anti-chronologically :html-head-include-scripts t :html-head-extra "<script src=\"../../test.js\"></script>")
+        ("lantana-index" :base-directory "~/Dropbox/org/" :base-extension "org" :publishing-directory "/ssh:root@lantana.io:/var/www/html/" :publishing-function org-html-publish-to-html)
+        ("js"
+         :base-directory "~/Dropbox/org/js"
+         :base-extension "js"
+         :publishing-directory "/ssh:root@lantana.io:/var/www/html/"
+         :recursive t
+         :publishing-function org-publish-attachment)
+        ("org-attachments"
+         :base-directory "~/Dropbox/org/roam/daily/data" ; Or other attachment directories
+         :base-extension "png\\|jpg\\|gif\\|css\\|js" ; Specify file types
+         :publishing-directory "/ssh:root@lantana.io:/var/www/html/org/daily/data"
+         :publishing-function org-publish-attachment
+         :recursive t)
+        ("LANtana" :components
+         ("org-pages" "lantana-index" "org-attachments"))))
+
+(use-package org-download :ensure
+  :init
+  (setq org-download-method 'attach)
+  (setq org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s")
+  )
+
+(setq vterm-always-compile-module t)
+(use-package vterm
+  :ensure t
+  )
+
+(auth-source-forget-all-cached)
+(use-package gptel
+  :ensure t
+  :config
+  (setq gptel-default-mode 'org-mode)
+  (setq gptel-use-tools 'ask)
+  (require 'auth-source)
+  (setq gptel-model 'claude-3-5-haiku-20241022
+        gptel-backend
+        (gptel-make-anthropic "Claude"
+          :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))
+        ))
+
+(setq gptel-track-media t)
+
+(use-package mcp
+      :ensure t
+      :after gptel
+      :custom
+      (mcp-hub-servers
+       `(("github" . (:command "docker"
+                               :args ("run" "-i" "--rm"
+                                      "-e"
+                                      "GITHUB_PERSONAL_ACCESS_TOKEN"
+
+                                      "ghcr.io/github/github-mcp-server")
+                               :env (:GITHUB_PERSONAL_ACCESS_TOKEN
+                                     (shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380")
+                                     )))
+         ;; Add other MCP servers here if needed
+         ("context7" . (:url "https://mcp.context7.com/mcp"))
+         ("brave-search" . (:command "docker"
+                                     :args ("run" "-i" "--rm"
+                                            "-e"
+                                            "BRAVE_API_KEY"
+                                            "docker.io/mcp/brave-search")
+                                     :env (:BRAVE_API_KEY
+                                           (shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca")
+)))
+         ("browser-control" . (:command "node"
+                                        :args ("/home/ifit/browser-control-mcp/mcp-server/dist/server.js")
+                                        :env (:EXTENSION_SECRET
+                                              "2ed34b9e-2d45-46e3-991c-e4bec401943f"
+                                              :EXTENSION_PORT "8079")))
+         ("filesystem" . (:command "npx"
+                   :args ("-y" "@modelcontextprotocol/server-filesystem" "~/Dropbox")
+                   :roots ("/home/ifit/")))
+         ))
+      :config (require 'mcp-hub)
+      :hook (after-init . mcp-hub-start-all-server))
+
+    (require 'gptel-integrations)
+    (gptel-mcp-connect)
+
+(use-package inheritenv
+  :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
+
+;; install claude-code.el
+(use-package claude-code :ensure t
+  :config
+  (claude-code-mode)
+  :bind-keymap ("C-c c" . claude-code-command-map))
+
+(gptel-make-preset 'coder                       ;preset name, a symbol
+  :description "A preset optimized for coding tasks" ;for your reference
+  :backend "Claude"                     ;gptel backend or backend name
+  :model 'claude-opus-4-1-20250805
+  :system "You are a programmer.  Follow my instructions and return relevant code snippets.
+- Generate ONLY code as output, without any explanation or markdown code fences. Do not place in source blocks.
+- Generate only new code, do not repeat context.
+- Do not ask for further clarification, and make any assumptions you need to follow instructions."
+  :tools '("mcp-context7")) ;gptel tools or tool names
+
+(gptel-make-preset 'qq
+  :description
+  "For quick questions. Small responses to and from minibuf." :backend
+  "Claude" :model 'claude-3-5-haiku-20241022 :system
+  "You are a robot that provides information. You can search the web with the tool but only if you need to. Be as quick as possible. Limit your responses to 110 characters"
+  :tools
+  '("get_file_info" "search_files" "directory_tree"
+    "list_directory_with_sizes" "read_multiple_files"
+    "read_media_file" "read_text_file" "list_directory" "read_file"
+    "list_allowed_directories" "get-library-docs" "resolve-library-id"
+    "brave_summarizer" "brave_news_search" "brave_image_search"
+    "brave_video_search" "brave_local_search" "brave_web_search")
+  :stream t :temperature 1.0 :max-tokens nil :use-context 'user
+  :track-media t :include-reasoning t)
+
+(use-package copilot
+  :quelpa (copilot :fetcher github
+                   :repo "copilot-emacs/copilot.el"
+                   :branch "main"
+                   :files ("*.el"))
+  :hook
+  (prog-mode . copilot-mode)
+  )
+
+;; bind copilot-accept-completion to <backtab> in prog-mode
+(define-key prog-mode-map (kbd "<backtab>") 'copilot-accept-completion)
+
+(use-package vertico
+  :ensure
+  :init
+  (vertico-mode)
+
+  ;; Different scroll margin
+  ;; (setq vertico-scroll-margin 0)
+
+  ;; Show more candidates
+  ;; (setq vertico-count 20)
+
+  ;; Grow and shrink the Vertico minibuffer
+  ;; (setq vertico-resize t)
+
+  ;; Optionally enable cycling for `vertico-next' and `vertico-previous'.
+  ;; (setq vertico-cycle t)
+  )
+
+;; Persist history over Emacs restarts. Vertico sorts by history position.
+(use-package savehist
+  :ensure
+  :init
+  (savehist-mode))
+
+;; Optionally use the `orderless' completion style.
+(use-package orderless
+  :ensure
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-consult-dispatch orderless-affix-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
+
+(use-package corfu
+  :ensure
+  ;; Optional customizations
+  :custom
+  ;; (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-auto t)                 ;; Enable auto completion
+  ;; (corfu-separator ?\s)          ;; Orderless field separator
+  ;; (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  ;; (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  ;; (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  ;; (corfu-scroll-margin 5)        ;; Use scroll margin
+
+  :hook ((prog-mode . corfu-mode)
+         (shell-mode . corfu-mode)
+         (eshell-mode . corfu-mode))
+
+  ;; Recommended: Enable Corfu globally.
+  ;; This is recommended since Dabbrev can be used globally (M-/).
+  ;; See also `global-corfu-modes'.
+  )
+
+(use-package cape
+  :ensure
+  ;; Bind dedicated completion commands
+  ;; Alternative prefix keys: C-c p, M-p, M-+, ...
+  ;; :bind (("C-c p p" . completion-at-point) ;; capf
+  ;;        ("C-c p t" . complete-tag)        ;; etags
+  ;;        ("C-c p d" . cape-dabbrev)        ;; or dabbrev-completion
+  ;;        ("C-c p h" . cape-history)
+  ;;        ("C-c p f" . cape-file)
+  ;;        ("C-c p k" . cape-keyword)
+  ;;        ("C-c p s" . cape-elisp-symbol)
+  ;;        ("C-c p e" . cape-elisp-block)
+  ;;        ("C-c p a" . cape-abbrev)
+  ;;        ("C-c p l" . cape-line)
+  ;;        ("C-c p w" . cape-dict)
+  ;;        ("C-c p \\" . cape-tex)
+  ;;        ("C-c p _" . cape-tex)
+  ;;        ("C-c p ^" . cape-tex)
+  ;;        ("C-c p &" . cape-sgml)
+  ;;        ("C-c p r" . cape-rfc1345))
+  :init
+  ;; Add to the global default value of `completion-at-point-functions' which is
+  ;; used by `completion-at-point'.  The order of the functions matters, the
+  ;; first function returning a result wins.  Note that the list of buffer-local
+  ;; completion functions takes precedence over the global list.
+  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
+  (add-to-list 'completion-at-point-functions #'cape-file)
+  (add-to-list 'completion-at-point-functions #'cape-elisp-block)
+  ;;(add-to-list 'completion-at-point-functions #'cape-history)
+  ;;(add-to-list 'completion-at-point-functions #'cape-keyword)
+  ;;(add-to-list 'completion-at-point-functions #'cape-tex)
+  ;;(add-to-list 'completion-at-point-functions #'cape-sgml)
+  ;;(add-to-list 'completion-at-point-functions #'cape-rfc1345)
+  ;;(add-to-list 'completion-at-point-functions #'cape-abbrev)
+  ;;(add-to-list 'completion-at-point-functions #'cape-dict)
+  ;;(add-to-list 'completion-at-point-functions #'cape-elisp-symbol)
+  ;;(add-to-list 'completion-at-point-functions #'cape-line)
+  )
+
+(use-package orderless
+  :ensure t
+  :custom (completion-styles '(orderless)))
+
+(use-package yasnippet
+  :ensure
+  :init
+  (setq yas-snippet-dirs '("~/Dropbox/config/emacs/snippets"))
+  (global-set-key (kbd "C-c i") 'yas-insert-snippet)
+  (setq markdown-fontify-code-blocks-natively t)
+  (yas-global-mode 1))
+
+(setq completion-category-overrides '((eglot (styles orderless))))
+
+;;  (add-to-list 'default-frame-alist '(font . "Iosevka Extended 10" ))
+;;  (set-frame-font "Iosevka Extended 10" nil t)
+
+;; Enable rich annotations using the Marginalia package
+(use-package marginalia
+  :ensure
+  ;; Bind `marginalia-cycle' locally in the minibuffer.  To make the binding
+  ;; available in the *Completions* buffer, add it to the
+  ;; `completion-list-mode-map'.
+
+  ;; The :init section is always executed.
+  :config
+
+  ;; Marginalia must be activated in the :init section of use-package such that
+  ;; the mode gets enabled right away. Note that this forces loading the
+  ;; package.
+  (marginalia-mode))
+
+;; Consult users will also want the embark-consult package.
+(use-package embark-consult
+  :ensure ; only need to install it, embark loads it after consult if found
+  :hook
+  (embark-collect-mode . consult-preview-at-point-mode))
+
+;; Example configuration for Consult
+(use-package consult
+  :ensure
+  ;; Replace bindings. Lazily loaded due by `use-package'.
+  :bind (;; C-c bindings in `mode-specific-map'
+         ;; ("C-c M-x" . consult-mode-command)
+         ;; ("C-c h" . consult-history)
+         ;; ("C-c k" . consult-kmacro)
+         ;; ("C-c m" . consult-man)
+         ;; ("C-c i" . consult-info)
+         ;; ([remap Info-search] . consult-info)
+         ;; ;; C-x bindings in `ctl-x-map'
+         ;; ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
+         ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
+         ;; ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
+         ;; ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
+         ;; ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
+         ;; ("C-x p b" . consult-project-buffer)      ;; orig. project-switch-to-buffer
+         ;; ;; Custom M-# bindings for fast register access
+         ;; ("M-#" . consult-register-load)
+         ;; ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
+         ;; ("C-M-#" . consult-register)
+         ;; ;; Other custom bindings
+         ;; ("M-y" . consult-yank-pop)                ;; orig. yank-pop
+         ;; ;; M-g bindings in `goto-map'
+         ;; ("M-g e" . consult-compile-error)
+         ;; ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
+         ;; ("M-g g" . consult-goto-line)             ;; orig. goto-line
+         ;; ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
+         ;; ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
+         ;; ("M-g m" . consult-mark)
+         ;; ("M-g k" . consult-global-mark)
+         ;; ("M-g i" . consult-imenu)
+         ;; ("M-g I" . consult-imenu-multi)
+         ;; ;; M-s bindings in `search-map'
+         ;; ("M-s d" . consult-find)
+         ;; ("M-s D" . consult-locate)
+         ;; ("M-s g" . consult-grep)
+         ;;("M-s G" . consult-git-grep)
+         ("M-i" . consult-ripgrep)
+         ("C-s" . consult-line)
+         ;; ("M-s L" . consult-line-multi)
+         ;; ("M-s k" . consult-keep-lines)
+         ;; ("M-s u" . consult-focus-lines)
+         ;; ;; Isearch integration
+         ;; ("M-s e" . consult-isearch-history)
+         ;; :map isearch-mode-map
+         ;; ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
+         ;; ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
+         ;; ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
+         ;; ("M-s L" . consult-line-multi)            ;; needed by consult-line to detect isearch
+         ;; ;; Minibuffer history
+         ;; :map minibuffer-local-map
+         ;; ("M-s" . consult-history)                 ;; orig. next-matching-history-element
+         ;; ("M-r" . consult-history)                ;; orig. previous-matching-history-element
+         )
+
+  ;; Enable automatic preview at point in the *Completions* buffer. This is
+  ;; relevant when you use the default completion UI.
+  :hook (completion-list-mode . consult-preview-at-point-mode)
+
+  ;; The :init configuration is always executed (Not lazy)
+  :init
+
+  ;; Optionally configure the register formatting. This improves the register
+  ;; preview for `consult-register', `consult-register-load',
+  ;; `consult-register-store' and the Emacs built-ins.
+  (setq register-preview-delay 0.5
+        register-preview-function #'consult-register-format)
+
+  ;; Optionally tweak the register preview window.
+  ;; This adds thin lines, sorting and hides the mode line of the window.
+  (advice-add #'register-preview :override #'consult-register-window)
+
+  ;; Configure other variables and modes in the :config section,
+  ;; after lazily loading the package.
+  :config
+
+  ;; Optionally configure preview. The default value
+  ;; is 'any, such that any key triggers the preview.
+  ;; (setq consult-preview-key 'any)
+  ;; (setq consult-preview-key "M-.")
+  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
+  ;; For some commands and buffer sources it is useful to configure the
+  ;; :preview-key on a per-command basis using the `consult-customize' macro.
+  (consult-customize
+   consult-theme :preview-key '(:debounce 0.2 any)
+   consult-ripgrep consult-git-grep consult-grep
+   consult-bookmark consult-recent-file consult-xref
+   consult--source-bookmark consult--source-file-register
+   consult--source-recent-file consult--source-project-recent-file
+   ;; :preview-key "M-."
+   :preview-key '(:debounce 0.4 any))
+
+  ;; Optionally configure the narrowing key.
+  ;; Both < and C-+ work reasonably well.
+  (setq consult-narrow-key "<") ;; "C-+"
+
+  ;; Optionally make narrowing help available in the minibuffer.
+  ;; You may want to use `embark-prefix-help-command' or which-key instead.
+  ;; (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
+
+  ;; By default `consult-project-function' uses `project-root' from project.el.
+  ;; Optionally configure a different project root function.
+      ;;;; 1. project.el (the default)
+  ;; (setq consult-project-function #'consult--default-project--function)
+      ;;;; 2. vc.el (vc-root-dir)
+  ;; (setq consult-project-function (lambda (_) (vc-root-dir)))
+      ;;;; 3. locate-dominating-file
+  ;; (setq consult-project-function (lambda (_) (locate-dominating-file "." ".git")))
+      ;;;; 4. projectile.el (projectile-project-root)
+  ;; (autoload 'projectile-project-root "projectile")
+  ;; (setq consult-project-function (lambda (_) (projectile-project-root)))
+      ;;;; 5. No project support
+  ;; (setq consult-project-function nil)
+  )
+
+(use-package embark
+  :ensure t
+
+  :bind
+  (("C-." . embark-act)         ;; pick some comfortable binding
+   ("C-;" . embark-dwim)        ;; good alternative: M-.
+   ("C-h B" . embark-bindings)) ;; alternative for `describe-bindings'
+
+  :init
+
+  ;; Optionally replace the key help with a completing-read interface
+  (setq prefix-help-command #'embark-prefix-help-command)
+
+  ;; Show the Embark target at point via Eldoc.  You may adjust the Eldoc
+  ;; strategy, if you want to see the documentation from multiple providers.
+
+  ;; (setq eldoc-documentation-strategy #'eldoc-documentation-compose-eagerly)
+
+  :config
+  (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target)
+
+  )
+
+(set-frame-parameter nil 'alpha-background 80)
+
+(add-to-list 'default-frame-alist '(alpha-background . 80))
+
+(global-visual-line-mode)
+
+(use-package minions :ensure
+  :config
+  (minions-mode))
+
+(use-package mood-line :ensure
+  :config
+  (mood-line-mode))
+
+(use-package modus-themes :ensure
+  :init
+  (load-theme 'modus-vivendi :no-confirm))
+
+(global-set-key (kbd "M-o") 'other-window)
+
+(use-package which-key
+  :ensure
+  :config
+  (which-key-mode 1))
+
+(setq display-buffer-alist
+      '(
+        ((major-mode . vterm-mode)
+         (display-buffer-reuse-mode-window display-buffer-at-bottom)
+         )
+        ((or . ((derived-mode . flymake-diagnostics-buffer-mode)
+                (derived-mode . flymake-project-diagnostics-mode)
+                (derived-mode . messages-buffer-mode)))
+         (display-buffer-reuse-mode-window display-buffer-at-bottom)
+         (window-height . 0.3)
+         (dedicated . t)
+         (preserve-size . (t . t)))
+        ))
+
+;; bind C-x C-b to ibuffer
+(global-set-key (kbd "C-x C-b") 'ibuffer)
+
+(add-to-list 'display-buffer-alist '("*Async Shell Command*" display-buffer-no-window (nil)))
+
+(require 'erc)
+(require 'erc-desktop-notifications)
+(require 'erc-track)
+(require 'notifications)
+
+(erc-track-mode)
+(setq erc-track-position-in-mode-line 't)
+
+(defun my-on-action-function (id key)
+  (message "Message %d, key \"%s\" pressed" id key))
+
+
+(defun my-on-close-function (id reason)
+  (message "Message %d, closed due to \"%s\"" id reason))
+
+(defun erc-notifications-notify (nick msg)
+  (interactive)
+  "Notify that NICK send some MSG via notify-send."
+  (notifications-notify
+   :title nick
+   :body msg
+   :actions '("Confirm" "Reply" "Refuse" "Close")
+   :on-action 'my-on-action-function
+   :on-close 'my-on-close-function))
+
+;; this ensures code highlighting on export... and probably other stuff
+(use-package htmlize
+  :ensure)
+
+(use-package wgrep
+  :ensure)
+
+(use-package ace-jump-mode
+  :ensure
+  :config
+  (define-key global-map (kbd "C-;") 'ace-jump-mode))
+
+(use-package whisper
+  :vc (:url "https://github.com/natrys/whisper.el" :branch "master")
+  :bind ("C-c r" . whisper-run))
+
+(use-package helpful
+  :ensure
+  :config
+  (global-set-key (kbd "C-h f") #'helpful-callable)
+  (global-set-key (kbd "C-h v") #'helpful-variable)
+  (global-set-key (kbd "C-h k") #'helpful-key)
+  (global-set-key (kbd "C-c C-d") #'helpful-at-point))
+
+(use-package tree-sitter-langs
+  :ensure)
+
+(use-package tree-sitter
+  :ensure
+  :config
+  (require 'tree-sitter-langs)
+  (global-tree-sitter-mode)
+  (add-hook 'tree-sitter-after-on-hook #'tree-sitter-hl-mode))
+
+(setq treesit-language-source-alist
+      '((bash "https://github.com/tree-sitter/tree-sitter-bash")
+        (cmake "https://github.com/uyha/tree-sitter-cmake")
+        (css "https://github.com/tree-sitter/tree-sitter-css")
+        (elisp "https://github.com/Wilfred/tree-sitter-elisp")
+        (go "https://github.com/tree-sitter/tree-sitter-go")
+        (html "https://github.com/tree-sitter/tree-sitter-html")
+        (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+        (rust "https://github.com/tree-sitter/tree-sitter-rust" "master" "src")
+        (json "https://github.com/tree-sitter/tree-sitter-json")
+        (make "https://github.com/alemuller/tree-sitter-make")
+        (markdown "https://github.com/ikatyang/tree-sitter-markdown")
+        (python "https://github.com/tree-sitter/tree-sitter-python")
+        (toml "https://github.com/tree-sitter/tree-sitter-toml")
+        (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+        (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+        (yaml "https://github.com/ikatyang/tree-sitter-yaml")))
+
+(global-set-key "\C-c\C-u" 'uncomment-region)
+(global-set-key "\C-c\C-p" 'comment-region)
+
+;; not having this will ruin your whole life
+(setq-default indent-tabs-mode nil)
+
+;; remove trailing whitespace
+(add-hook 'before-save-hook 'delete-trailing-whitespace)
+
+;; magic auto format shit
+(use-package apheleia
+  :ensure t
+  :pin "melpa"
+  )
+
+(delete-selection-mode 1)
+
+(use-package lsp-mode
+  :custom
+  (lsp-completion-provider :none) ;; we use Corfu!
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+  (setq lsp-response-timeout 1)
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+  :hook
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
+  :commands lsp)
+
+
+;; optionally
+(use-package lsp-ui :ensure :commands lsp-ui-mode)
+;; if you are ivy user
+(use-package lsp-ivy :commands lsp-ivy-workspace-symbol)
+
+(use-package eldoc
+  :defer     t
+  :diminish  eldoc-mode)
+
+(use-package projectile
+  :ensure
+  :config
+  (projectile-mode +1)
+  (setq projectile-switch-project-action 'magit-status)
+  (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+  (define-key projectile-command-map (kbd "x v") 'projectile-run-vterm-other-window)
+  ;;(setq projectile-indexing-method 'native)
+  (setq projectile-indexing-method 'alien))
+
+(use-package magit
+  :ensure
+  :config
+  (setq magit-display-buffer-function
+        (lambda (buffer)
+          (display-buffer
+           buffer (if (and (derived-mode-p 'magit-mode)
+                           (memq (with-current-buffer buffer major-mode)
+                                 '(magit-process-mode
+                                   magit-revision-mode
+                                   magit-diff-mode
+                                   magit-stash-mode
+                                   magit-status-mode)))
+                      nil
+                    '(display-buffer-same-window)))))
+  (global-set-key (kbd "C-x g") 'magit-status)
+  (setq magit-list-refs-sortby "-creatordate")
+  )
+
+(use-package browse-at-remote :ensure)
+
+
+(use-package forge
+  :ensure
+  :after magit)
+(setq forge-owned-accounts '(("scottstav")))
+
+(use-package git-gutter
+  :ensure
+  :config
+  (global-git-gutter-mode +1))
+
+(show-paren-mode 1)
+(electric-pair-mode 1)
+(global-set-key (kbd "C-c C-k") 'paredit-splice-sexp)
+
+(use-package rainbow-delimiters
+  :ensure t)
+
+;; Don't show anything for rainbow-mode.
+(use-package rainbow-mode
+  :delight)
+
+(use-package add-node-modules-path
+  :ensure)
+
+(use-package prettier-js
+  :ensure)
+
+(defun setup-typescript-mode ()
+  "Setup function for typescript."
+  (interactive)
+  ;;(company-mode +1) ;; so that you don't have to type C-M-i for auto-complete candidates to show
+  (add-node-modules-path)
+  ;;(my-setup-dap-node) ;; cant really get this to work in a practical way (i.e. attach to `yarn start` or jest)
+  ;;(centered-cursor-mode 1)
+  (subword-mode)
+
+  (display-line-numbers-mode)
+  (apheleia-mode)
+  (lsp))
+(add-hook 'typescript-mode-hook 'setup-typescript-mode)
+
+(use-package jest-test-mode :ensure t :defer t :commands jest-test-mode :init
+  (add-hook 'typescript-mode-hook 'jest-test-mode)
+  (add-hook 'typescript-ts-mode-hook 'jest-test-mode)
+  (add-hook 'js-mode-hook 'jest-test-mode)
+  (add-hook 'typescript-tsx-mode-hook 'jest-test-mode))
+
+(setq js-indent-level 2)
+(setq typescript-indent-level 2)
+
+
+
+(add-hook 'python-mode-hook
+          (lambda () (lsp) (display-line-numbers-mode)))
+
+(use-package graphql-mode
+  :ensure)
+
+(use-package go-mode
+  :ensure
+  :config
+  (add-hook 'go-mode-hook 'eglot-ensure))
+
+(use-package rust-mode
+  :ensure
+  :init
+  (setq rust-mode-treesitter-derive t))
+
+(add-hook 'rust-mode-hook
+          (lambda () (setq indent-tabs-mode nil) (display-line-numbers-mode)))
+
+(setq rust-format-on-save t)
+
+(add-hook 'rust-mode-hook #'lsp)
+
+(use-package json-mode
+  :ensure    json-mode
+  :config    (bind-keys :map json-mode-map
+                        ("C-c i" . json-mode-beautify))
+  :mode      ("\\.\\(json\\)$" . json-mode))
+
+(use-package yaml-mode
+  :mode ("\\.\\(yml\\|yaml\\|\\config\\|sls\\)$" . yaml-mode)
+  :ensure yaml-mode
+  :defer t)
+
+(add-hook 'c-mode-common-hook '(lambda () (lsp)))
+
+(use-package css-mode
+  :config (setq css-indent-offset 2)
+  )
+
+(use-package terraform-mode
+  :ensure
+  :config
+  (defun tf-before-save ()
+    (when (eq major-mode 'terraform-mode)
+      (message (concat "Running tf format " buffer-file-name))
+      (call-process-shell-command (concat "terraform fmt -list=false -write=true " buffer-file-name "&"))))
+  (add-hook 'before-save-hook #'tf-before-save)
+  )
+
+;; markdown
+;; may need to:
+;; * yay -S pandoc
+(use-package markdown-mode
+  :ensure t
+  :commands (markdown-mode gfm-mode)
+  :mode (("README\\.md\\'" . gfm-mode)
+         ("\\.md\\'" . markdown-mode)
+         ("\\.markdown\\'" . markdown-mode))
+  :init (setq markdown-command "pandoc"))
+
+(use-package dockerfile-mode
+  :ensure)
+
+(defun save-buffer-always ()
+  "Save the buffer even if it is not modified."
+  (interactive)
+  (set-buffer-modified-p t)
+  (save-buffer))
+
+(defun untabify-buffer ()
+  "De-indent current buffer."
+  (interactive)
+  (untabify (point-min) (point-max)))
+
+(defun indent-buffer ()
+  "Indent the entire buffer according to current mode."
+  (interactive)
+  (indent-region (point-min) (point-max)))
+
+(defun cleanup-buffer ()
+  "Perform a bunch of operations on the whitespace content of a buffer.
+Including indent-buffer, which should not be called automatically on save."
+  (interactive)
+  (untabify-buffer)
+  (delete-trailing-whitespace)
+  (indent-buffer))
+
+(defun crontab-e ()
+  "Run `crontab -e' in a Emacs buffer."
+  (interactive)
+  (with-editor-async-shell-command "crontab -e"))
+
+(scroll-bar-mode 0)
+
+;; @coder create an emacs-lisp function that will do the following
+;; ;; 1. Accept a single argument which is a blob of text. a string.
+;; ;; 2. call `gptel` to start a new session with a name that is a random number
+;; ;; 3. send the blob of text to the gptel session buffer
+;; ;; 4. open the gptel session buffer in another frame
+;; ;; 5. submit the text to the gptel backend
+
+(defun gptel-send-to-new-session (text)
+  "Send TEXT to a new gptel session with a name derived from the first 8 characters of input and submit it."
+  (let* ((session-name (format "*gptel-%s*" (substring text 0 (min 8 (length text)))))
+         (gptel-buffer (gptel session-name)))
+    (with-current-buffer gptel-buffer
+      (goto-char (point-max))
+      (insert text)
+      (gptel-send)
+      )
+    (switch-to-buffer-other-frame gptel-buffer)))
+
+(defvar bean-minor-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "C-c RET") 'gptel-send)
+    map)
+  "bean-minor-mode keymap.")
+
+(define-minor-mode bean-minor-mode
+  "A minor mode so that my key settings override annoying major modes."
+  :init-value t
+  :lighter " bean")
+
+(bean-minor-mode 1)
+
+;; Define a custom function to delete a word without copying it to the kill ring
+(defun delete-word(arg)
+  "Delete characters forward until encountering the end of a word, without copying to the kill ring."
+  (interactive "p")
+  (delete-region (point) (progn (forward-word arg) (point))))
+
+(defun backward-delete-word (arg)
+  "Delete characters backward until encountering the beginning of a word, without copying to the kill ring."
+  (interactive "p")
+  (delete-word (- arg)))
+
+;; Rebind M-d to the custom function
+(global-set-key (kbd "M-d") 'delete-word)
+(global-set-key (kbd "M-DEL") 'backward-delete-word)

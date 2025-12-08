@@ -1,6 +1,6 @@
 #+TITLE: Literate Emacs Configuration
 #+AUTHOR: Scott Stavinoha
-#+PROPERTY: header-args :tangle yes
+#+PROPERTY: header-args:emacs-lisp :tangle ~/.emacs.d/init.el
 
 
 #+begin_quote
@@ -398,18 +398,12 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
 **** gptel
 #+begin_src emacs-lisp
   (auth-source-forget-all-cached)
-
-  (defun log-message (beg end)
-    ;; Do something with the response between beg and end
-    (async-shell-command "log_message"))
-
   (use-package gptel
     :ensure t
     :config
     (setq gptel-default-mode 'org-mode)
     (setq gptel-use-tools 'ask)
     (require 'auth-source)
-    (add-hook 'gptel-post-response-functions 'log-message)
     (setq gptel-model 'claude-3-5-haiku-20241022
           gptel-backend
           (gptel-make-anthropic "Claude"
@@ -481,14 +475,31 @@ Emacs is not that hard, you can learn emacs in one day, everyday.
     :description "A preset optimized for coding tasks" ;for your reference
     :backend "Claude"                     ;gptel backend or backend name
     :model 'claude-opus-4-1-20250805
-    :system "You are a programmer.  Follow my instructions and refactor code I provide.
-  - Generate ONLY code as output, without any explanation or markdown code fences.
-  - Generate code in full, do not abbreviate or omit code.
-  - Do not ask for further clarification, and make any assumptions you need to follow instructions.
-  - Get the current language by looking at the major mode in current emacs buffer
-  - ONLY provide code in the current major modes language"
-    :tools '("mcp-github" "mcp-context7")) ;gptel tools or tool names
+    :system "You are a programmer.  Follow my instructions and return relevant code snippets.
+  - Generate ONLY code as output, without any explanation or markdown code fences. Do not place in source blocks.
+  - Generate only new code, do not repeat context.
+  - Do not ask for further clarification, and make any assumptions you need to follow instructions."
+    :tools '("mcp-context7")) ;gptel tools or tool names
+
+  (gptel-make-preset 'qq
+    :description
+    "For quick questions. Small responses to and from minibuf." :backend
+    "Claude" :model 'claude-3-5-haiku-20241022 :system
+    "You are a robot that provides information. You can search the web with the tool but only if you need to. Be as quick as possible. Limit your responses to 110 characters"
+    :tools
+    '("get_file_info" "search_files" "directory_tree"
+      "list_directory_with_sizes" "read_multiple_files"
+      "read_media_file" "read_text_file" "list_directory" "read_file"
+      "list_allowed_directories" "get-library-docs" "resolve-library-id"
+      "brave_summarizer" "brave_news_search" "brave_image_search"
+      "brave_video_search" "brave_local_search" "brave_web_search")
+    :stream t :temperature 1.0 :max-tokens nil :use-context 'user
+    :track-media t :include-reasoning t)
+
+
 #+end_src
+
+
 **** Copilot
 #+begin_src emacs-lisp
   (use-package copilot
@@ -1282,3 +1293,8 @@ use rainbow delimiters
   (global-set-key (kbd "M-d") 'delete-word)
   (global-set-key (kbd "M-DEL") 'backward-delete-word)
 #+end_src
+
+* Local Variables
+# Local Variables:
+# eval: (add-hook 'after-save-hook (lambda () (org-babel-tangle)) nil t)
+# End:

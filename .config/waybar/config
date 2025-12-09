@@ -143,8 +143,8 @@
     },
         "custom/mywidget": {
         "interval": 5,
-        "format": "dorky",
+        "format": "λ",
         "return-type": "json",
-        "on-click": "log_message hi && sleep 2 && log_message"
+        "on-click": "log_message 'all trees will fall someday but not us' && sleep 2 && log_message"
     }
 }

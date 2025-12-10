@@ -200,18 +200,11 @@
 			   :env (:GITHUB_PERSONAL_ACCESS_TOKEN
 				 ,(shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380"))))
      ("context7" . (:url "https://mcp.context7.com/mcp"))
-     ("brave-search" . (:command "docker"
-				 :args ("run" "-i" "--rm" "-e" "BRAVE_API_KEY"
-					"docker.io/mcp/brave-search")
-				 :env (:BRAVE_API_KEY
-                                       ,(shell-command-to-string "bw get password 8e6bcb23-28f5-4a86-9efb-b3950038dcca"))))
      ("browser-control" . (:command "node"
 				    :args (,(expand-file-name "~/browser-control-mcp/mcp-server/dist/server.js"))
 				    :env (:EXTENSION_SECRET "2ed34b9e-2d45-46e3-991c-e4bec401943f"
 							    :EXTENSION_PORT "8079")))
-     ("filesystem" . (:command "npx"
-                               :args ("-y" "@modelcontextprotocol/server-filesystem" "~/Dropbox")
-                               :roots ("~")))))
+     ))
   :config (require 'mcp-hub)
   :hook (after-init . mcp-hub-start-all-server))
 (require 'gptel-integrations)

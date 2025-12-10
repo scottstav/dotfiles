@@ -68,6 +68,11 @@
   (global-set-key (kbd "C-c C-u") 'uncomment-region)
   (global-set-key (kbd "C-c C-p") 'comment-region)
 
+  ;; Enable visual line mode globally
+  (global-visual-line-mode 1)
+  ;; Add some extra line spacing for better readability of wrapped lines
+  (setq-default line-spacing 0.2)
+
   (use-package expand-region
     :bind ("C-\\" . er/expand-region))
 

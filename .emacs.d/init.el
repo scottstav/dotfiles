@@ -33,6 +33,11 @@
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
 (global-set-key (kbd "C-c C-p") 'comment-region)
 
+;; Enable visual line mode globally
+(global-visual-line-mode 1)
+;; Add some extra line spacing for better readability of wrapped lines
+(setq-default line-spacing 0.2)
+
 (use-package expand-region
   :bind ("C-\\" . er/expand-region))
 
@@ -285,17 +290,3 @@
          (typescript-ts-mode . eglot-ensure)
          (rust-ts-mode . eglot-ensure)
          (go-ts-mode . eglot-ensure)))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(safe-local-variable-values
-   '((eval add-hook 'after-save-hook (lambda nil (org-babel-tangle)) nil
-	   t))))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )

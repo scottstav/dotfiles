@@ -1,51 +1,49 @@
 * {
-  border: none;
-  border-radius: 0;
-  font-family: "Iosevka";
-  font-size: 13px;
-  min-height: 0;
+    border: none;
+    border-radius: 0;
+    font-family: "Iosevka";
+    font-size: 11px;
+    min-height: 0;
 }
 
 window#waybar {
-  /* background: transparent; */
-  color: #d9b645;
-  background-color: transparent;
+    min-height: 24px;
+}
+
+window#waybar {
+    color: #e0e0e0;
+    background-color: #2c2c2c;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
 }
 
 #window {
-  /* font-weight: bold; */
-  font-family: "Iosevka";
+    font-family: "Iosevka";
+    color: #c0c0c0;
 }
-/*
-#workspaces {
-    padding: 0 5px;
-}
-*/
 
 #workspaces button {
-  border-radius: 50%;
-  padding: 5px;
-  margin: 5px;
-  background-color: transparent;
-  color: #fcf2b1;
-  box-shadow: 2px 0 0 1.1px #fcf2b1;
+    color: #e0e0e0;
+    /* round the edges */
+    border-radius: 100px;
 }
 
 #workspaces button:hover {
-  background: #ffffff;
 }
 
 #workspaces button.active {
-  background-color: #64727d;
+    background-color: rgba(100, 100, 100, 0.5);
+    color: #ffffff;
 }
 
 #workspaces button.urgent {
-  background-color: #eb4d4b;
+    background-color: rgb(110, 00, 00);
+    color: #ffffff;
 }
 
 #mode {
-  background: #64727d;
-  border-bottom: 3px solid white;
+    background: rgba(80, 80, 80, 0.5);
+    border-bottom: 3px solid #a0a0a0;
 }
 
 #clock,
@@ -57,87 +55,62 @@ window#waybar {
 #custom-spotify,
 #tray,
 #mode {
-  padding: 0 5px;
-  margin: 0 2px;
+    padding: 0 3px;
+    margin: 0 1px;
 }
 
-#clock {
-  color: #fcf2b1;
-  background-color: #64727d;
-  padding: 5px;
-  margin: 5px;
-  border-radius: 25px;
-  box-shadow: 2px 0 0 0px #fcf2b1;
-}
-
-#battery {
-}
 
 #bluetooth {
-  padding: 5px;
-  /* border-radius: 25px; */
-  margin: 5px;
-  color: #d9b645;
-  /* background-color: #64727d; */
+    padding: 2px;
+    margin: 2px;
 }
 
 #custom-waybarstatus {
-  padding: 5px;
-  color: #d9b645;
-  background-color: #64727d;
+    padding: 2px 4px;
+    color: #c0c0c0;
+    background-color: rgba(50, 50, 50, 0.7);
 }
 
 #battery icon {
-  color: red;
+    color: #dc143c;
 }
 
 #battery.charging {
-  color: #aaff00;
+    color: #00ff7f;
 }
 
 @keyframes blink {
-  to {
-    background-color: #ffffff;
-    color: black;
-  }
+    to {
+	background-color: #89cff0;
+	color: #003366;
+    }
 }
 
 #battery.warning:not(.charging) {
-  color: #f53c3c;
-  animation-name: blink;
-  animation-duration: 0.5s;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  animation-direction: alternate;
-}
-
-#cpu {
-}
-
-#memory {
-}
-
-#network {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
 }
 
 #network.disconnected {
-  background: #f53c3c;
-}
-
-#pulseaudio {
+    background: #dc143c;
 }
 
 #pulseaudio.muted {
-  color: #f53c3c;
+    color: #dc143c;
 }
 
 #pulseaudio.source-muted {
-  color: #f53c3c;
+    color: #dc143c;
 }
 
 #custom-spotify {
-  color: rgb(102, 220, 105);
+    color: #00bfff;
 }
 
 #tray {
+    color: #89cff0;
 }

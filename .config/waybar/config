@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces"],
-    "modules-center": ["idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget", "custom/waybarstatus"],
+    "modules-center": ["custom/emacs-dired", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget", "custom/waybarstatus"],
     "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
@@ -146,5 +146,11 @@
         "format": "λ",
         "return-type": "json",
         "on-click": "log_message 'all trees will fall someday but not us' && sleep 2 && log_message"
+    },
+    "custom/emacs-dired": {
+        "format": "📨",
+        "tooltip": "Open Emacs Dired",
+        "on-click": "emacsclient -c -e '(dired \"~/\")'",
+        "return-type": "json"
     }
 }

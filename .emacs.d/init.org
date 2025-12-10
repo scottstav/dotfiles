@@ -42,6 +42,11 @@
   (scroll-bar-mode -1)                     ; Disable visible scrollbar
   (menu-bar-mode -1)                       ; Disable the menu bar
   (tool-bar-mode -1)                       ; Disable the toolbar
+
+  ;; Start dired with details hidden and fit window to longest filename
+  (add-hook 'dired-mode-hook #'dired-hide-details-mode)
+
+  (setq fit-window-to-buffer-horizontally t)
 #+end_src
 
 #+RESULTS:

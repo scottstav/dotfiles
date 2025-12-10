@@ -104,14 +104,16 @@
      ("M-g i"   . consult-imenu)
      ("M-i"   . consult-ripgrep)
      ("M-s f"   . consult-fd)
-     ;; Project bindings (C-x p prefix)
-     ("C-x p b" . consult-project-buffer)
      ("C-x p r" . consult-ripgrep)
+     ;; Project bindings (C-x p prefix)
+     ("C-x p b" . consult-project-buffer)     
      ("C-x p f" . consult-fd))
     :hook (completion-list-mode . consult-preview-at-point-mode)
     :init
     (setq register-preview-delay 0.5
           register-preview-function #'consult-register-format)
+    (setq consult-fd-args
+      "fd --full-path --color=never --hidden")
     (advice-add #'register-preview :override #'consult-register-window)
     :config
     (consult-customize
@@ -203,6 +205,9 @@
 
   (use-package wgrep)
 #+end_src
+
+#+RESULTS:
+
 * ai
 ** gptel
 #+begin_src emacs-lisp

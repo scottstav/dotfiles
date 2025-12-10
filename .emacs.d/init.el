@@ -29,6 +29,9 @@
 
 (setq fit-window-to-buffer-horizontally t)
 
+(set-face-attribute 'mode-line nil :height 0.8)
+(set-face-attribute 'mode-line-inactive nil :height 0.8)
+
 (load-theme 'deeper-blue t)
 
 (setq make-backup-files nil)       ; Stop creating ~ backup files
@@ -116,6 +119,7 @@
   (;; Global bindings
    ("C-s"     . consult-line)
    ("C-x b"   . consult-buffer)
+   ("C-x C-b"   . ibuffer)
    ("C-x r b" . consult-bookmark)
    ("M-y"     . consult-yank-pop)
    ("M-g g"   . consult-goto-line)
@@ -398,20 +402,5 @@
   :init
   (setq org-download-method 'attach
         org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s"))
-(custom-set-variables
- ;; custom-set-variables was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- '(safe-local-variable-values
-   '((eval add-hook 'after-save-hook
-	   '(lambda nil (org-publish-current-file)
-	      (org-publish-project "org-attachments")
-	      (org-publish-project "js"))
-	   nil t))))
-(custom-set-faces
- ;; custom-set-faces was added by Custom.
- ;; If you edit it by hand, you could mess it up, so be careful.
- ;; Your init file should contain only one such instance.
- ;; If there is more than one, they won't work right.
- )
+
+(use-package vterm)

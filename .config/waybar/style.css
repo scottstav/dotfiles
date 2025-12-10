@@ -9,10 +9,9 @@
 window#waybar {
     min-height: 24px;
 }
-
 window#waybar {
     color: #e0e0e0;
-    background-color: #2c2c2c;
+    background-color: transparent;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
 }

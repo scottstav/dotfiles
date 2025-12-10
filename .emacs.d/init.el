@@ -24,6 +24,11 @@
 (menu-bar-mode -1)                       ; Disable the menu bar
 (tool-bar-mode -1)                       ; Disable the toolbar
 
+(load-theme 'deeper-blue t)
+
+(setq make-backup-files nil)       ; Stop creating ~ backup files
+(setq auto-save-default nil)       ; Stop creating #autosave# files
+
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
 (global-set-key (kbd "C-c C-p") 'comment-region)

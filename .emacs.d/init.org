@@ -37,6 +37,12 @@
   (menu-bar-mode -1)                       ; Disable the menu bar
   (tool-bar-mode -1)                       ; Disable the toolbar
 #+end_src
+* backup and auto-save files
+#+begin_src emacs-lisp
+  (setq make-backup-files nil)       ; Stop creating ~ backup files
+  (setq auto-save-default nil)       ; Stop creating #autosave# files
+#+end_src
+
 * text editing
 #+BEGIN_SRC emacs-lisp
   (add-hook 'before-save-hook 'delete-trailing-whitespace)

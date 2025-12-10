@@ -45,23 +45,23 @@ window#waybar {
     border-bottom: 3px solid #a0a0a0;
 }
 
-#clock,
-#battery,
-#cpu,
-#memory,
-#network,
-#pulseaudio,
-#custom-spotify,
-#tray,
-#mode {
-    padding: 0 3px;
-    margin: 0 1px;
+#custom-waybarstatus {
+    margin-left: 150px;
 }
 
+.modules-center {
+    border-radius: 100px;
+    background-color: rgba(80, 80, 80, 0.5);
+}
 
-#bluetooth {
-    padding: 2px;
-    margin: 2px;
+.modules-center * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+.modules-right * {
+    padding: 0 1px;
+    margin: 0 5px;
 }
 
 #custom-waybarstatus {

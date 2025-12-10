@@ -26,10 +26,16 @@
   (setq straight-use-package-by-default t)
 #+end_src
 
+#+RESULTS:
+: t
+
 * navigation
 #+begin_src emacs-lisp
   (global-set-key (kbd "M-o") 'other-window)
 #+end_src
+
+#+RESULTS:
+: other-window
 
 * ui
 #+begin_src emacs-lisp
@@ -37,15 +43,24 @@
   (menu-bar-mode -1)                       ; Disable the menu bar
   (tool-bar-mode -1)                       ; Disable the toolbar
 #+end_src
+
+#+RESULTS:
+
 ** themes
 #+begin_src emacs-lisp
   (load-theme 'deeper-blue t)
 #+end_src
+
+#+RESULTS:
+: t
+
 * backup and auto-save files
 #+begin_src emacs-lisp
   (setq make-backup-files nil)       ; Stop creating ~ backup files
   (setq auto-save-default nil)       ; Stop creating #autosave# files
 #+end_src
+
+#+RESULTS:
 
 * text editing
 #+BEGIN_SRC emacs-lisp
@@ -63,6 +78,10 @@
            ("C--" . mc/skip-to-next-like-this)
            ("C-<" . mc/mark-previous-like-this)))
 #+END_SRC
+
+#+RESULTS:
+: mc/mark-previous-like-this
+
 * completion, search, etc
 #+begin_src emacs-lisp
   ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
@@ -230,6 +249,10 @@
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))))
 #+end_src
+
+#+RESULTS:
+: t
+
 *** tools
 #+begin_src emacs-lisp
   ;; todo
@@ -261,7 +284,7 @@
   (use-package gptel-agent
     :config (gptel-agent-update))
 
-  (use-package gptel-magit(use-package gptel-magit
+  (use-package gptel-magit
     :hook (magit-mode . gptel-magit-install))
 #+end_src
 *** presets
@@ -290,6 +313,10 @@
     :stream t :temperature 1.0 :max-tokens nil :use-context 'user
     :track-media t :include-reasoning t)
 #+end_src
+
+#+RESULTS:
+| gptel-agent | :description | The default gptel-agent | :tools | (Agent TodoWrite Glob Grep Read Insert Edit Write Mkdir Eval Bash WebSearch WebFetch YouTube) | :system | <role_and_behavior> |
+
 ** copilot
 #+begin_src emacs-lisp
   (use-package copilot
@@ -297,6 +324,10 @@
     :hook (prog-mode . copilot-mode)
     :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
 #+end_src
+
+#+RESULTS:
+: copilot-accept-completion
+
 * git
 #+begin_src emacs-lisp
   (use-package magit
@@ -311,6 +342,10 @@
   (use-package git-gutter
     :config (global-git-gutter-mode +1))
 #+end_src
+
+#+RESULTS:
+: t
+
 * programming
 #+begin_src emacs-lisp
   (use-package treesit-auto
@@ -327,6 +362,10 @@
            (rust-ts-mode . eglot-ensure)
            (go-ts-mode . eglot-ensure)))
 #+end_src
+
+#+RESULTS:
+| eglot-ensure |
+
 * /Local Variables/
 # Local Variables:
 # eval: (add-hook 'after-save-hook (lambda () (org-babel-tangle)) nil t)

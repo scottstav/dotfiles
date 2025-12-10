@@ -18,6 +18,12 @@ shopt -s nocaseglob;
 # Append to the Bash history file, rather than overwriting it
 shopt -s histappend;
 
+if [ -f /etc/bash_completion ]; then
+	. /etc/bash_completion
+elif [ -f /usr/share/bash-completion/bash_completion ]; then
+	. /usr/share/bash-completion/bash_completion
+fi
+
 # Autocorrect typos in path names when using `cd`
 shopt -s cdspell;
 

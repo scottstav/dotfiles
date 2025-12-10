@@ -1,160 +1,40 @@
-(setq user-full-name "Scott Stavinoha"
-      user-mail-address "scottstavinoha@gmail.com")
-
-;; Package settings
-(eval-and-compile
-  (setq load-prefer-newer t
-        package-user-dir "~/.emacs.d/elpa"
-        package--init-file-ensured t
-        package-enable-at-startup nil)
-  (unless (file-directory-p package-user-dir)
-    (make-directory package-user-dir t))
-  (setq load-path (append load-path (directory-files package-user-dir t "^[^.]" t))))
-
-;; Initialize package system and use-package
-(eval-when-compile
-  (require 'package)
-  (package-initialize)
-  (unless (package-installed-p 'use-package)
-    (package-refresh-contents)
-    (package-install 'use-package))
-  (unless (package-installed-p 'bind-key)
-    (package-refresh-contents)
-    (package-install 'bind-key))
-  (require 'use-package)
-  (require 'bind-key)
-  (setq use-package-always-ensure t))
-
-;; Package archives
-(unless (assoc-default "gnu" package-archives)
-  (add-to-list 'package-archives '("gnu" . "https://elpa.gnu.org/packages/") t))
-(unless (assoc-default "melpa" package-archives)
-  (add-to-list 'package-archives '("melpa" . "http://melpa.org/packages/") t))
-
-;; Quelpa
-(use-package quelpa :ensure)
-(use-package quelpa-use-package
-  :demand
-  :config (quelpa-use-package-activate-advice))
-
-;; Straight.el
-(defvar bootstrap-version)
-(let ((bootstrap-file
-       (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-      (bootstrap-version 6))
-  (unless (file-exists-p bootstrap-file)
-    (with-current-buffer
-        (url-retrieve-synchronously
-         "https://raw.githubusercontent.com/radian-software/straight.el/develop/install.el"
-         'silent 'inhibit-cookies)
-      (goto-char (point-max))
-      (eval-print-last-sexp)))
-  (load bootstrap-file nil 'nomessage))
-
-;; Startup
-(setq inhibit-default-init t
-      inhibit-startup-echo-area-message t
-      inhibit-startup-screen t
-      initial-scratch-message nil
-      initial-major-mode 'org-mode)
-
-;; UI
-(mapc (lambda (mode) (when (fboundp mode) (funcall mode -1)))
-      '(menu-bar-mode tool-bar-mode))
-(scroll-bar-mode 0)
-(setq ring-bell-function 'ignore)
-(line-number-mode t)
-(column-number-mode t)
-(size-indication-mode t)
-(fset 'yes-or-no-p 'y-or-n-p)
-(global-visual-line-mode)
-
-;; Scrolling
-(setq scroll-margin 0
-      scroll-conservatively 100000
-      scroll-preserve-screen-position 1)
-
-;; Files & Backups
-(setq backup-directory-alist `((".*" . ,temporary-file-directory))
-      auto-save-file-name-transforms `((".*" ,temporary-file-directory t))
-      version-control t
-      kept-new-versions 10
-      kept-old-versions 0
-      delete-old-versions t
-      backup-by-copying t
-      vc-make-backup-files t
-      save-interprogram-paste-before-kill nil
-      large-file-warning-threshold 100000000)
-
-(add-to-list 'backup-directory-alist (cons tramp-file-name-regexp nil))
-(global-auto-revert-mode t)
-
-;; Custom file
-(setq custom-file (expand-file-name "custom.el" user-emacs-directory))
-(when (file-exists-p custom-file) (load custom-file))
-
-;; Savefile dir
-(defconst gas-savefile-dir (expand-file-name "savefile" user-emacs-directory))
-(unless (file-exists-p gas-savefile-dir)
-  (make-directory gas-savefile-dir))
-
-;; Browser & misc
-(setq browse-url-browser-function 'browse-url-generic
-      browse-url-generic-program "firefox"
-      byte-compile-warnings '(cl-functions))
-
 ;; Auth
 (require 'auth-source)
 (setq auth-sources '("~/.authinfo.gpg")
       epg-gpg-program "gpg")
-(setf epa-pinentry-mode 'loopback)
+;; ensure pw manager is active?
 
-;; Frame settings
-(setq default-frame-alist '((cursor-color . "white")
-                             (alpha-background . 80)))
-(set-frame-parameter nil 'alpha-background 80)
-
-;; Indentation
-(setq-default indent-tabs-mode nil)
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
-
-;; Parens & pairs
-(show-paren-mode 1)
-(electric-pair-mode 1)
-(delete-selection-mode 1)
 
 ;; Vertico (minibuffer completion)
 (use-package vertico
+  :ensure
   :init (vertico-mode))
 
 (use-package savehist
+  :ensure
   :init (savehist-mode))
 
 (use-package orderless
+  :ensure
   :custom (completion-styles '(orderless basic))
-  :init
-  (setq completion-category-defaults nil
-        completion-category-overrides '((file (styles partial-completion))
-                                         (eglot (styles orderless)))))
+  )
 
 ;; Corfu (in-buffer completion)
 (use-package corfu
+  :ensure
   :custom (corfu-auto t)
   :hook ((prog-mode . corfu-mode)
          (shell-mode . corfu-mode)
          (eshell-mode . corfu-mode)))
 
-(use-package cape
-  :init
-  (add-to-list 'completion-at-point-functions #'cape-dabbrev)
-  (add-to-list 'completion-at-point-functions #'cape-file)
-  (add-to-list 'completion-at-point-functions #'cape-elisp-block))
-
 ;; Annotations & UI
 (use-package marginalia
+  :ensure
   :config (marginalia-mode))
 
 (use-package embark
+  :ensure
   :bind (("C-." . embark-act)
          ("C-;" . embark-dwim)
          ("C-h B" . embark-bindings))
@@ -162,10 +42,12 @@
   :config (add-hook 'eldoc-documentation-functions #'embark-eldoc-first-target))
 
 (use-package embark-consult
+  :ensure
   :hook (embark-collect-mode . consult-preview-at-point-mode))
 
 ;; Consult
 (use-package consult
+  :ensure
   :bind (("C-x b" . consult-buffer)
          ("M-i" . consult-ripgrep)
          ("C-s" . consult-line))
@@ -189,7 +71,6 @@
   :pin gnu
   :defer t
   :config
-  (define-key org-mode-map (kbd "C-c C-r") verb-command-map)
   (setq org-directory "~/Dropbox/org"
         org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/")
         org-modules '(ol-bbdb ol-bibtex ol-docview ol-eww ol-gnus ol-info ol-irc ol-mhe ol-rmail ol-w3m)
@@ -337,7 +218,15 @@
 
   ;; Claude Code
   (use-package inheritenv
-    :vc (:url "https://github.com/purcell/inheritenv" :rev :newest))
+    :vc (:url "https://github.com/purcell/inheritenv" :rev :newest)) ;; what does this package do
+
+**inheritenv* makes temporary buffers in Emacs inherit buffer-local environment variables from their source buffer.
+
+*The problem it solves:* When you use tools like =direnv=/=envrc= to set buffer-local environment variables (e.g., different =PATH= or =exec-path= per project via =.envrc= files), those variables don't automatically carry over when Emacs creates temporary buffers to run subprocesses.
+
+*Use case:* If you have project-specific tool versions (like a specific Node or Python), packages like =lsp-mode=, =flycheck=, or formatters that spawn processes in temp buffers won't find the right executables without =inheritenv=.
+
+It's a utility library that other packages can use (via =inheritenv= macro or =inheritenv-apply=) to ensure subprocess calls respect your buffer-local environment settings. It's especially useful alongside =envrc= (also by purcell).
 
   (use-package claude-code
     :config (claude-code-mode)
@@ -379,6 +268,7 @@
 
 ;; Magit
 (use-package magit
+  :ensure
   :bind ("C-x g" . magit-status)
   :config
   (setq magit-display-buffer-function

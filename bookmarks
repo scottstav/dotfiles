@@ -1,0 +1,27 @@
+;;;; Emacs Bookmark Format Version 1;;;; -*- coding: utf-8-emacs; mode: lisp-data -*-
+;;; This format is meant to be slightly human-readable;
+;;; nevertheless, you probably don't want to edit it.
+;;; -*- End Of Bookmark File Format Version Stamp -*-
+(("sudo slash"
+ (filename .
+           #("/sudo:root@0mar:/etc/" 6 10
+             (tramp-default t)
+             11 15
+             (tramp-default t)))
+ (front-context-string . "adjtime\n  drwxr-")
+ (rear-context-string . "44 Nov  8  2022 ")
+ (position . 168)
+ (last-modified 26902 34596 771387 807000))
+("root@pi.hole"
+ (filename . "/ssh:root@pi.hole:~/")
+ (front-context-string . ".bash_history\n  ")
+ (rear-context-string . "2K Jun 18 19:36 ")
+ (position . 165)
+ (last-modified 26707 1883 537779 672000))
+("org-capture-last-stored"
+ (filename . "~/Dropbox/org/roam/2025.11.14-trainer_message_svc.org")
+ (front-context-string . "\n#+begin_src htt")
+ (rear-context-string . "ner Message Svc\n")
+ (position . 97)
+ (last-modified 26903 30430 133655 288000))
+)

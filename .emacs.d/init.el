@@ -18,7 +18,15 @@
 ;; Make use-package use straight by default
 (setq straight-use-package-by-default t)
 
+(global-set-key (kbd "M-o") 'other-window)
+
+(scroll-bar-mode -1)                     ; Disable visible scrollbar
+(menu-bar-mode -1)                       ; Disable the menu bar
+(tool-bar-mode -1)                       ; Disable the toolbar
+
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
+(global-set-key (kbd "C-c C-u") 'uncomment-region)
+(global-set-key (kbd "C-c C-p") 'comment-region)
 
 ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
 
@@ -91,10 +99,10 @@
    ("M-g i"   . consult-imenu)
    ("M-i"   . consult-ripgrep)
    ("M-s f"   . consult-fd)
-   ("C-x p r" . consult-ripgrep)
+   ("C-c p r" . consult-ripgrep)
    ;; Project bindings (C-x p prefix)
-   ("C-x p b" . consult-project-buffer)     
-   ("C-x p f" . consult-fd))
+   ("C-c p b" . consult-project-buffer)
+   ("C-c p f" . consult-fd))
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :init
   (setq register-preview-delay 0.5
@@ -168,28 +176,6 @@
   :init
   (add-to-list 'completion-at-point-functions #'cape-file)
   (add-to-list 'completion-at-point-functions #'cape-dabbrev))
-
-;;; Summary of key bindings:
-;; 
-;; Global:
-;;   C-s       → search current buffer (consult-line)
-;;   C-x b     → switch buffer (consult-buffer, includes recent files)
-;;   M-y       → yank from kill ring with preview
-;;   M-s r     → ripgrep (anywhere)
-;;   M-s f     → find file (anywhere)
-;;   M-g i     → jump to symbol in buffer (imenu)
-;;   C-.       → embark actions on thing at point
-;;
-;; Project (C-x p prefix):
-;;   C-x p p   → switch project
-;;   C-x p f   → find file in project
-;;   C-x p r   → ripgrep in project
-;;   C-x p b   → switch buffer (project only)
-;;   C-x p d   → dired at project root
-;;   C-x p e   → eshell at project root
-;;   C-x p k   → kill project buffers
-
-
 (use-package wgrep)
 
 (use-package gptel
@@ -231,6 +217,12 @@
 (require 'gptel-integrations)
 (gptel-mcp-connect)
 
+(use-package gptel-agent
+  :config (gptel-agent-update))
+
+(use-package gptel-magit(use-package gptel-magit
+  :hook (magit-mode . gptel-magit-install))
+
 (gptel-make-preset 'coder
   :description "A preset optimized for coding tasks"
   :backend "Claude"
@@ -255,12 +247,33 @@
   :stream t :temperature 1.0 :max-tokens nil :use-context 'user
   :track-media t :include-reasoning t)
 
+(use-package copilot
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  :hook (prog-mode . copilot-mode)
+  :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
+
 (use-package magit
   :bind ("C-x g" . magit-status))
 
 (use-package browse-at-remote)
+
 (use-package forge
-  :after magit
-  :config (setq forge-owned-accounts '(("scottstav"))))
+  :ensure t
+  :after magit)
+
 (use-package git-gutter
   :config (global-git-gutter-mode +1))
+
+(use-package treesit-auto
+  :custom
+  (treesit-auto-install 'prompt)  ; or t for automatic
+  :config
+  (treesit-auto-add-to-auto-mode-alist 'all)
+  (global-treesit-auto-mode))
+
+(use-package eglot
+  :hook ((python-ts-mode . eglot-ensure)
+         (js-ts-mode . eglot-ensure)
+         (typescript-ts-mode . eglot-ensure)
+         (rust-ts-mode . eglot-ensure)
+         (go-ts-mode . eglot-ensure)))

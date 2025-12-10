@@ -33,6 +33,16 @@
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
 (global-set-key (kbd "C-c C-p") 'comment-region)
 
+(use-package expand-region
+  :bind ("C-\\" . er/expand-region))
+
+(use-package multiple-cursors
+  :init (multiple-cursors-mode)
+  :bind (("C-c m c" . mc/edit-lines)
+         ("C-=" . mc/mark-next-like-this)
+         ("C--" . mc/skip-to-next-like-this)
+         ("C-<" . mc/mark-previous-like-this)))
+
 ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
 
 

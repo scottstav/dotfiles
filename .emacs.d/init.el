@@ -17,6 +17,7 @@
 
 ;; Make use-package use straight by default
 (setq straight-use-package-by-default t)
+(straight-use-package 'org)
 
 (global-set-key (kbd "M-o") 'other-window)
 

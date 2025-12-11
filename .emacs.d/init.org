@@ -24,6 +24,7 @@
 
   ;; Make use-package use straight by default
   (setq straight-use-package-by-default t)
+  (straight-use-package 'org)
 #+end_src
 
 #+RESULTS:

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Prompt for a shell command using fuzzel and run it via Emacs async-shell-command
+# The output appears in an Emacs buffer that Hyprland floats
+
+cmd=$(echo "" | fuzzel -d -p "Shell command: ")
+
+if [ -n "$cmd" ]; then
+    emacsclient -c -a emacs \
+        -F '((name . "async-shell-popup"))' \
+        --eval "(progn
+                  (async-shell-command \"$cmd\")
+                  (delete-window))"
+fi

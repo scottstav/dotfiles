@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# Prompt for a shell command using fuzzel and run it via Emacs async-shell-command
-# The output appears in an Emacs buffer that Hyprland floats
+# Prompt for a shell command using Emacs minibuffer (with completion & history)
+# The output appears in a floating Emacs frame
 
-cmd=$(echo "" | fuzzel -d -p "Shell command: ")
-
-if [ -n "$cmd" ]; then
-    emacsclient -c -a emacs \
-        -F '((name . "async-shell-popup"))' \
-        --eval "(progn
-                  (async-shell-command \"$cmd\")
-                  (delete-window))"
-fi
+emacsclient -c -a emacs \
+    -F '((name . "async-shell-popup"))' \
+    --eval "(progn
+              (switch-to-buffer (get-buffer-create \" *async-prompt*\"))
+              (setq mode-line-format nil)
+              (let ((cmd (read-shell-command \"Shell command: \")))
+                (if (string-empty-p cmd)
+                    (delete-frame)
+                  (async-shell-command cmd)
+                  (delete-window))))"

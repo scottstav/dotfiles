@@ -242,29 +242,7 @@
 (use-package gptel-magit
   :hook (magit-mode . gptel-magit-install))
 
-(gptel-make-preset 'coder
-  :description "A preset optimized for coding tasks"
-  :backend "Claude"
-  :model 'claude-opus-4-1-20250805
-  :system "You are a programmer.  Follow my instructions and return relevant code snippets.
-- Generate ONLY code as output, without any explanation or markdown code fences. Do not place in source blocks.
-- Generate only new code, do not repeat context.
-- Do not ask for further clarification, and make any assumptions you need to follow instructions."
-  :tools '("mcp-context7"))
-
-(gptel-make-preset 'qq
-  :description "For quick questions. Small responses to and from minibuf."
-  :backend "Claude"
-  :model 'claude-3-5-haiku-20241022
-  :system "You are a robot that provides information. You can search the web with the tool but only if you need to. Be as quick as possible. Limit your responses to 110 characters."
-  :tools '("get_file_info" "search_files" "directory_tree"
-           "list_directory_with_sizes" "read_multiple_files"
-           "read_media_file" "read_text_file" "list_directory" "read_file"
-           "list_allowed_directories" "get-library-docs" "resolve-library-id"
-           "brave_summarizer" "brave_news_search" "brave_image_search"
-           "brave_video_search" "brave_local_search" "brave_web_search")
-  :stream t :temperature 1.0 :max-tokens nil :use-context 'user
-  :track-media t :include-reasoning t)
+;; todo
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))

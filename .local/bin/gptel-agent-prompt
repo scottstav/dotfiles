@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# Prompt for an AI task using Emacs minibuffer, then launch gptel-agent with that prompt
+# The user ends up looking at an Emacs frame with gptel-agent running their prompt
+# The buffer gets renamed asynchronously based on an AI-generated summary
+
+emacsclient -c -a emacs \
+    -F '((name . "gptel-agent-prompt"))' \
+    --eval "(progn
+              ;; Create temporary buffer for minibuffer prompt
+              (switch-to-buffer (get-buffer-create \" *agent-prompt*\"))
+              (setq mode-line-format nil)
+              (let ((prompt (read-string \"AI Task: \")))
+                (if (string-empty-p prompt)
+                    (delete-frame)
+                  ;; Kill the temp buffer
+                  (kill-buffer \" *agent-prompt*\")
+                  ;; Start gptel-agent in home directory
+                  (let* ((gptel-buf (gptel (generate-new-buffer-name \"*gptel-agent*\")
+                                           nil nil nil)))
+                    (with-current-buffer gptel-buf
+                      (setq default-directory (expand-file-name \"~\"))
+                      (gptel-agent-update)
+                      (gptel--apply-preset 'gptel-agent
+                                           (lambda (sym val) (set (make-local-variable sym) val)))
+                      (unless gptel-max-tokens
+                        (setq gptel-max-tokens 8192))
+                      ;; Insert the prompt and send
+                      (goto-char (point-max))
+                      (insert prompt)
+                      (gptel-send)
+                      ;; Async request to name the buffer
+                      (let ((buf gptel-buf)
+                            (user-prompt prompt))
+                        (gptel-request
+                         (format \"Summarize this task in 2-3 words for a buffer name. Reply with ONLY the short name, nothing else. Task: %s\" user-prompt)
+                         :callback
+                         (lambda (response info)
+                           (when (and response (buffer-live-p buf))
+                             (let* ((name (string-trim response))
+                                    ;; Clean up: remove quotes, asterisks, limit length
+                                    (name (replace-regexp-in-string \"[\\\"*]\" \"\" name))
+                                    (name (if (> (length name) 30)
+                                              (substring name 0 30)
+                                            name))
+                                    (new-name (generate-new-buffer-name
+                                               (format \"*agent: %s*\" name))))
+                               (with-current-buffer buf
+                                 (rename-buffer new-name))))))))
+                    ;; Switch to the agent buffer and clean up frame
+                    (switch-to-buffer gptel-buf)
+                    (delete-other-windows)))))"

@@ -361,7 +361,7 @@
     :straight nil
     :config
     (setq org-directory "~/Dropbox/org"
-          org-agenda-files (list "~/Dropbox/org/roam/daily" "~/Dropbox/org/roam/")
+          org-agenda-files (list "~/Dropbox/org/denote/")
           org-clock-persist 'history
           org-export-with-section-numbers nil
           org-hide-block-startup t
@@ -385,41 +385,21 @@
   (defun org-babel-execute:inline-js (body _params)
     (format "<script type=\"text/javascript\">\n%s\n</script>" body))
 
-  ;; Org-roam
-  (defun my/org-roam-filter (node)
-    (let ((tags (org-roam-node-tags node)))
-      (not (member "ATTACH" tags))))
-
-  (defun my/org-roam-node-find ()
-    (interactive)
-    (if (equal current-prefix-arg nil)
-        (org-roam-node-find)
-      (org-roam-node-find t nil 'my/org-roam-filter)))
-
-  (use-package org-roam
-    :after org
-    :bind (("C-c n l" . org-roam-buffer-toggle)
-           ("C-c n f" . my/org-roam-node-find)
-           ("C-c n i" . org-roam-node-insert)
-           ("C-c n I" . org-roam-node-insert-immediate)
-           :map org-mode-map ("C-M-i" . completion-at-point))
-    :bind-keymap ("C-c n d" . org-roam-dailies-map)
-    :config
-    (setq org-roam-directory (file-truename "~/Dropbox/org/roam"))
-    (org-roam-db-autosync-mode)
-    (require 'org-roam-dailies)
-    (setq org-roam-capture-templates
-          '(("p" "project" plain "\n%?"
-             :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
-             :unnarrowed t)
-            ("w" "work" plain "\n%?"
-             :if-new (file+head "%<%Y.%m.%d>-${slug}.org" "#+TITLE: ${title}")
-             :unnarrowed t)))
-    (setq org-roam-dailies-capture-templates
-          '(("d" "default" entry "\n\n\n\n%?"
-             :target (file+head "%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>\n\n* %<%Y-%m-%d>"))
-            ("w" "work" entry "\n* %?"
-             :target (file+head "./work/%<%Y-%m-%d>.org" "#+TITLE: %<%Y-%m-%d>\n\n* %<%Y-%m-%d>#+TITLE: %<%Y-%m-%d>")))))
+  ;; Denote
+  (use-package denote-journal)
+  (use-package denote
+    :custom
+    (denote-directory "~/Dropbox/org/denote/")
+    (denote-known-keywords '("work" "personal" "project" "reference"))
+    (denote-file-type 'org)
+    (denote-prompts '(title keywords))
+    (denote-date-prompt-use-org-read-date t)
+    :bind
+    (("C-c n n" . denote)
+     ("C-c n f" . denote-open-or-create)
+     ("C-c n l" . denote-link)
+     ("C-c n L" . denote-backlinks)
+     ("C-c n r" . denote-rename-file)))
 
   ;; Org publishing
   (setq org-html-metadata-timestamp-format "%a %Y/%m/%d"
@@ -459,6 +439,18 @@
     :init
     (setq org-download-method 'attach
           org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s"))
+
+  (defun my/gptel-image-download-setup ()
+    (interactive)
+    (when (derived-mode-p 'org-mode)
+      (with-eval-after-load 'org-download
+        (setq-local org-download-image-dir
+  		  (file-name-as-directory (concat (file-name-as-directory temporary-file-directory) "gptel")))
+        (setq-local org-download-heading-lvl nil)
+        )
+      )
+    )
+  (add-hook 'gptel-mode-hook #'my/gptel-image-download-setup)
 #+end_src
 
 #+RESULTS:

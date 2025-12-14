@@ -308,10 +308,10 @@
 
 ** copilot
 #+begin_src emacs-lisp
-  (use-package copilot
-    :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
-    :hook (prog-mode . copilot-mode)
-    :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
+  ;; (use-package copilot
+  ;;   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  ;;   :hook (prog-mode . copilot-mode)
+  ;;   :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
 #+end_src
 
 #+RESULTS:

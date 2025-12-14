@@ -244,10 +244,10 @@
 
 ;; todo
 
-(use-package copilot
-  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
-  :hook (prog-mode . copilot-mode)
-  :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
+;; (use-package copilot
+;;   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+;;   :hook (prog-mode . copilot-mode)
+;;   :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
 
 (use-package magit
   :bind ("C-x g" . magit-status))

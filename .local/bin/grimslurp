@@ -1,4 +1,6 @@
 #!/bin/bash
 
-
-IMG=~/Dropbox/Screenshots/$(date +%Y-%m-%d_%H-%m-%s).png && grim -g "$(slurp)" $IMG && wl-copy < $IMG
+IMG=~/Dropbox/Screenshots/$(date +%Y-%m-%d_%H-%m-%s).png
+REGION=$(slurp)
+sleep 0.1
+grim -g "$REGION" $IMG && wl-copy < $IMG

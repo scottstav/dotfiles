@@ -259,7 +259,7 @@
     (setq gptel-default-mode 'org-mode
           gptel-use-tools 'ask
           gptel-track-media t
-          gptel-model 'claude-3-5-haiku-20241022
+          gptel-model 'claude-sonnet-4-5-20250929
           gptel-backend
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))))
@@ -385,22 +385,6 @@
   (defun org-babel-execute:inline-js (body _params)
     (format "<script type=\"text/javascript\">\n%s\n</script>" body))
 
-  ;; Denote
-  (use-package denote-journal)
-  (use-package denote
-    :custom
-    (denote-directory "~/Dropbox/org/denote/")
-    (denote-known-keywords '("work" "personal" "project" "reference"))
-    (denote-file-type 'org)
-    (denote-prompts '(title keywords))
-    (denote-date-prompt-use-org-read-date t)
-    :bind
-    (("C-c n n" . denote)
-     ("C-c n f" . denote-open-or-create)
-     ("C-c n l" . denote-link)
-     ("C-c n L" . denote-backlinks)
-     ("C-c n r" . denote-rename-file)))
-
   ;; Org publishing
   (setq org-html-metadata-timestamp-format "%a %Y/%m/%d"
         org-html-prefer-user-labels t
@@ -453,6 +437,84 @@
   (add-hook 'gptel-mode-hook #'my/gptel-image-download-setup)
 #+end_src
 
+** denote
+
+#+begin_src emacs-lisp
+  (use-package denote
+    :straight t
+    :bind (("C-c n n" . denote)              ; Create new note
+           ("C-c n f" . denote-open-or-create) ; Find/create note
+           ("C-c n l" . denote-link)           ; Insert link
+           ("C-c n L" . denote-backlinks)      ; Show backlinks
+           ("C-c n r" . denote-rename-file)    ; Rename with new title/keywords
+           ("C-c n R" . denote-rename-file-using-front-matter))
+    :config
+    ;; Main notes directory (keeping separate from journal)
+    (setq denote-directory (expand-file-name "~/Dropbox/org/denote"))
+
+    ;; File naming
+    (setq denote-file-type 'org)           ; Use org format
+    (setq denote-known-keywords '("project" "ifit" "work" "personal"))
+    (setq denote-infer-keywords t)         ; Suggest keywords from existing files
+    (setq denote-prompts '(title keywords)) ; What to ask for when creating
+
+
+    ;; Allow subdirectories
+    (setq denote-allow-subdirectories t)
+
+    ;; History
+    (add-to-list 'savehist-additional-variables 'denote-history))
+
+
+  ;; Optional: Work notes
+  (defun my/denote-work ()
+    "Create or open today's work journal entry."
+    (interactive)
+    (let ((denote-directory (expand-file-name "~/Dropbox/org/denote/work"))
+          (denote-file-name-title "work"))
+      (denote-create-note)))
+
+  (global-set-key (kbd "C-c n W") #'my/denote-work)
+
+  (use-package denote-journal
+    :straight t
+    :bind (("C-c n J" . denote-journal-new-entry)     ; Today's journal
+           ("C-c n j" . denote-journal-new-or-existing-entry)) ; Find journal entry
+    :config
+    ;; Journal lives in separate directory
+    (setq denote-journal-directory (expand-file-name "~/Dropbox/org/denote/journal"))
+
+    ;; Simpler journal file names (no signature, no keywords by default)
+    (setq denote-journal-file-name-title "journal")
+
+    ;; Daily journal (could be 'weekly or 'monthly)
+    (setq denote-journal-frequency 'daily))
+
+
+  ;; Optional: Work journal (separate from personal)
+  ;; You can call this function or bind it
+  (defun my/denote-journal-work ()
+    "Create or open today's work journal entry."
+    (interactive)
+    (let ((denote-journal-directory (expand-file-name "~/Dropbox/org/denote/work/journal"))
+          (denote-journal-file-name-title "work"))
+      (denote-journal-new-or-existing-entry)))
+
+  (global-set-key (kbd "C-c n w") #'my/denote-journal-work)
+
+
+  ;; Consult integration (if you use consult)
+  (with-eval-after-load 'consult
+    (defun my/consult-denote ()
+      "Find denote file with consult."
+      (interactive)
+      (consult-find denote-directory))
+
+    (defun my/consult-denote-grep ()
+      "Grep denote files with consult."
+      (interactive)
+      (consult-ripgrep denote-directory)))
+#+end_src
 #+RESULTS:
 
 * terminal

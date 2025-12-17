@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Audio device switcher for waybar
+# Uses fuzzel for selection menu and pactl for audio control
+# Moves currently playing streams to the selected device
+
+# First, let user choose between Input or Output
+category=$(printf "Output\nInput" | fuzzel -d -p "Audio: ")
+
+if [ -z "$category" ]; then
+    exit 0
+fi
+
+if [ "$category" = "Output" ]; then
+    # Get list of output sinks
+    devices=$(pactl list sinks short | awk '{print $2}')
+
+    # Get human-readable names
+    options=""
+    while IFS= read -r device; do
+        name=$(pactl list sinks | grep -A 1 "Name: $device" | grep "Description:" | sed 's/.*Description: //')
+        if [ -n "$name" ]; then
+            options+="$name\n"
+        fi
+    done <<< "$devices"
+
+    # Remove trailing newline and show menu
+    selection=$(printf "${options%\\n}" | fuzzel -d -p "Output: ")
+
+    if [ -n "$selection" ]; then
+        # Find the sink name for the selected description
+        sink=$(pactl list sinks | grep -B 1 "Description: $selection" | grep "Name:" | sed 's/.*Name: //')
+        if [ -n "$sink" ]; then
+            # Move all current sink-inputs (playing streams) to the new sink
+            pactl list sink-inputs short | awk '{print $1}' | while read -r input; do
+                pactl move-sink-input "$input" "$sink"
+            done
+            log_message "Audio output: $selection" && sleep 3 && log_message ""
+        fi
+    fi
+
+elif [ "$category" = "Input" ]; then
+    # Get list of input sources
+    devices=$(pactl list sources short | grep -v ".monitor" | awk '{print $2}')
+
+    # Get human-readable names
+    options=""
+    while IFS= read -r device; do
+        name=$(pactl list sources | grep -A 1 "Name: $device" | grep "Description:" | sed 's/.*Description: //')
+        if [ -n "$name" ]; then
+            options+="$name\n"
+        fi
+    done <<< "$devices"
+
+    # Remove trailing newline and show menu
+    selection=$(printf "${options%\\n}" | fuzzel -d -p "Input: ")
+
+    if [ -n "$selection" ]; then
+        # Find the source name for the selected description
+        source=$(pactl list sources | grep -B 1 "Description: $selection" | grep "Name:" | sed 's/.*Name: //')
+        if [ -n "$source" ]; then
+            # Move all current source-outputs (recording streams) to the new source
+            pactl list source-outputs short | awk '{print $1}' | while read -r output; do
+                pactl move-source-output "$output" "$source"
+            done
+            log_message "Audio input: $selection" && sleep 3 && log_message ""
+        fi
+    fi
+fi

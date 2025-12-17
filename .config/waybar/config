@@ -114,7 +114,7 @@
         "format-icons": {
             "default": ["", "", ""]
         },
-        "on-click": "sleep 0.1 && pavucontrol"
+        "on-click": "sleep 0.1 && audio-switcher"
     },
     "bluetooth": {
         "format": "",

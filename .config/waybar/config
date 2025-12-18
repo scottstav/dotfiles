@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/emacs-dired", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
-    "modules-right": ["tray", "network", "battery","battery#bat2", "clock"],
+    "modules-right": ["tray", "temperature", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -74,9 +74,12 @@
         "format": "{}% "
     },
     "temperature": {
-        "critical-threshold": 180,
-        "format": "{temperatureF}°F {icon}",
-        "format-icons": ["", "", ""]
+        "thermal-zone": 3,
+        "critical-threshold": 85,
+        "format": "{icon} {temperatureC}°C",
+        "format-critical": "{icon} {temperatureC}°C",
+        "format-icons": ["", "", ""],
+        "tooltip": true
     },
     "backlight": {
         "format": "{percent}% {icon}",
@@ -114,7 +117,9 @@
         "format-icons": {
             "default": ["", "", ""]
         },
-        "on-click": "sleep 0.1 && audio-switcher"
+        "on-click": "sleep 0.1 && audio-switcher",
+        "on-scroll-up": "audio-volume up",
+        "on-scroll-down": "audio-volume down"
     },
     "bluetooth": {
         "format": "",

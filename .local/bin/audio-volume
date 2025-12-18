@@ -1,0 +1,21 @@
+#!/bin/bash
+
+direction="$1"
+
+# Get the sink ID that the first active stream is using
+sink_id=$(pactl list sink-inputs short | head -1 | awk '{print $2}')
+
+[ -z "$sink_id" ] && exit 0
+
+# Get the sink name from the ID
+sink_name=$(pactl list sinks short | awk -v id="$sink_id" '$1 == id {print $2}')
+
+[ -z "$sink_name" ] && exit 0
+
+# Set it as default so waybar reflects it
+pactl set-default-sink "$sink_name"
+
+case "$direction" in
+    up)   pactl set-sink-volume "$sink_name" +5% ;;
+    down) pactl set-sink-volume "$sink_name" -5% ;;
+esac

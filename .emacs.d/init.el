@@ -275,11 +275,16 @@
          (rust-ts-mode . eglot-ensure)
          (go-ts-mode . eglot-ensure)))
 
+(use-package platformio-mode
+  :ensure t
+  :hook (c++-mode . platformio-conditionally-enable))
+
 (use-package org
   :straight nil
   :config
   (setq org-directory "~/Dropbox/org"
-        org-agenda-files (list "~/Dropbox/org/denote/")
+        org-agenda-files (list "~/Dropbox/org/denote/"
+			       "~/Dropbox/org/denote/journal")
         org-clock-persist 'history
         org-export-with-section-numbers nil
         org-hide-block-startup t

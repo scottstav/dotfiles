@@ -6,7 +6,7 @@ if [ -f "$PIDFILE" ]; then
     # Dictation is running, suspend it
     nerd-dictation end
     rm "$PIDFILE"
-    rm /tmp/waybar-custom-output
+    log_message
     # Remove from swaybar tray
     pkill -f "dictation-status-notifier"
 else
@@ -14,6 +14,6 @@ else
     nerd-dictation begin --simulate-input-tool DOTOOL &
     touch "$PIDFILE"
     # Add to swaybar tray
-    echo "Listening..." > /tmp/waybar-custom-output && killall -SIGUSR2 waybar
+    log_message "Listening..."
     echo $! > /tmp/dictation-status-notifier.pid
 fi

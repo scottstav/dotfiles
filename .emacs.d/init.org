@@ -350,6 +350,10 @@
            (typescript-ts-mode . eglot-ensure)
            (rust-ts-mode . eglot-ensure)
            (go-ts-mode . eglot-ensure)))
+
+  (use-package platformio-mode
+    :ensure t
+    :hook (c++-mode . platformio-conditionally-enable))
 #+end_src
 
 #+RESULTS:
@@ -361,7 +365,8 @@
     :straight nil
     :config
     (setq org-directory "~/Dropbox/org"
-          org-agenda-files (list "~/Dropbox/org/denote/")
+          org-agenda-files (list "~/Dropbox/org/denote/"
+  			       "~/Dropbox/org/denote/journal")
           org-clock-persist 'history
           org-export-with-section-numbers nil
           org-hide-block-startup t
@@ -520,6 +525,13 @@
 * terminal
 #+begin_src emacs-lisp
   (use-package vterm)
+
+(use-package openwith
+  :config
+  (setq openwith-associations '(("\\.\\(mkv\\|mp4\\|avi\\|webm\\)\\'" "mpv" (file))))
+  (openwith-mode t))
+
+(setq large-file-warning-threshold nil)
 #+end_src
 * /Local Variables/
 # Local Variables:

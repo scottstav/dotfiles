@@ -113,3 +113,20 @@ window#waybar {
 #tray {
     color: #89cff0;
 }
+
+#memory {
+    color: #89cff0;
+}
+
+#memory.warning {
+    color: #ffa500;
+}
+
+#memory.critical {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}

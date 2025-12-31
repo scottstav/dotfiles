@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/emacs-dired", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
-    "modules-right": ["tray", "temperature", "network", "battery","battery#bat2", "clock"],
+    "modules-right": ["tray", "memory", "temperature", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -71,7 +71,15 @@
         "tooltip": false
     },
     "memory": {
-        "format": "{}% "
+        "interval": 5,
+        "format": " {}%",
+        "format-alt": " {used:0.1f}G/{total:0.1f}G",
+        "tooltip": true,
+        "tooltip-format": "RAM: {used:0.2f}GiB used / {total:0.2f}GiB total\n{percentage}% used\n\nSwap: {swapUsed:0.2f}GiB used / {swapTotal:0.2f}GiB total\n{swapPercentage}% used",
+        "states": {
+            "warning": 70,
+            "critical": 90
+        }
     },
     "temperature": {
         "thermal-zone": 3,

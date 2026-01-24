@@ -138,3 +138,22 @@ window#waybar {
 #custom-external-drive.mounted {
     color: #00ff7f;
 }
+
+/* Notification module */
+#custom-notification {
+    color: #e0e0e0;
+}
+
+#custom-notification.notification {
+    color: #89cff0;
+}
+
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none {
+    color: #808080;
+}
+
+#custom-notification.inhibited-notification,
+#custom-notification.inhibited-none {
+    color: #ffa500;
+}

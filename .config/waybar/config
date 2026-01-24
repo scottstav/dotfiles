@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/keybinds", "custom/emacs-dired", "custom/external-drive", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
-    "modules-right": ["tray", "memory", "temperature", "network", "battery","battery#bat2", "clock"],
+    "modules-right": ["custom/notification", "tray", "memory", "temperature", "custom/swaync-open", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -177,5 +177,28 @@
         "return-type": "json",
         "tooltip": true,
         "on-click": "open-external-drive"
+    },
+    "custom/swaync-open": {
+        "format": "📋",
+        "tooltip": "Open Notification Center",
+        "on-click": "swaync-client -t -sw"
+    },
+    "custom/notification": {
+        "tooltip": false,
+        "format": "{icon}",
+        "format-icons": {
+            "notification": "<span foreground='red'><sup></sup></span>",
+            "none": "",
+            "dnd-notification": "",
+            "dnd-none": "",
+            "inhibited-notification": "",
+            "inhibited-none": ""
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "escape": true
     }
 }

@@ -38,6 +38,14 @@
 (set-fontset-font t '(#xf0000 . #xfffff) "Symbols Nerd Font Mono")
 (set-fontset-font t '(#x100000 . #x10ffff) "Symbols Nerd Font Mono")
 
+(use-package nerd-icons
+  ;; :custom
+  ;; The Nerd Font you want to use in GUI
+  ;; "Symbols Nerd Font Mono" is the default and is recommended
+  ;; but you can use any other Nerd Font if you want
+  ;; (nerd-icons-font-family "Symbols Nerd Font Mono")
+  )
+
 (load-theme 'deeper-blue t)
 
 (setq make-backup-files nil)       ; Stop creating ~ backup files

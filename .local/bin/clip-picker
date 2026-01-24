@@ -1,0 +1,12 @@
+#!/bin/bash
+# Clipboard picker with fzf preview
+
+SELECTION=$(cliphist list | fzf \
+    --height=100% \
+    --layout=reverse \
+    --no-sort \
+    --preview='cliphist decode <<< {}' \
+    --preview-window=right:50%:wrap \
+    --bind='ctrl-d:execute(cliphist delete <<< {})+reload(cliphist list)')
+
+[[ -n "$SELECTION" ]] && { cliphist decode <<< "$SELECTION" | wl-copy; sleep 0.02; }

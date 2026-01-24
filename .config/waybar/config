@@ -161,12 +161,12 @@
         "on-click": "log_message 'all trees will fall someday but not us' && sleep 2 && log_message"
     },
     "custom/keybinds": {
-        "format": "⌨",
+        "format": "⌨️",
         "tooltip": "Show keybinds",
-        "on-click": "show-keybinds"
+        "on-click": "foot --app-id=fzf-picker -e show-keybinds"
     },
     "custom/emacs-dired": {
-        "format": "📨",
+        "format": "📂",
         "tooltip": "Open Emacs Dired",
         "on-click": "emacsclient -c -e '(dired \"~/\")'",
         "return-type": "json"

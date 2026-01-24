@@ -5,7 +5,13 @@ SELECTION=$(cliphist list | fzf \
     --height=100% \
     --layout=reverse \
     --no-sort \
-    --preview='cliphist decode <<< {}' \
+    --preview='
+      if cliphist decode <<< {} | file - | grep -qi image; then
+        cliphist decode <<< {} | chafa --format=sixel -s ${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}
+      else
+        cliphist decode <<< {}
+      fi
+    ' \
     --preview-window=right:50%:wrap \
     --bind='ctrl-d:execute(cliphist delete <<< {})+reload(cliphist list)')
 

@@ -105,8 +105,12 @@ while IFS= read -r line; do
     fi
 done < "$HYPRLAND_CONF"
 
-# Show in fuzzel and get selection
-selected=$(printf '%s\n' "${display_lines[@]}" | fuzzel --dmenu --width 60 --prompt "Keybind: ")
+# Show in fzf and get selection
+selected=$(printf '%s\n' "${display_lines[@]}" | fzf \
+    --height=100% \
+    --layout=reverse \
+    --no-sort \
+    --prompt="Keybind: ")
 
 # If user selected something, find and execute it
 if [[ -n "$selected" ]]; then

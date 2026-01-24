@@ -1,0 +1,72 @@
+#!/bin/bash
+# Quick command runner with optional Emacs output
+
+HISTORY_FILE=~/.run-command-history
+touch "$HISTORY_FILE"
+
+STATE_FILE=/tmp/run-cmd-show-output
+echo "0" > "$STATE_FILE"
+
+# Build command list: our history + PATH commands
+HISTORY=$(tac "$HISTORY_FILE" 2>/dev/null)
+COMMANDS=$(compgen -c | sort -u)
+
+# fzf with Tab to toggle checkbox
+RESULT=$( (echo "$HISTORY"; echo "$COMMANDS") | awk '!seen[$0]++' | fzf \
+    --height=100% \
+    --layout=reverse \
+    --no-sort \
+    --print-query \
+    --expect=ctrl-o \
+    --header '[ ] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit' \
+    --bind 'tab:transform-header:if [ $(cat /tmp/run-cmd-show-output) = 0 ]; then echo 1 > /tmp/run-cmd-show-output; echo "[x] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit"; else echo 0 > /tmp/run-cmd-show-output; echo "[ ] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit"; fi' \
+    --bind 'ctrl-e:replace-query' \
+    --prompt="Run: ")
+
+# With --print-query and --expect, output is: query\nkey\nselection
+QUERY=$(echo "$RESULT" | sed -n '1p')
+KEY=$(echo "$RESULT" | sed -n '2p')
+SELECTION=$(echo "$RESULT" | sed -n '3p')
+
+# Enter (empty key) = use query, Ctrl+O = use selection
+if [[ "$KEY" == "ctrl-o" ]]; then
+    CMD="$SELECTION"
+else
+    CMD="$QUERY"
+fi
+
+SHOW_OUTPUT=$(cat "$STATE_FILE")
+
+[[ -z "$CMD" ]] && exit 0
+
+# Save to history (avoid duplicates, keep recent at bottom)
+grep -v -Fx "$CMD" "$HISTORY_FILE" > "$HISTORY_FILE.tmp" 2>/dev/null
+mv "$HISTORY_FILE.tmp" "$HISTORY_FILE"
+echo "$CMD" >> "$HISTORY_FILE"
+
+# Keep history to 500 lines
+tail -500 "$HISTORY_FILE" > "$HISTORY_FILE.tmp" && mv "$HISTORY_FILE.tmp" "$HISTORY_FILE"
+
+if [[ "$SHOW_OUTPUT" == "1" ]]; then
+    OUTPUT_FILE=$(mktemp /tmp/run-cmd-XXXXXX.log)
+    echo "$ $CMD" > "$OUTPUT_FILE"
+    echo "---" >> "$OUTPUT_FILE"
+    # Run command in background, appending output
+    hyprctl dispatch exec "bash -c '$CMD >> \"$OUTPUT_FILE\" 2>&1; echo \"---\" >> \"$OUTPUT_FILE\"; echo \"Exit code: \$?\" >> \"$OUTPUT_FILE\"'"
+    # Open in Emacs with auto-revert (detached from foot)
+    hyprctl dispatch exec "emacsclient -c -a emacs -q --eval '(progn (find-file \"$OUTPUT_FILE\") (auto-revert-mode 1) (delete-other-windows))'"
+else
+    # Run via hyprctl and flash exit code (clears after 3 seconds)
+    WRAPPER=$(mktemp /tmp/run-cmd-wrapper-XXXXXX.sh)
+    cat > "$WRAPPER" << INNEREOF
+#!/bin/bash
+$CMD > /dev/null 2>&1
+ec=\$?
+log_message "\$([ \$ec -eq 0 ] && echo '✓' || echo '✗') \$ec"
+sleep 3
+log_message ""
+rm "$WRAPPER"
+INNEREOF
+    chmod +x "$WRAPPER"
+    hyprctl dispatch exec "$WRAPPER"
+fi

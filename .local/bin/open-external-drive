@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Open external drive in Emacs dired
+# If multiple drives are mounted, show a fuzzel menu to select one
+
+MOUNT_DIR="/run/media/$USER"
+
+# Check if mount directory exists and has any mounted drives
+if [ ! -d "$MOUNT_DIR" ] || [ -z "$(ls -A "$MOUNT_DIR" 2>/dev/null)" ]; then
+    notify-send "No External Drives" "No drives found in $MOUNT_DIR"
+    exit 1
+fi
+
+# Get list of mounted drives
+drives=$(find "$MOUNT_DIR" -mindepth 1 -maxdepth 1 -type d -printf "%f\n")
+drive_count=$(echo "$drives" | wc -l)
+
+if [ $drive_count -eq 1 ]; then
+    # Only one drive, open it directly
+    drive_path="$MOUNT_DIR/$drives"
+    emacsclient -c -e "(dired \"$drive_path\")"
+else
+    # Multiple drives, show selection menu
+    selection=$(echo "$drives" | fuzzel -d -p "Open drive: ")
+
+    if [ -n "$selection" ]; then
+        drive_path="$MOUNT_DIR/$selection"
+        emacsclient -c -e "(dired \"$drive_path\")"
+    fi
+fi

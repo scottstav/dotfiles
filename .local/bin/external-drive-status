@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# External drive monitor for waybar
+# Detects drives mounted in /run/media and outputs JSON
+
+MOUNT_DIR="/run/media/$USER"
+
+# Check if mount directory exists and has any mounted drives
+if [ -d "$MOUNT_DIR" ] && [ "$(ls -A "$MOUNT_DIR" 2>/dev/null)" ]; then
+    # Count the number of mounted drives
+    count=$(find "$MOUNT_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+
+    # Get drive names for tooltip
+    drives=$(find "$MOUNT_DIR" -mindepth 1 -maxdepth 1 -type d -printf "%f\n" | paste -sd ", ")
+
+    if [ $count -gt 0 ]; then
+        # Output JSON with icon, text, and tooltip
+        echo "{\"text\":\"💾\",\"tooltip\":\"External drives: $drives\",\"class\":\"mounted\"}"
+        exit 0
+    fi
+fi
+
+# No drives mounted - output empty to hide module
+echo ""

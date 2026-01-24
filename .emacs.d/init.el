@@ -238,6 +238,21 @@ if one already exists."
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))))
 
+;; set a global keybind for gptel send to C-c enter
+(global-set-key (kbd "C-c <return>") 'gptel-send)
+
+(defun gptel-generate-code-here (prompt)
+  "Generate code at point from PROMPT with file context."
+  (interactive "sCode to generate: ")
+  (gptel-request
+    (format "File: %s\nLanguage: %s\n\nGenerate: %s"
+            (or (buffer-file-name) "unknown")
+            (symbol-name major-mode)
+            prompt)
+    :system "You are a code generator. Return ONLY the requested code. No markdown fences, no explanations, no prose. Raw code only, ready to be inserted directly into a source file."
+    :position (point)
+    :stream t))
+
 ;; todo
 
 (use-package mcp
@@ -264,10 +279,12 @@ if one already exists."
 
 ;; todo
 
-;; (use-package copilot
-;;   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
-;;   :hook (prog-mode . copilot-mode)
-;;   :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
+(use-package copilot
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+  :hook (prog-mode . copilot-mode)
+  :bind (:map prog-mode-map ("<backtab>" . copilot-accept-completion)))
+
+(setq copilot-indent-offset-warning-disable t)
 
 (use-package magit
   :bind ("C-x g" . magit-status))
@@ -484,17 +501,6 @@ Shows clean service names for completion (e.g., 'user-service')."
 
   (global-set-key (kbd "C-c n i") #'my/find-ifit-service)
 
-  ;; Load iFIT auth blocks into Library of Babel for cross-file token injection
-  (defun my/load-ifit-babel-library ()
-    "Load iFIT auth service blocks into org-babel Library of Babel."
-    (let ((auth-file (expand-file-name "~/Dropbox/org/denote/work/20250602T120000--auth-service__ifit.org")))
-      (when (file-exists-p auth-file)
-        (org-babel-lob-ingest auth-file))))
-
-  ;; Load on startup (after org is loaded)
-  (with-eval-after-load 'org
-    (my/load-ifit-babel-library))
-
 (use-package vterm)
 
 (use-package openwith
@@ -503,4 +509,3 @@ Shows clean service names for completion (e.g., 'user-service')."
   (openwith-mode t))
 
 (setq large-file-warning-threshold nil)
-(put 'dired-find-alternate-file 'disabled nil)

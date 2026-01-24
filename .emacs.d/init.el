@@ -33,6 +33,11 @@
 (set-face-attribute 'mode-line nil :height 0.8)
 (set-face-attribute 'mode-line-inactive nil :height 0.8)
 
+(set-fontset-font t 'emoji "Noto Color Emoji" nil 'prepend)
+(set-fontset-font t '(#xe000 . #xf8ff) "Symbols Nerd Font Mono")
+(set-fontset-font t '(#xf0000 . #xfffff) "Symbols Nerd Font Mono")
+(set-fontset-font t '(#x100000 . #x10ffff) "Symbols Nerd Font Mono")
+
 (load-theme 'deeper-blue t)
 
 (setq make-backup-files nil)       ; Stop creating ~ backup files

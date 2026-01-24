@@ -1,0 +1,128 @@
+#!/bin/bash
+# show-keybinds: Parse hyprland keybinds and display in fuzzel, execute on selection
+
+HYPRLAND_CONF="$HOME/.config/hypr/hyprland.conf"
+
+# Arrays to store display text and corresponding actions
+declare -a display_lines
+declare -a actions
+declare -a action_args
+
+# Function to format modifier keys
+format_mods() {
+    local mods="$1"
+    mods="${mods//\$mainMod/Super}"
+    mods="${mods//SUPER/Super}"
+    mods="${mods//SHIFT/Shift}"
+    mods="${mods//CTRL/Ctrl}"
+    mods="${mods//ALT/Alt}"
+    # Join with +
+    mods="${mods// / + }"
+    echo "$mods"
+}
+
+# Function to format key names
+format_key() {
+    local key="$1"
+    # Media keys - strip XF86 prefix
+    key="${key//XF86Audio/Audio}"
+    key="${key//XF86MonBrightness/Brightness}"
+    key="${key//XF86Voice/Voice}"
+    key="${key//XF86Launch/Launch}"
+    # Mouse buttons
+    key="${key//mouse:272/LMB}"
+    key="${key//mouse:273/RMB}"
+    key="${key//mouse:274/MMB}"
+    key="${key//mouse:275/MB4}"
+    key="${key//mouse:276/MB5}"
+    # Common keys
+    key="${key//RETURN/Return}"
+    key="${key//TAB/Tab}"
+    key="${key//SPACE/Space}"
+    echo "$key"
+}
+
+# Parse the config file
+while IFS= read -r line; do
+    # Skip comments and empty lines
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "$line" ]] && continue
+
+    # Match bind, binde, bindm lines
+    if [[ "$line" =~ ^[[:space:]]*(bind[em]?)[[:space:]]*=[[:space:]]*(.+)$ ]]; then
+        bind_type="${BASH_REMATCH[1]}"
+        bind_content="${BASH_REMATCH[2]}"
+
+        # Parse the bind content: MODS, KEY, ACTION, ARGS
+        # Split by comma, handling potential spaces
+        IFS=',' read -ra parts <<< "$bind_content"
+
+        # Need at least 3 parts: mods, key, action
+        [[ ${#parts[@]} -lt 3 ]] && continue
+
+        # Trim whitespace from each part
+        mods=$(echo "${parts[0]}" | xargs)
+        key=$(echo "${parts[1]}" | xargs)
+        action=$(echo "${parts[2]}" | xargs)
+
+        # Collect remaining parts as args (rejoin with comma if multiple)
+        args=""
+        if [[ ${#parts[@]} -gt 3 ]]; then
+            for ((i=3; i<${#parts[@]}; i++)); do
+                part=$(echo "${parts[$i]}" | xargs)
+                if [[ -n "$args" ]]; then
+                    args="$args $part"
+                else
+                    args="$part"
+                fi
+            done
+        fi
+
+        # Format for display
+        formatted_mods=$(format_mods "$mods")
+        formatted_key=$(format_key "$key")
+
+        # Build display string
+        if [[ -n "$formatted_mods" ]]; then
+            display_key="$formatted_mods + $formatted_key"
+        else
+            display_key="$formatted_key"
+        fi
+
+        # Format action display
+        if [[ -n "$args" ]]; then
+            action_display="$action $args"
+        else
+            action_display="$action"
+        fi
+
+        # Create padded display line
+        printf -v display_line "%-25s  ->  %s" "$display_key" "$action_display"
+
+        display_lines+=("$display_line")
+        actions+=("$action")
+        action_args+=("$args")
+    fi
+done < "$HYPRLAND_CONF"
+
+# Show in fuzzel and get selection
+selected=$(printf '%s\n' "${display_lines[@]}" | fuzzel --dmenu --width 60 --prompt "Keybind: ")
+
+# If user selected something, find and execute it
+if [[ -n "$selected" ]]; then
+    # Find the index of the selected line
+    for i in "${!display_lines[@]}"; do
+        if [[ "${display_lines[$i]}" == "$selected" ]]; then
+            action="${actions[$i]}"
+            args="${action_args[$i]}"
+
+            # Execute via hyprctl dispatch
+            if [[ -n "$args" ]]; then
+                hyprctl dispatch "$action" "$args"
+            else
+                hyprctl dispatch "$action"
+            fi
+            break
+        fi
+    done
+fi

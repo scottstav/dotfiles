@@ -1,0 +1,5 @@
+#!/bin/bash
+WALLPAPER_DIR=~/Dropbox/Images/wallpapers/
+WALLPAPER=$(find "$WALLPAPER_DIR" -type f | shuf -n 1)
+
+hyprctl hyprpaper wallpaper ",$WALLPAPER"

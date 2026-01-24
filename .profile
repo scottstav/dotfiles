@@ -34,6 +34,6 @@ source /usr/share/nvm/init-nvm.sh
 
 if [ -z "${WAYLAND_DISPLAY}" ]; then
     if [ "$(tty)" = "/dev/tty1" ];then
-       exec Hyprland
+       exec start-hyprland
     fi
 fi

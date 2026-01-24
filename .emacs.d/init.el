@@ -51,6 +51,13 @@
 (setq make-backup-files nil)       ; Stop creating ~ backup files
 (setq auto-save-default nil)       ; Stop creating #autosave# files
 
+(defadvice find-file (before make-directory-maybe (filename &optional wildcards) activate)
+  "Create parent directory if not exists while visiting file."
+  (unless (file-exists-p filename)
+    (let ((dir (file-name-directory filename)))
+      (unless (file-exists-p dir)
+        (make-directory dir t)))))
+
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
 (global-set-key (kbd "C-c C-p") 'comment-region)

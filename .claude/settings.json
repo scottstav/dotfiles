@@ -1,0 +1,27 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "hooks": {
+    "Notification": [
+      {
+        "matcher": "permission_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "notify-send -i claude-code -u low -t 5000 'Claude Code' 'Needs permission - check terminal'"
+          }
+        ]
+      },
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "notify-send -i claude-code -u low -t 5000 'Claude Code' 'Waiting for input'"
+          }
+        ]
+      }
+    ]
+  }
+}

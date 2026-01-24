@@ -539,6 +539,36 @@
       "Grep denote files with consult."
       (interactive)
       (consult-ripgrep denote-directory)))
+
+  ;; Quick access to iFIT work service files
+  (defun my/find-ifit-service ()
+    "Find and open an iFIT service file from denote/work.
+Shows clean service names for completion (e.g., 'user-service')."
+    (interactive)
+    (let* ((work-dir (expand-file-name "~/Dropbox/org/denote/work"))
+           (files (directory-files work-dir t "\\.org$"))
+           ;; Filter out journal files
+           (service-files (seq-remove
+                           (lambda (f) (string-match-p "journal" f))
+                           files))
+           ;; Build alist of (display-name . filepath)
+           (candidates
+            (mapcar
+             (lambda (filepath)
+               (let* ((filename (file-name-nondirectory filepath))
+                      ;; Extract title part: 20230725T120000--user-service__ifit.org -> user-service
+                      (title (if (string-match "--\\([^_]+\\)__" filename)
+                                 (match-string 1 filename)
+                               filename)))
+                 (cons title filepath)))
+             service-files))
+           ;; Let user choose
+           (chosen (completing-read "iFIT Service: " candidates nil t))
+           (filepath (cdr (assoc chosen candidates))))
+      (when filepath
+        (find-file filepath))))
+
+  (global-set-key (kbd "C-c n i") #'my/find-ifit-service)
 #+end_src
 #+RESULTS:
 

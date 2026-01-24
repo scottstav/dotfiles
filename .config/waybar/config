@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/emacs-dired", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
+    "modules-center": ["custom/emacs-dired", "custom/external-drive", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
     "modules-right": ["tray", "memory", "temperature", "network", "battery","battery#bat2", "clock"],
     "keyboard-state": {
         "numlock": true,
@@ -165,5 +165,12 @@
         "tooltip": "Open Emacs Dired",
         "on-click": "emacsclient -c -e '(dired \"~/\")'",
         "return-type": "json"
+    },
+    "custom/external-drive": {
+        "exec": "external-drive-status",
+        "interval": 2,
+        "return-type": "json",
+        "tooltip": true,
+        "on-click": "open-external-drive"
     }
 }

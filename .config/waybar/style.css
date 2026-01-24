@@ -130,3 +130,11 @@ window#waybar {
     animation-iteration-count: infinite;
     animation-direction: alternate;
 }
+
+#custom-external-drive {
+    color: #89cff0;
+}
+
+#custom-external-drive.mounted {
+    color: #00ff7f;
+}

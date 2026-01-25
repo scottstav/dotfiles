@@ -1,8 +1,8 @@
 # Voice typing configuration
 # See ~/repos/voice-typing-linux/CLAUDE.md for full options
 
-# Model: large for maximum accuracy
-model: large-v3
+# Model: medium for balance of speed and accuracy
+model: medium
 
 # Run on CPU (stable, your Ryzen handles it well)
 device: cpu

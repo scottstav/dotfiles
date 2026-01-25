@@ -35,26 +35,28 @@ sudo stow --target=/ root
 
 ## Voice Typing Setup
 
-Voice typing uses [voice-typing-linux](https://github.com/GitJuhb/voice-typing-linux) with faster-whisper.
+Voice typing uses a modified [voice-typing-linux](https://github.com/GitJuhb/voice-typing-linux) with faster-whisper, included in this repo at `.local/share/voice-typing-linux`.
 
 ```bash
-# Clone the repo
-cd ~/repos
-git clone https://github.com/GitJuhb/voice-typing-linux
-cd voice-typing-linux
-
-# Create venv with Python 3.11 (required for onnxruntime compatibility)
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-pip install requests  # missing from requirements.txt
+# Install system dependencies
+sudo pacman -S ydotool portaudio
 
 # Enable ydotool for Wayland keyboard input
-sudo pacman -S ydotool
 systemctl --user enable --now ydotool
 
 # Add user to input group (then log out/in)
 sudo usermod -aG input $USER
+
+# Create Python venv (requires Python 3.11 for onnxruntime)
+cd ~/.local/share/voice-typing-linux
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+pip install requests
 ```
 
-Keybindings: `Super+Shift+S` or `XF86VoiceCommand`
+**Keybindings:** `Super+Shift+S` toggles listening/paused
+
+**Waybar:** Shows MIC status in center modules (green=listening, gray=paused)
+
+**Auto-start:** Daemon starts at login via hyprland exec-once

@@ -4,7 +4,7 @@
 
 export YDOTOOL_SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
 
-VOICE_DIR="$HOME/repos/voice-typing-linux"
+VOICE_DIR="$HOME/.local/share/voice-typing-linux"
 VENV="$VOICE_DIR/.venv"
 
 # Don't start if already running

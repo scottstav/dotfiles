@@ -3,8 +3,8 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/keybinds", "custom/emacs-dired", "custom/external-drive", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn", "custom/mywidget"],
-    "modules-right": ["custom/notification", "tray", "memory", "temperature", "custom/swaync-open", "network", "battery","battery#bat2", "clock"],
+    "modules-center": ["custom/keybinds", "custom/external-drive", "idle_inhibitor", "bluetooth", "pulseaudio", "custom/vpn"],
+    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -161,7 +161,7 @@
         "on-click": "log_message 'all trees will fall someday but not us' && sleep 2 && log_message"
     },
     "custom/keybinds": {
-        "format": "⌨️",
+        "format": "󰌌",
         "tooltip": "Show keybinds",
         "on-click": "foot --app-id=fzf-picker -e show-keybinds"
     },
@@ -179,7 +179,7 @@
         "on-click": "open-external-drive"
     },
     "custom/swaync-open": {
-        "format": "📋",
+        "format": "󰚅",
         "tooltip": "Open Notification Center",
         "on-click": "swaync-client -t -sw"
     },

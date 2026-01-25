@@ -1,41 +1,67 @@
 #!/bin/bash
-# Quick command runner with optional Emacs output
+# Quick command runner with readline TAB completion
 
 HISTORY_FILE=~/.run-command-history
 touch "$HISTORY_FILE"
 
-STATE_FILE=/tmp/run-cmd-show-output
-echo "0" > "$STATE_FILE"
-
-# Build command list: our history + PATH commands
-HISTORY=$(tac "$HISTORY_FILE" 2>/dev/null)
-COMMANDS=$(compgen -c | sort -u)
-
-# fzf with Tab to toggle checkbox
-RESULT=$( (echo "$HISTORY"; echo "$COMMANDS") | awk '!seen[$0]++' | fzf \
-    --height=100% \
-    --layout=reverse \
-    --no-sort \
-    --print-query \
-    --expect=ctrl-o \
-    --header '[ ] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit' \
-    --bind 'tab:transform-header:if [ $(cat /tmp/run-cmd-show-output) = 0 ]; then echo 1 > /tmp/run-cmd-show-output; echo "[x] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit"; else echo 0 > /tmp/run-cmd-show-output; echo "[ ] Show output (Tab) | Ctrl+O=select | Ctrl+E=edit"; fi' \
-    --bind 'ctrl-e:replace-query' \
-    --prompt="Run: ")
-
-# With --print-query and --expect, output is: query\nkey\nselection
-QUERY=$(echo "$RESULT" | sed -n '1p')
-KEY=$(echo "$RESULT" | sed -n '2p')
-SELECTION=$(echo "$RESULT" | sed -n '3p')
-
-# Enter (empty key) = use query, Ctrl+O = use selection
-if [[ "$KEY" == "ctrl-o" ]]; then
-    CMD="$SELECTION"
-else
-    CMD="$QUERY"
+# Source bash-completion for full TAB completion
+if [[ -f /usr/share/bash-completion/bash_completion ]]; then
+    . /usr/share/bash-completion/bash_completion
 fi
 
-SHOW_OUTPUT=$(cat "$STATE_FILE")
+# Load our history into readline
+HISTFILE="$HISTORY_FILE"
+history -r "$HISTORY_FILE"
+
+# State for checkbox
+SHOW_OUTPUT=0
+
+draw_header() {
+    local checkbox
+    if ((SHOW_OUTPUT)); then
+        checkbox="[x]"
+    else
+        checkbox="[ ]"
+    fi
+    printf '\e[1;1H'  # go to line 1
+    printf '\e[K'     # clear line
+    printf "  %s Show output (Shift-Tab)\n" "$checkbox"
+    printf '\e[K'
+    printf "  Tab=complete | Up/Down=history | Ctrl-C=exit\n"
+    printf '\e[K\n'
+}
+
+toggle_output() {
+    ((SHOW_OUTPUT ^= 1))
+    printf '\e7'           # save cursor
+    draw_header
+    printf '\e8'           # restore cursor
+}
+
+# Trap Ctrl-C to exit cleanly
+trap 'printf "\e[?25h\e[J"; exit 0' INT
+
+# Clear screen and hide cursor during setup
+printf '\e[2J\e[H'
+
+# Draw initial header
+draw_header
+
+# Enable readline and bind SHIFT-TAB to toggle function
+set -o emacs
+bind -x '"\e[Z": toggle_output'
+
+# Position cursor for prompt
+printf "  Run: "
+
+# Use readline for input with TAB completion and history
+read -e CMD
+
+# Unbind our custom key
+bind -r '\e[Z' 2>/dev/null
+
+# Clear screen and show cursor
+printf '\e[?25h\e[2J\e[H'
 
 [[ -z "$CMD" ]] && exit 0
 

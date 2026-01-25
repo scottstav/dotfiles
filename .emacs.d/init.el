@@ -48,8 +48,51 @@
 
 (load-theme 'deeper-blue t)
 
-(setq make-backup-files nil)       ; Stop creating ~ backup files
-(setq auto-save-default nil)       ; Stop creating #autosave# files
+;; ============================================================
+;; BACKUPS - snapshot of file BEFORE your edits (for "oops I saved over it")
+;; ============================================================
+(setq make-backup-files t)
+(setq backup-directory-alist
+      `(("." . ,(expand-file-name "backups/" user-emacs-directory))))
+
+;; Keep multiple versions (so you can go back further)
+(setq version-control t)           ; Use version numbers on backups
+(setq kept-new-versions 5)         ; Keep 5 newest versions
+(setq kept-old-versions 2)         ; Keep 2 oldest versions
+(setq delete-old-versions t)       ; Don't ask, just delete excess backups
+
+;; Backup by copying (safer, preserves file ownership/permissions)
+(setq backup-by-copying t)
+
+;; ============================================================
+;; AUTO-SAVE - periodic snapshots of UNSAVED changes (crash recovery)
+;; ============================================================
+(setq auto-save-default t)
+
+;; Put auto-save files in a central location (not in working dirs)
+(setq auto-save-file-name-transforms
+      `((".*" ,(expand-file-name "auto-save/" user-emacs-directory) t)))
+
+;; Create the auto-save directory if it doesn't exist
+(let ((auto-save-dir (expand-file-name "auto-save/" user-emacs-directory)))
+  (unless (file-exists-p auto-save-dir)
+    (make-directory auto-save-dir t)))
+
+;; Also redirect the auto-save-list (tracks which files have auto-saves)
+(setq auto-save-list-file-prefix
+      (expand-file-name "auto-save/.saves-" user-emacs-directory))
+
+;; ============================================================
+;; LOCK FILES (.#file) - prevent concurrent edits
+;; ============================================================
+;; These can't be relocated, but you can disable them if the clutter bothers you
+;; (they're deleted as soon as you close the buffer)
+(setq create-lockfiles nil)  ; Disable if you don't edit files from multiple Emacs instances
+
+;; ============================================================
+;; Recovery tip: If Emacs crashes, run M-x recover-session
+;; It will show you files that have auto-save data to recover
+;; ============================================================
 
 (defadvice find-file (before make-directory-maybe (filename &optional wildcards) activate)
   "Create parent directory if not exists while visiting file."
@@ -61,6 +104,15 @@
 ;; Auto-revert buffers when files change on disk (e.g., from Dropbox sync)
 (global-auto-revert-mode 1)
 (setq auto-revert-verbose nil)     ; Don't spam messages on revert
+
+;; ============================================================
+;; SILENCE ANNOYING PROMPTS
+;; ============================================================
+;; Trust all dir-locals (the "apply safe/unsafe local variables?" prompt)
+(setq enable-local-variables :all)
+
+;; Follow symlinks to version-controlled files without asking
+(setq vc-follow-symlinks t)
 
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
@@ -152,11 +204,7 @@
    ("M-g o"   . consult-outline)
    ("M-g i"   . consult-imenu)
    ("M-i"   . consult-ripgrep)
-   ("M-s f"   . consult-fd)
-   ("C-c p r" . consult-ripgrep)
-   ;; Project bindings (C-x p prefix)
-   ("C-c p b" . consult-project-buffer)
-   ("C-c p f" . consult-fd))
+   ("M-s f"   . consult-fd))
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :init
   (setq register-preview-delay 0.5

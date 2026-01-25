@@ -41,7 +41,6 @@
   "widgets": [
     "title",
     "dnd",
-    "mpris",
     "buttons-grid",
     "notifications"
   ],
@@ -54,34 +53,39 @@
     "dnd": {
       "text": "Do Not Disturb"
     },
-    "mpris": {
-      "image-size": 96,
-      "image-radius": 8,
-      "blur": true
-    },
     "buttons-grid": {
       "actions": [
         {
           "label": "",
           "type": "normal",
-          "command": "hyprlock"
+          "command": "sh -c 'swaync-client -t; hyprlock'"
         },
         {
           "label": "󰌌",
           "type": "normal",
-          "command": "foot --app-id=fzf-picker -e show-keybinds"
+          "command": "sh -c 'swaync-client -t; foot --app-id=fzf-picker -e show-keybinds'"
         },
         {
           "label": "󱚿",
           "type": "toggle",
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then vpn-toggle on; else vpn-toggle off; fi'",
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then vpn-toggle on; else vpn-toggle off; fi; swaync-client -t'",
           "update-command": "vpn-toggle status"
         },
         {
           "label": "󰈈",
           "type": "toggle",
-          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then caffeine-toggle on; else caffeine-toggle off; fi'",
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then caffeine-toggle on; else caffeine-toggle off; fi; swaync-client -t'",
           "update-command": "caffeine-toggle status"
+        },
+        {
+          "label": "󰂯",
+          "type": "normal",
+          "command": "sh -c 'swaync-client -t; blueman-manager'"
+        },
+        {
+          "label": "󰕾",
+          "type": "normal",
+          "command": "sh -c 'swaync-client -t; pavucontrol'"
         }
       ]
     },

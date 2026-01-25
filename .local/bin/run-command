@@ -14,7 +14,7 @@ HISTFILE="$HISTORY_FILE"
 history -r "$HISTORY_FILE"
 
 # State for checkbox
-SHOW_OUTPUT=0
+SHOW_OUTPUT=1
 
 draw_header() {
     local checkbox

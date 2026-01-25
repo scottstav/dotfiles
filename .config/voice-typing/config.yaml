@@ -1,0 +1,24 @@
+# Voice typing configuration
+# See ~/repos/voice-typing-linux/CLAUDE.md for full options
+
+# Model: large for maximum accuracy
+model: large-v3
+
+# Run on CPU (stable, your Ryzen handles it well)
+device: cpu
+
+# Use PipeWire/PulseAudio (handles resampling from Scarlett's 44.1kHz to 16kHz)
+input_device: "pulse"
+
+# Enable commands mode (voice commands + dictation)
+commands: true
+
+# Noise handling for your setup
+noise_gate: true
+agc: true
+agc_target_rms: 4000
+
+# Audio visualization (shows when speaking)
+viz: true
+viz_position: bottom-right
+viz_hide_delay: 1500

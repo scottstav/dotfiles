@@ -58,6 +58,10 @@
       (unless (file-exists-p dir)
         (make-directory dir t)))))
 
+;; Auto-revert buffers when files change on disk (e.g., from Dropbox sync)
+(global-auto-revert-mode 1)
+(setq auto-revert-verbose nil)     ; Don't spam messages on revert
+
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
 (global-set-key (kbd "C-c C-u") 'uncomment-region)
 (global-set-key (kbd "C-c C-p") 'comment-region)

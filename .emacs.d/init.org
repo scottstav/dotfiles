@@ -87,6 +87,10 @@
       (let ((dir (file-name-directory filename)))
         (unless (file-exists-p dir)
           (make-directory dir t)))))
+
+  ;; Auto-revert buffers when files change on disk (e.g., from Dropbox sync)
+  (global-auto-revert-mode 1)
+  (setq auto-revert-verbose nil)     ; Don't spam messages on revert
 #+end_src
 
 #+RESULTS:

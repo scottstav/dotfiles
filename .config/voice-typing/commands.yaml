@@ -1,0 +1,26 @@
+# Voice Typing Custom Commands
+# Add your own voice commands here
+
+commands:
+  # Example: Launch apps
+  "open browser":
+    type: launch
+    app: firefox
+
+  "open code":
+    type: launch
+    app: code
+
+  # Example: Keyboard shortcuts
+  "screenshot":
+    type: key
+    keys: Print
+
+  "lock screen":
+    type: key
+    keys: super+l
+
+  # Example: Shell commands (use with caution!)
+  # "update system":
+  #   type: shell
+  #   command: "notify-send 'Starting update...'"

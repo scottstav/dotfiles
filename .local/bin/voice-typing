@@ -1,0 +1,54 @@
+#!/bin/bash
+# Voice typing toggle script for Hyprland
+# Uses voice-typing-linux with faster-whisper
+
+VOICE_DIR="$HOME/repos/voice-typing-linux"
+VENV="$VOICE_DIR/.venv"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+SOCKET="${RUNTIME_DIR}/voice-typing-$(id -u).sock"
+TOKEN_FILE="${RUNTIME_DIR}/voice-typing-$(id -u).token"
+PIDFILE="${RUNTIME_DIR}/voice-typing.pid"
+
+# If socket exists and is active, toggle pause/resume
+if [ -S "$SOCKET" ]; then
+    if [ -f "$TOKEN_FILE" ]; then
+        TOKEN="$(cat "$TOKEN_FILE")"
+        echo "toggle $TOKEN" | nc -U "$SOCKET" 2>/dev/null
+    else
+        echo "toggle" | nc -U "$SOCKET" 2>/dev/null
+    fi
+
+    if [ $? -eq 0 ]; then
+        notify-send -t 1000 "Voice Typing" "Toggled"
+        exit 0
+    fi
+fi
+
+# If process is running but socket is gone, clean up
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    kill "$(cat "$PIDFILE")" 2>/dev/null
+    rm -f "$PIDFILE"
+    notify-send -t 1000 "Voice Typing" "Stopped"
+    exit 0
+fi
+
+# Start voice typing
+if [ ! -d "$VOICE_DIR" ]; then
+    notify-send -u critical "Voice Typing" "Not installed at $VOICE_DIR"
+    exit 1
+fi
+
+if [ ! -d "$VENV" ]; then
+    notify-send -u critical "Voice Typing" "Virtual environment not found"
+    exit 1
+fi
+
+# Activate venv and run
+cd "$VOICE_DIR"
+source "$VENV/bin/activate"
+
+# Start in background
+python enhanced-voice-typing.py &
+echo $! > "$PIDFILE"
+
+notify-send -t 2000 "Voice Typing" "Starting... (loading model)"

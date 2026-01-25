@@ -1,0 +1,1 @@
+SUBSYSTEM=="usb", ATTR{idVendor}=="291a", ATTR{idProduct}=="8346", RUN+="/bin/sh -c 'echo -1 > /sys$devpath/power/autosuspend'"

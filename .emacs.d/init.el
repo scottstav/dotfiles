@@ -221,16 +221,14 @@ if one already exists."
         ("r" . consult-ripgrep)
         ("f" . consult-fd)
 	("v" . project-shell))
-  :custom
-  ;; Where to store known projects
-  (project-list-file (expand-file-name "projects" user-emacs-directory))
-  ;; Commands available when switching projects
-  (project-switch-commands
-   '((consult-fd "Find file" ?f)
-     (consult-ripgrep "Ripgrep" ?r)
-     (project-dired "Dired" ?d)
-     (magit-project-status "Magit" ?m)
-     (project-eshell "Eshell" ?e))))
+  :config
+  (setq project-list-file (expand-file-name "projects" user-emacs-directory))
+  (setq project-switch-commands
+        '((magit-project-status "Magit" ?m)
+          (consult-fd "Find file" ?f)
+          (consult-ripgrep "Ripgrep" ?r)
+          (project-dired "Dired" ?d)
+          (project-eshell "Eshell" ?e))))
 
 ;; Remember recent files for consult-recent-file
 (use-package recentf
@@ -307,7 +305,9 @@ if one already exists."
 (setq copilot-indent-offset-warning-disable t)
 
 (use-package magit
-  :bind ("C-x g" . magit-status))
+  :bind ("C-x g" . magit-status)
+  :custom
+  (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
 
 (use-package browse-at-remote)
 

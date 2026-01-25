@@ -11,3 +11,5 @@ cd /home/ifit/dotfiles && stow .
 ```
 
 This symlinks files from the dotfiles repo structure to their corresponding locations under `$HOME`.
+
+**Emacs configuration:** All Emacs config changes must be made to `.emacs.d/init.org`, NOT `init.el` directly. This is a literate config in org-mode that tangles to `init.el` on save.

@@ -1,0 +1,77 @@
+#!/bin/bash
+
+notify() {
+  notify-send -t 3000 "Emacs Daemon" "$1"
+}
+
+# Wait for KWallet to be unlocked (up to 30 seconds)
+wait_for_kwallet() {
+  local max_attempts=30
+  local attempt=0
+
+  while [ $attempt -lt $max_attempts ]; do
+    # Check if kwallet is unlocked by trying to list the Bitwarden folder
+    if kwallet-query -l -f Bitwarden kdewallet &>/dev/null; then
+      return 0
+    fi
+    notify "Waiting for KWallet... ($attempt/$max_attempts)"
+    sleep 1
+    ((attempt++))
+  done
+
+  notify "KWallet not unlocked after ${max_attempts}s"
+  return 1
+}
+
+# Wait for KWallet to be available
+if ! wait_for_kwallet; then
+  notify "Failed: KWallet not available"
+  exit 1
+fi
+
+# Read credentials from KWallet
+export BW_CLIENTID=$(kwallet-query -r BW_CLIENTID -f Bitwarden kdewallet)
+export BW_CLIENTSECRET=$(kwallet-query -r BW_CLIENTSECRET -f Bitwarden kdewallet)
+BW_PASSWORD=$(kwallet-query -r BW_PASSWORD -f Bitwarden kdewallet)
+
+if [ -z "$BW_CLIENTID" ] || [ -z "$BW_CLIENTSECRET" ] || [ -z "$BW_PASSWORD" ]; then
+  notify "Failed: Missing KWallet credentials"
+  exit 1
+fi
+
+bw logout &>/dev/null
+notify "Logging into Bitwarden..."
+bw login --apikey &>/dev/null
+
+notify "Unlocking Bitwarden vault..."
+export BW_PASSWORD
+output=$(bw unlock --passwordenv BW_PASSWORD 2>&1)
+unset BW_PASSWORD
+export BW_SESSION=$(echo "$output" | grep -oP 'export\s+\w+="[^"]*"' | cut -d'"' -f2)
+
+if [ -z "$BW_SESSION" ]; then
+  notify "Failed: Could not unlock Bitwarden"
+  exit 1
+fi
+
+notify "Bitwarden session initialized"
+
+# check if emacs daemon is running
+if pgrep -x "emacs" > /dev/null; then
+    emacsclient -e "(setenv \"BW_SESSION\" \"$BW_SESSION\")" &>/dev/null
+    notify "Emacs daemon updated with BW_SESSION"
+    exit 0
+fi
+
+notify "Starting Emacs daemon..."
+output=$(/usr/bin/emacs --daemon 2>&1)
+exit_code=$?
+
+if [ $exit_code -eq 0 ]; then
+  notify "Emacs daemon started successfully"
+else
+  error_message=$(echo "$output" | head -c 50)
+  notify "Emacs failed: $error_message..."
+fi
+
+notify "Done"

@@ -9,7 +9,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "notify-send -i claude-code -u low -t 5000 'Claude Code' 'Needs permission - check terminal'"
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Needs permission - check terminal'"
           }
         ]
       },
@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "notify-send -i claude-code -u low -t 5000 'Claude Code' 'Waiting for input'"
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Waiting for input'"
           }
         ]
       }

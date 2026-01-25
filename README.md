@@ -22,3 +22,13 @@
                           `.::::|
                             `.::| Sheepshead (Archosargus probatocephalus) (-Krogg)
 ```
+
+## Usage
+
+```bash
+# Stow home directory configs
+stow .
+
+# Stow system configs (requires sudo)
+sudo stow --target=/ root
+```

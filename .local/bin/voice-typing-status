@@ -1,0 +1,24 @@
+#!/bin/bash
+# Waybar module for voice typing status
+
+STATE_FILE="${XDG_RUNTIME_DIR:-/tmp}/voice-typing-state"
+
+if [ ! -f "$STATE_FILE" ]; then
+    # Daemon not running
+    echo '{"text": "", "class": "off", "tooltip": "Voice typing off (click to start)"}'
+    exit 0
+fi
+
+STATE=$(cat "$STATE_FILE")
+
+case "$STATE" in
+    listening)
+        echo '{"text": "", "class": "listening", "tooltip": "Voice typing: LISTENING (click to pause)"}'
+        ;;
+    paused)
+        echo '{"text": "", "class": "paused", "tooltip": "Voice typing: PAUSED (click to resume)"}'
+        ;;
+    *)
+        echo '{"text": "", "class": "off", "tooltip": "Voice typing off"}'
+        ;;
+esac

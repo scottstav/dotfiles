@@ -1,0 +1,18 @@
+#!/bin/bash
+# Start voice typing daemon - run once at login
+# Model loads once, then stays in memory
+
+export YDOTOOL_SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+
+VOICE_DIR="$HOME/repos/voice-typing-linux"
+VENV="$VOICE_DIR/.venv"
+
+# Don't start if already running
+if pgrep -f "enhanced-voice-typing.py" >/dev/null; then
+    echo "Already running"
+    exit 0
+fi
+
+cd "$VOICE_DIR"
+source "$VENV/bin/activate"
+exec python enhanced-voice-typing.py

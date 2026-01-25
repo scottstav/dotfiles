@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio"],
+    "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
     "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
@@ -182,6 +182,12 @@
         "format": "󰚅",
         "tooltip": "Open Notification Center",
         "on-click": "swaync-client -t -sw"
+    },
+    "custom/voice-typing": {
+        "exec": "voice-typing-status",
+        "return-type": "json",
+        "interval": 1,
+        "on-click": "voice-typing"
     },
     "custom/notification": {
         "tooltip": false,

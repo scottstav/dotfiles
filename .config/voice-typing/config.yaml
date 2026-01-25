@@ -13,12 +13,12 @@ input_device: "pulse"
 # Enable commands mode (voice commands + dictation)
 commands: true
 
-# Noise handling for your setup
+# Noise handling - lowered thresholds for quiet input
 noise_gate: true
+noise_gate_multiplier: 1.5
 agc: true
-agc_target_rms: 4000
+agc_target_rms: 2000
+agc_max_gain: 20.0
 
-# Audio visualization (shows when speaking)
-viz: true
-viz_position: bottom-right
-viz_hide_delay: 1500
+# Audio visualization disabled - was stealing focus
+viz: false

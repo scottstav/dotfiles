@@ -157,3 +157,36 @@ window#waybar {
 #custom-notification.inhibited-none {
     color: #ffa500;
 }
+
+/* Voice typing module */
+#custom-voice-typing {
+    color: #606060;
+}
+
+#custom-voice-typing.listening {
+    color: #00ff7f;
+    animation-name: pulse;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-voice-typing.paused {
+    color: #808080;
+}
+
+#custom-voice-typing.off {
+    color: #404040;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}

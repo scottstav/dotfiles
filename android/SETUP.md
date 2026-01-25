@@ -1,14 +1,15 @@
-# Android Denote Journal Setup
+# Android Denote Setup
 
-Access denote-journal files on Android with Dropbox sync.
+Access denote files on Android with Dropbox sync.
 
 ## What You Get
 
 - Create new journal entries in denote format
+- Quick capture notes that convert to denote files
 - Edit with Markor (native Android editor with org-mode highlighting)
 - Sync to Dropbox with one tap
 - Two-way sync with desktop Emacs
-- Search across all journal files
+- Search across all denote files
 
 ## Architecture
 
@@ -73,7 +74,7 @@ Verify connection:
 rclone lsd Dropbox:
 ```
 
-### 4. Create Journal Directory
+### 4. Create Denote Directory
 
 ```bash
 mkdir -p ~/storage/shared/Dropbox/org/denote/journal
@@ -108,28 +109,38 @@ bash ~/storage/shared/termux-scripts/install.sh
 ### 7. Initial Sync
 
 ```bash
-~/.local/bin/journal-sync
+~/.local/bin/denote-sync
 ```
 
-You should get a notification "Journal synced".
+You should get a notification "Denote synced".
 
 ### 8. Configure Markor
 
 1. Open Markor
 2. Tap hamburger menu (☰) → **Settings** → **General**
 3. Tap **Notebook**
-4. Navigate to: `Dropbox/org/denote/journal`
+4. Navigate to: `Dropbox/org/denote`
 5. Select that folder
 
-### 9. Add Home Screen Widgets
+### 9. Set Up Quick Capture (Optional)
+
+Configure Markor's QuickNote feature to append to `quicknote.org`:
+
+1. In Markor, tap hamburger menu (☰) → **Settings** → **General**
+2. Find **QuickNote** settings
+3. Set the file to: `Dropbox/org/denote/quicknote.org`
+
+Now you can use Markor's share target or QuickNote to quickly append text, then tap **Shred Capture** to convert it to a proper denote file.
+
+### 10. Add Home Screen Widgets
 
 1. Long-press on home screen
 2. Tap **Widgets**
 3. Find **Termux:Widget**
 4. Drag to home screen
-5. You'll see: Journal, Sync Journal, Search Journal
+5. You'll see: Journal, Sync Denote, Shred Capture
 
-### 10. Battery Optimization
+### 11. Battery Optimization
 
 To prevent Android from killing Termux:
 
@@ -139,26 +150,36 @@ To prevent Android from killing Termux:
 
 | Action | How |
 |--------|-----|
-| New/open today's journal | Tap **Journal** widget |
-| Sync after editing | Tap **Sync Journal** widget |
-| Search journals | Tap **Search Journal** widget (or `journal-search "keyword"` in Termux) |
+| Create today's journal | Tap **Journal** widget |
+| Sync all denote files | Tap **Sync Denote** widget |
+| Shred quick captures | Tap **Shred Capture** widget |
+| Search denote files | Use Markor's built-in search |
 
-## Workflow
+## Workflows
 
-**On phone:**
-1. Tap Journal widget → Markor opens with today's entry
-2. Write your entry
-3. Save (back button or Markor's save)
-4. Tap Sync Journal widget
+### Daily Journal
 
-**On desktop:**
+1. Tap **Journal** widget → creates today's journal if it doesn't exist
+2. Open in Markor and write
+3. Tap **Sync Denote** widget
+
+### Quick Capture
+
+1. Throughout the day, append notes to `quicknote.org` via Markor's QuickNote
+2. When ready, tap **Shred Capture** widget
+3. Creates a timestamped denote file tagged `:inbox:`
+4. Clears `quicknote.org` for fresh input
+5. Find captures in Emacs by searching for `_inbox` or `:inbox:` tag
+
+### Desktop Sync
+
 1. Edit in Emacs as normal
 2. Dropbox syncs automatically
-3. On phone, tap Sync Journal to pull changes
+3. On phone, tap **Sync Denote** to pull changes
 
 ## Troubleshooting
 
-### "Journal synced" notification doesn't appear
+### "Denote synced" notification doesn't appear
 
 Check Termux notification permission in Android settings.
 
@@ -174,14 +195,14 @@ rclone config show
 
 ### Files not appearing in Markor
 
-Make sure Markor's notebook directory is set to `Dropbox/org/denote/journal`.
+Make sure Markor's notebook directory is set to `Dropbox/org/denote`.
 
 ### Scripts not found
 
 Verify they're installed:
 
 ```bash
-ls -la ~/.local/bin/journal-*
+ls -la ~/.local/bin/denote-* ~/.local/bin/capture-shred
 ls -la ~/.shortcuts/
 ```
 
@@ -189,10 +210,9 @@ ls -la ~/.shortcuts/
 
 | File | Purpose |
 |------|---------|
-| `scripts/journal-sync` | Bidirectional rclone sync with notification |
-| `scripts/journal-new` | Create new denote-formatted journal, open Markor |
-| `scripts/journal-today` | Sync then open/create today's journal |
-| `scripts/journal-search` | Search with ripgrep + fzf |
-| `shortcuts/Journal` | Widget: runs journal-today |
-| `shortcuts/Sync Journal` | Widget: runs journal-sync |
-| `shortcuts/Search Journal` | Widget: runs journal-search |
+| `scripts/denote-sync` | Bidirectional rclone sync for all denote files |
+| `scripts/denote-journal` | Create today's journal entry if it doesn't exist |
+| `scripts/capture-shred` | Convert quicknote.org to denote file with inbox tag |
+| `shortcuts/Journal` | Widget: runs denote-journal |
+| `shortcuts/Sync Denote` | Widget: runs denote-sync |
+| `shortcuts/Shred Capture` | Widget: runs capture-shred |

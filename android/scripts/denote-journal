@@ -1,0 +1,40 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Create today's journal entry if it doesn't exist
+
+JOURNAL_DIR="$HOME/storage/shared/Dropbox/org/denote/journal"
+mkdir -p "$JOURNAL_DIR"
+
+# Sync first to check if journal already exists on remote
+~/.local/bin/denote-sync
+
+# Check if today's journal already exists
+TODAY=$(date +%Y%m%d)
+EXISTING=$(ls "$JOURNAL_DIR"/${TODAY}T*__journal.org 2>/dev/null | head -1)
+
+if [[ -n "$EXISTING" ]]; then
+    echo "Today's journal already exists: $(basename "$EXISTING")"
+    exit 0
+fi
+
+# Generate denote-style filename
+TIMESTAMP=$(date +%Y%m%dT%H%M%S)
+DATE_TITLE=$(date +"%A %-d %B %Y" | tr '[:upper:]' '[:lower:]')
+FILENAME="${TIMESTAMP}--${DATE_TITLE// /-}__journal.org"
+FILEPATH="${JOURNAL_DIR}/${FILENAME}"
+
+# Create with denote front matter
+TITLE_PRETTY=$(date +"%A %-d %B %Y")
+DATE_BRACKET=$(date +"[%Y-%m-%d %a]")
+
+cat > "$FILEPATH" << EOF
+#+title:      $TITLE_PRETTY
+#+date:       $DATE_BRACKET
+#+filetags:   :journal:
+#+identifier: $TIMESTAMP
+
+EOF
+
+echo "Created: $FILENAME"
+
+# Sync after creation
+~/.local/bin/denote-sync

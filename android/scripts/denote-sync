@@ -1,0 +1,12 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Bidirectional Dropbox sync for all denote files
+
+DENOTE_DIR="$HOME/storage/shared/Dropbox/org/denote"
+REMOTE="Dropbox:org/denote"
+
+mkdir -p "$DENOTE_DIR"
+
+# Pull changes first, then push (copy doesn't delete, sync does)
+rclone copy "$REMOTE" "$DENOTE_DIR" --update 2>/dev/null
+rclone copy "$DENOTE_DIR" "$REMOTE" --update 2>/dev/null
+termux-notification -t "Denote synced" -c "$(date +%H:%M)"

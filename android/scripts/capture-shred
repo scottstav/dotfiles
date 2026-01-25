@@ -1,0 +1,41 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Convert quicknote capture file into a denote-formatted org file
+
+DENOTE_DIR="$HOME/storage/shared/Dropbox/org/denote"
+CAPTURE_FILE="$DENOTE_DIR/quicknote.org"
+
+# Exit if capture file doesn't exist or is empty
+if [[ ! -f "$CAPTURE_FILE" ]] || [[ ! -s "$CAPTURE_FILE" ]]; then
+    echo "Capture file is empty. Nothing to shred."
+    exit 0
+fi
+
+# Use capture file's mtime for the denote timestamp
+MTIME=$(stat -c %Y "$CAPTURE_FILE")
+TIMESTAMP=$(date -d "@$MTIME" +%Y%m%dT%H%M%S)
+DATE_BRACKET=$(date -d "@$MTIME" +"[%Y-%m-%d %a %H:%M]")
+
+# Generate denote filename
+FILENAME="${TIMESTAMP}--quick-note__inbox.org"
+FILEPATH="${DENOTE_DIR}/${FILENAME}"
+
+# Create denote file with front matter
+cat > "$FILEPATH" << EOF
+#+title:      quick note
+#+date:       $DATE_BRACKET
+#+filetags:   :inbox:
+#+identifier: $TIMESTAMP
+
+EOF
+
+# Append capture content
+cat "$CAPTURE_FILE" >> "$FILEPATH"
+
+# Clear capture file
+> "$CAPTURE_FILE"
+
+echo "Created: $FILENAME"
+termux-notification -t "Capture shredded" -c "$FILENAME"
+
+# Sync after creation
+~/.local/bin/denote-sync

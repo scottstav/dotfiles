@@ -1,0 +1,3 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Termux:Widget shortcut - Open/create today's journal
+~/.local/bin/journal-today

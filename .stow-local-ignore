@@ -1,0 +1,8 @@
+# Stow ignore file
+# These paths won't be symlinked to home
+
+# Android stuff is pushed via ADB, not stowed
+android
+
+# Root/etc configs are stowed separately with: sudo stow --target=/ root
+root

@@ -1,0 +1,36 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Creates a new denote-format journal file and opens it in Markor
+
+JOURNAL_DIR="$HOME/storage/shared/Dropbox/org/denote/journal"
+mkdir -p "$JOURNAL_DIR"
+
+# Sync first to get latest
+~/.local/bin/journal-sync
+
+# Generate denote-style filename
+TIMESTAMP=$(date +%Y%m%dT%H%M%S)
+DATE_TITLE=$(date +"%A %-d %B %Y %H:%M" | tr '[:upper:]' '[:lower:]')
+FILENAME="${TIMESTAMP}--${DATE_TITLE// /-}__journal.org"
+FILEPATH="${JOURNAL_DIR}/${FILENAME}"
+
+# Check if today's journal already exists
+TODAY=$(date +%Y%m%d)
+EXISTING=$(ls "$JOURNAL_DIR"/${TODAY}T*__journal.org 2>/dev/null | head -1)
+
+if [[ -z "$EXISTING" ]]; then
+    # Create new with denote front matter
+    TITLE_PRETTY=$(date +"%A %-d %B %Y %H:%M")
+    DATE_BRACKET=$(date +"[%Y-%m-%d %a %H:%M]")
+
+    cat > "$FILEPATH" << EOF
+#+title:      $TITLE_PRETTY
+#+date:       $DATE_BRACKET
+#+filetags:   :journal:
+#+identifier: $TIMESTAMP
+
+
+EOF
+fi
+
+# Launch Markor - file will be at top of list
+am start -n net.gsantner.markor/.activity.MainActivity

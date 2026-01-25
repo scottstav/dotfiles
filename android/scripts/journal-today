@@ -1,0 +1,5 @@
+#!/data/data/com.termux/files/usr/bin/bash
+# Open today's journal (or create if it doesn't exist)
+
+~/.local/bin/journal-sync
+~/.local/bin/journal-new

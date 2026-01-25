@@ -65,6 +65,23 @@
           "label": "",
           "type": "normal",
           "command": "hyprlock"
+        },
+        {
+          "label": "󰌌",
+          "type": "normal",
+          "command": "foot --app-id=fzf-picker -e show-keybinds"
+        },
+        {
+          "label": "󱚿",
+          "type": "toggle",
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then vpn-toggle on; else vpn-toggle off; fi'",
+          "update-command": "vpn-toggle status"
+        },
+        {
+          "label": "󰈈",
+          "type": "toggle",
+          "command": "sh -c 'if [ \"$SWAYNC_TOGGLE_STATE\" = \"true\" ]; then caffeine-toggle on; else caffeine-toggle off; fi'",
+          "update-command": "caffeine-toggle status"
         }
       ]
     },

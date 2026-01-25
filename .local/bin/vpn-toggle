@@ -1,0 +1,40 @@
+#!/bin/bash
+# VPN toggle for swaync
+# Usage: vpn-toggle on|off|status
+
+CONFIG="/home/ifit/Dropbox/iFIT/ifit-new.ovpn"
+
+is_connected() {
+    openvpn3 sessions-list 2>/dev/null | grep -q "Path"
+}
+
+case "$1" in
+    on)
+        if ! is_connected; then
+            openvpn3 session-start --config "$CONFIG" &>/dev/null &
+            notify-send -t 2000 "VPN" "Connecting..."
+        fi
+        ;;
+    off)
+        if is_connected; then
+            # Run in background subshell so we don't block swaync
+            (
+                disconnect_output=$(openvpn3 session-manage --config "$CONFIG" --disconnect 2>&1)
+                bytes_out=$(echo "$disconnect_output" | grep "TUN_BYTES_OUT" | sed 's/.*TUN_BYTES_OUT/Bytes out:/')
+                notify-send -t 3000 "VPN Disconnected" "$bytes_out"
+            ) &
+        fi
+        ;;
+    status)
+        # Echo true/false for swaync update-command
+        if is_connected; then
+            echo "true"
+        else
+            echo "false"
+        fi
+        ;;
+    *)
+        echo "Usage: vpn-toggle on|off|status"
+        exit 1
+        ;;
+esac

@@ -1,0 +1,35 @@
+#!/bin/bash
+# Caffeine mode toggle for swaync
+# Usage: caffeine-toggle on|off|status
+
+PIDFILE="/tmp/caffeine-inhibitor.pid"
+
+case "$1" in
+    on)
+        if [ ! -f "$PIDFILE" ]; then
+            # Use systemd-inhibit to prevent idle
+            systemd-inhibit --what=idle --who="Caffeine" --why="User requested" --mode=block sleep infinity &
+            echo $! > "$PIDFILE"
+            notify-send -t 2000 "Caffeine" "Keep awake enabled"
+        fi
+        ;;
+    off)
+        if [ -f "$PIDFILE" ]; then
+            kill $(cat "$PIDFILE") 2>/dev/null
+            rm -f "$PIDFILE"
+            notify-send -t 2000 "Caffeine" "Keep awake disabled"
+        fi
+        ;;
+    status)
+        # Echo true/false for swaync update-command
+        if [ -f "$PIDFILE" ] && kill -0 $(cat "$PIDFILE") 2>/dev/null; then
+            echo "true"
+        else
+            echo "false"
+        fi
+        ;;
+    *)
+        echo "Usage: caffeine-toggle on|off|status"
+        exit 1
+        ;;
+esac

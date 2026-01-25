@@ -9,6 +9,5 @@ if openvpn3 sessions-list | grep -q "Path"; then
 else
     # Otherwise start a new session
     echo "Starting " > /tmp/waybar-custom-output
-    openvpn3 session-start --config /home/ifit/Dropbox/iFIT/ifit-new.ovpn
-    echo "Connected" > /tmp/waybar-custom-output
+    openvpn3 session-start --config /home/ifit/Dropbox/iFIT/ifit-new.ovpn &>/dev/null &
 fi

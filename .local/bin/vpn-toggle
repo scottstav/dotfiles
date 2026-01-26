@@ -11,8 +11,12 @@ is_connected() {
 case "$1" in
     on)
         if ! is_connected; then
-            openvpn3 session-start --config "$CONFIG" &>/dev/null &
-            notify-send -t 2000 "VPN" "Connecting..."
+            (
+                notify-send -t 3000 "VPN" "Connecting to VPN. Check your browser"
+                if openvpn3 session-start --config "$CONFIG" &>/dev/null; then
+                    notify-send -t 3000 "VPN" "VPN connected"
+                fi
+            ) &
         fi
         ;;
     off)

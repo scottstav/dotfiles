@@ -6,7 +6,8 @@ REMOTE="Dropbox:org/denote"
 
 mkdir -p "$DENOTE_DIR"
 
-# Pull changes first, then push (copy doesn't delete, sync does)
-rclone copy "$REMOTE" "$DENOTE_DIR" --update 2>/dev/null
-rclone copy "$DENOTE_DIR" "$REMOTE" --update 2>/dev/null
+# bisync tracks state and propagates changes (including deletions) both directions
+# Falls back to --resync on first run to establish baseline
+rclone bisync "$DENOTE_DIR" "$REMOTE" 2>/dev/null || \
+  rclone bisync "$DENOTE_DIR" "$REMOTE" --resync 2>/dev/null
 termux-notification -t "Denote synced" -c "$(date +%H:%M)"

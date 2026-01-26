@@ -453,8 +453,8 @@ if one already exists."
 ;; Org-download
 (use-package org-download
   :init
-  (setq org-download-method 'attach
-        org-download-screenshot-method "grim -g \"$(slurp)\" /tmp/temp.png && convert -filter Cubic -resize 500 /tmp/temp.png %s"))
+  (setq org-download-method 'directory
+        org-download-image-dir "./_res"))
 
 (defun my/gptel-image-download-setup ()
   (interactive)

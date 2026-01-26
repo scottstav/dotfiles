@@ -35,7 +35,9 @@ sudo stow --target=/ root
 
 ## Voice Typing Setup
 
-Voice typing uses a modified [voice-typing-linux](https://github.com/GitJuhb/voice-typing-linux) with faster-whisper, included in this repo at `.local/share/voice-typing-linux`.
+Voice typing uses a modified [voice-typing-linux](https://github.com/GitJuhb/voice-typing-linux), included at `.local/share/voice-typing-linux`.
+
+**Modifications from upstream:** Uses faster-whisper instead of openai-whisper for ~4x speedup. Added pre-recording buffer (600ms) so initial words aren't cut off. Defaults to small model for better accuracy.
 
 ```bash
 # Install system dependencies
@@ -54,9 +56,3 @@ source .venv/bin/activate
 pip install -r requirements.txt
 pip install requests
 ```
-
-**Keybindings:** `Super+Shift+S` toggles listening/paused
-
-**Waybar:** Shows MIC status in center modules (green=listening, gray=paused)
-
-**Auto-start:** Daemon starts at login via hyprland exec-once

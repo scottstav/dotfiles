@@ -14,9 +14,10 @@ cp "$SCRIPTS_SRC"/denote-journal ~/.local/bin/
 cp "$SCRIPTS_SRC"/capture-shred ~/.local/bin/
 chmod +x ~/.local/bin/denote-sync ~/.local/bin/denote-journal ~/.local/bin/capture-shred
 
-echo "Installing Tasker scripts..."
-cp "$SCRIPTS_SRC/denote-sync" ~/.termux/tasker/
-chmod +x ~/.termux/tasker/denote-sync
+echo "Installing Tasker scripts (symlinks to ~/.local/bin)..."
+ln -sf ~/.local/bin/denote-sync ~/.termux/tasker/
+ln -sf ~/.local/bin/denote-journal ~/.termux/tasker/
+ln -sf ~/.local/bin/capture-shred ~/.termux/tasker/
 
 echo "Installing shortcuts..."
 cp "$SCRIPTS_SRC/Journal" ~/.shortcuts/

@@ -6,3 +6,5 @@ android
 
 # Root/etc configs are stowed separately with: sudo stow --target=/ root
 root
+
+CLAUDE.md

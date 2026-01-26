@@ -36,6 +36,3 @@ cat "$CAPTURE_FILE" >> "$FILEPATH"
 
 echo "Created: $FILENAME"
 termux-notification -t "Capture shredded" -c "$FILENAME"
-
-# Sync after creation
-~/.local/bin/denote-sync

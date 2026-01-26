@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Toggle system update terminal
+# - First click: launches foot running yay, visible immediately
+# - Subsequent clicks: toggles visibility via special workspace
+
+APP_ID="system-update"
+
+# Check if a window with this app-id already exists
+window_info=$(hyprctl clients -j | jq -r ".[] | select(.class == \"$APP_ID\")")
+window_addr=$(echo "$window_info" | jq -r '.address // empty' | head -1)
+
+if [[ -z "$window_addr" ]]; then
+    # No window yet — launch foot normally (window rules handle float/size/position)
+    hyprctl dispatch exec -- \
+        "foot --app-id=$APP_ID -- bash -c 'yay --sudoloop --noconfirm; system-freshness --refresh; pkill -SIGRTMIN+10 waybar; echo; echo \"Update complete. Press enter to close.\"; read'"
+else
+    # Window exists — check if it's on a special workspace
+    ws_name=$(echo "$window_info" | jq -r '.workspace.name // empty' | head -1)
+    if [[ "$ws_name" == special:* ]]; then
+        # Hidden — bring it to the current workspace
+        hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+    else
+        # Visible — hide it in a special workspace
+        hyprctl dispatch movetoworkspacesilent special:system-update,address:"$window_addr"
+    fi
+fi

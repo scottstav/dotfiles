@@ -1,10 +1,14 @@
 # Stow ignore file
 # These paths won't be symlinked to home
 
+# Restore defaults that .stow-local-ignore overrides
+\.git
+\.gitignore
+README\.md
+CLAUDE\.md
+
 # Android stuff is pushed via ADB, not stowed
 android
 
 # Root/etc configs are stowed separately with: sudo stow --target=/ root
 root
-
-CLAUDE.md

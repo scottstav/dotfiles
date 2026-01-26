@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
-    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "clock", "custom/swaync-open"],
+    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "custom/system-freshness", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -188,6 +188,14 @@
         "return-type": "json",
         "interval": 1,
         "on-click": "voice-typing"
+    },
+    "custom/system-freshness": {
+        "exec": "system-freshness",
+        "return-type": "json",
+        "interval": 60,
+        "signal": 10,
+        "on-click": "system-freshness-update",
+        "tooltip": true
     },
     "custom/notification": {
         "tooltip": false,

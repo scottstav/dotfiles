@@ -190,3 +190,29 @@ window#waybar {
         opacity: 1;
     }
 }
+
+/* System freshness module */
+#custom-system-freshness.fresh {
+    color: #00ff7f;
+}
+
+#custom-system-freshness.healthy {
+    color: #89cff0;
+}
+
+#custom-system-freshness.aging {
+    color: #ffa500;
+}
+
+#custom-system-freshness.wilting {
+    color: #dc143c;
+}
+
+#custom-system-freshness.dead {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}

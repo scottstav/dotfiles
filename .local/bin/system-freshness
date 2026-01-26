@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# System freshness tracker for waybar
+# Shows a plant emoji that wilts as the system gets stale
+#
+# Usage:
+#   system-freshness --refresh   Run full check, write cache
+#   system-freshness             Read cache, output waybar JSON (fast)
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/system-freshness"
+CACHE_FILE="$CACHE_DIR/data.json"
+PACMAN_LOG="/var/log/pacman.log"
+CRITICAL_PKGS="^(linux|linux-lts|systemd|mesa|nvidia|nvidia-utils)$"
+
+refresh() {
+    mkdir -p "$CACHE_DIR"
+
+    # Days since last full upgrade
+    last_upgrade=$(grep '\[PACMAN\] starting full system upgrade' "$PACMAN_LOG" \
+        | tail -1 | grep -oP '^\[\K[^]]+')
+    if [[ -n "$last_upgrade" ]]; then
+        last_epoch=$(date -d "$last_upgrade" +%s 2>/dev/null)
+        now_epoch=$(date +%s)
+        days_since=$(( (now_epoch - last_epoch) / 86400 ))
+    else
+        days_since=30
+    fi
+
+    # Pending updates (official repos)
+    official=$(checkupdates 2>/dev/null || true)
+    official_count=$(echo "$official" | grep -c '[^ ]' || echo 0)
+    [[ -z "$official" ]] && official_count=0
+
+    # Pending updates (AUR)
+    aur=$(yay -Qua 2>/dev/null || true)
+    aur_count=$(echo "$aur" | grep -c '[^ ]' || echo 0)
+    [[ -z "$aur" ]] && aur_count=0
+
+    total_pending=$((official_count + aur_count))
+
+    # Check for critical packages in pending list
+    all_pending="${official}"$'\n'"${aur}"
+    critical_list=$(echo "$all_pending" | awk '{print $1}' | grep -E "$CRITICAL_PKGS" | paste -sd ", ")
+    has_critical=0
+    [[ -n "$critical_list" ]] && has_critical=1
+
+    # Staleness score
+    score=$days_since
+    score=$((score + total_pending / 10))
+    [[ $has_critical -eq 1 ]] && score=$((score + 3))
+
+    # Plant stage
+    if [[ $score -eq 0 ]]; then
+        emoji="🌱"; class="fresh"
+    elif [[ $score -le 3 ]]; then
+        emoji="🌿"; class="healthy"
+    elif [[ $score -le 6 ]]; then
+        emoji="🌾"; class="aging"
+    elif [[ $score -le 9 ]]; then
+        emoji="🍂"; class="wilting"
+    else
+        emoji="🥀"; class="dead"
+    fi
+
+    # Tooltip
+    tooltip="Last upgrade: ${days_since}d ago | ${total_pending} pending (${aur_count} AUR)"
+    [[ -n "$critical_list" ]] && tooltip="$tooltip | ⚠ $critical_list"
+
+    # Write cache
+    jq -n \
+        --arg text "$emoji" \
+        --arg tooltip "$tooltip" \
+        --arg class "$class" \
+        '{text: $text, tooltip: $tooltip, class: $class}' \
+        > "$CACHE_FILE"
+}
+
+output() {
+    if [[ -f "$CACHE_FILE" ]]; then
+        jq -c . "$CACHE_FILE"
+    else
+        # No cache yet — show unknown state
+        echo '{"text":"🌱","tooltip":"Checking freshness...","class":"fresh"}'
+    fi
+}
+
+case "${1:-}" in
+    --refresh) refresh ;;
+    *) output ;;
+esac

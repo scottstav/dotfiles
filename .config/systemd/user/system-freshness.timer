@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh system freshness cache periodically
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=4h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

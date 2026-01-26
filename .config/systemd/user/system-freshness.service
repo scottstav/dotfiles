@@ -1,0 +1,6 @@
+[Unit]
+Description=Refresh system freshness cache
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/system-freshness --refresh

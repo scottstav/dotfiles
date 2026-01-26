@@ -6,8 +6,18 @@ REMOTE="Dropbox:org/denote"
 
 mkdir -p "$DENOTE_DIR"
 
-# bisync tracks state and propagates changes (including deletions) both directions
-# Falls back to --resync on first run to establish baseline
-rclone bisync "$DENOTE_DIR" "$REMOTE" 2>/dev/null || \
-  rclone bisync "$DENOTE_DIR" "$REMOTE" --resync 2>/dev/null
+# --conflict-resolve newer: both sides changed → keep newer, rename older with .conflict suffix
+# --resilient: tolerate transient errors, allow retries without requiring --resync
+# --recover: automatically recover from interrupted runs without --resync
+if ! rclone bisync "$DENOTE_DIR" "$REMOTE" \
+     --conflict-resolve newer \
+     --resilient \
+     --recover; then
+  # Only --resync if no state file exists (first run on this device)
+  if ! ls ~/.cache/rclone/bisync/*denote* >/dev/null 2>&1; then
+    rclone bisync "$DENOTE_DIR" "$REMOTE" --resync --conflict-resolve newer
+  else
+    termux-notification -t "Denote sync failed" -c "Check termux for errors"
+  fi
+fi
 termux-notification -t "Denote synced" -c "$(date +%H:%M)"

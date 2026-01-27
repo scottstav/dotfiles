@@ -1,0 +1,382 @@
+#!/usr/bin/env python3
+"""Fetch Google Calendar events, write cache, schedule reminders."""
+
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+
+CACHE_DIR = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "gcal"
+CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "gcal"
+EVENTS_FILE = CACHE_DIR / "events.json"
+WAYBAR_FILE = CACHE_DIR / "waybar.json"
+TOKENS_DIR = CONFIG_DIR / "tokens"
+CLIENT_SECRET = CONFIG_DIR / "client_secret.json"
+
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+
+MEETING_URL_RE = re.compile(
+    r"https?://(?:"
+    r"meet\.google\.com/[a-z\-]+"
+    r"|zoom\.us/j/\d+"
+    r"|[\w.]*zoom\.us/j/\d+"
+    r"|teams\.microsoft\.com/l/meetup-join/[^\s\"]+"
+    r"|[\w.]*webex\.com/\S+"
+    r")",
+    re.IGNORECASE,
+)
+
+
+def migrate_legacy_token():
+    """Migrate old single token.json to tokens/ directory."""
+    legacy = CONFIG_DIR / "token.json"
+    if legacy.exists() and not TOKENS_DIR.exists():
+        TOKENS_DIR.mkdir(parents=True, exist_ok=True)
+        legacy.rename(TOKENS_DIR / "default.json")
+        print(f"Migrated {legacy} → {TOKENS_DIR / 'default.json'}", file=sys.stderr)
+
+
+def get_credentials(token_path):
+    """Load or refresh OAuth credentials from a specific token file."""
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+
+    creds = None
+    if token_path.exists():
+        creds = Credentials.from_authorized_user_file(str(token_path), SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+            token_path.write_text(creds.to_json())
+        else:
+            from google_auth_oauthlib.flow import InstalledAppFlow
+
+            if not CLIENT_SECRET.exists():
+                print(
+                    f"Error: {CLIENT_SECRET} not found.\n"
+                    "Download OAuth client credentials from Google Cloud Console.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                str(CLIENT_SECRET), SCOPES
+            )
+            creds = flow.run_local_server(port=0)
+            token_path.parent.mkdir(parents=True, exist_ok=True)
+            token_path.write_text(creds.to_json())
+
+    return creds
+
+
+def get_all_credentials():
+    """Load credentials from all token files in the tokens directory."""
+    migrate_legacy_token()
+    TOKENS_DIR.mkdir(parents=True, exist_ok=True)
+
+    token_files = sorted(TOKENS_DIR.glob("*.json"))
+    if not token_files:
+        print("No accounts configured. Run: gcal-refresh --auth <name>", file=sys.stderr)
+        sys.exit(1)
+
+    results = []
+    for tf in token_files:
+        name = tf.stem
+        try:
+            creds = get_credentials(tf)
+            results.append((name, creds))
+        except Exception as e:
+            print(f"Warning: failed to load credentials for '{name}': {e}", file=sys.stderr)
+    return results
+
+
+def extract_meeting_url(event):
+    """Extract meeting URL from event data."""
+    # 1. Structured conference data (Google Meet)
+    for ep in event.get("conferenceData", {}).get("entryPoints", []):
+        if ep.get("entryPointType") == "video":
+            return ep.get("uri")
+
+    # 2. Legacy hangout link
+    if event.get("hangoutLink"):
+        return event["hangoutLink"]
+
+    # 3. Regex scan of location + description
+    for field in ("location", "description"):
+        text = event.get(field, "")
+        if text:
+            m = MEETING_URL_RE.search(text)
+            if m:
+                return m.group(0)
+
+    return None
+
+
+def fetch_events(creds):
+    """Fetch upcoming events from all visible calendars."""
+    from googleapiclient.discovery import build
+
+    service = build("calendar", "v3", credentials=creds)
+
+    # Fetch from start of today through ~5 weeks out
+    today_start = datetime.now().replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    tomorrow_end = today_start + timedelta(days=35)
+
+    time_min = today_start.astimezone(timezone.utc).isoformat()
+    time_max = tomorrow_end.astimezone(timezone.utc).isoformat()
+
+    # Get all visible calendars
+    calendar_list = service.calendarList().list().execute()
+    calendars = calendar_list.get("items", [])
+
+    all_events = []
+    for cal in calendars:
+        cal_id = cal["id"]
+        cal_summary = cal.get("summary", cal_id)
+        cal_color = cal.get("backgroundColor", "#4285f4")
+
+        try:
+            result = (
+                service.events()
+                .list(
+                    calendarId=cal_id,
+                    timeMin=time_min,
+                    timeMax=time_max,
+                    singleEvents=True,
+                    orderBy="startTime",
+                )
+                .execute()
+            )
+        except Exception:
+            continue
+
+        for event in result.get("items", []):
+            if event.get("status") == "cancelled":
+                continue
+
+            start = event["start"].get("dateTime", event["start"].get("date"))
+            end = event["end"].get("dateTime", event["end"].get("date"))
+            is_all_day = "date" in event["start"] and "dateTime" not in event["start"]
+
+            all_events.append(
+                {
+                    "id": event["id"],
+                    "summary": event.get("summary", "(No title)"),
+                    "start": start,
+                    "end": end,
+                    "all_day": is_all_day,
+                    "calendar": cal_summary,
+                    "calendar_color": cal_color,
+                    "location": event.get("location", ""),
+                    "meeting_url": extract_meeting_url(event),
+                    "html_link": event.get("htmlLink", ""),
+                }
+            )
+
+    # Sort by start time (all-day events first, then by datetime)
+    def sort_key(e):
+        if e["all_day"]:
+            return (0, e["start"])
+        return (1, e["start"])
+
+    all_events.sort(key=sort_key)
+    return all_events
+
+
+def write_cache(events):
+    """Write events cache and waybar JSON."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    cache = {
+        "updated": datetime.now(timezone.utc).isoformat(),
+        "events": events,
+    }
+    EVENTS_FILE.write_text(json.dumps(cache, indent=2))
+
+    # Build waybar output
+    now = datetime.now().astimezone()
+    today_str = now.strftime("%Y-%m-%d")
+
+    today_events = [e for e in events if e["start"].startswith(today_str)]
+    timed_today = [e for e in today_events if not e["all_day"]]
+
+    # Find next upcoming event
+    next_event = None
+    minutes_until = None
+    for e in timed_today:
+        event_start = datetime.fromisoformat(e["start"])
+        diff = (event_start - now).total_seconds() / 60
+        if diff > -5:  # Include events that started up to 5 min ago
+            next_event = e
+            minutes_until = int(diff)
+            break
+
+    if next_event and minutes_until is not None:
+        if minutes_until <= 0:
+            text = " NOW"
+        elif minutes_until < 60:
+            text = f" {minutes_until}m"
+        else:
+            h = minutes_until // 60
+            m = minutes_until % 60
+            text = f" {h}h{m:02d}m"
+
+        if minutes_until <= 2:
+            css_class = "urgent"
+        elif minutes_until <= 10:
+            css_class = "soon"
+        elif minutes_until <= 30:
+            css_class = "upcoming"
+        else:
+            css_class = "later"
+    elif today_events:
+        text = f" {len(today_events)}"
+        css_class = "idle"
+    else:
+        text = ""
+        css_class = "none"
+
+    # Build tooltip
+    tooltip_lines = []
+    if next_event:
+        t = datetime.fromisoformat(next_event["start"]).strftime("%H:%M")
+        tooltip_lines.append(f"Next: {next_event['summary']} at {t}")
+    tooltip_lines.append(f"{len(today_events)} event{'s' if len(today_events) != 1 else ''} today")
+    if timed_today:
+        tooltip_lines.append("")
+        for e in timed_today:
+            t = datetime.fromisoformat(e["start"]).strftime("%H:%M")
+            icon = " " if e.get("meeting_url") else "  "
+            tooltip_lines.append(f"{t} {icon} {e['summary']}")
+
+    all_day_today = [e for e in today_events if e["all_day"]]
+    if all_day_today:
+        tooltip_lines.append("")
+        for e in all_day_today:
+            tooltip_lines.append(f"All day: {e['summary']}")
+
+    waybar = {
+        "text": text,
+        "tooltip": "\n".join(tooltip_lines),
+        "class": css_class,
+    }
+    WAYBAR_FILE.write_text(json.dumps(waybar))
+
+
+def schedule_reminders(events):
+    """Schedule systemd transient timers for upcoming event reminders."""
+    now = datetime.now().astimezone()
+
+    # Cancel existing gcal reminder timers
+    result = subprocess.run(
+        ["systemctl", "--user", "list-timers", "--all", "--no-legend"],
+        capture_output=True,
+        text=True,
+    )
+    for line in result.stdout.splitlines():
+        if "gcal-remind-" in line:
+            parts = line.split()
+            for p in parts:
+                if p.startswith("gcal-remind-") and p.endswith(".timer"):
+                    subprocess.run(
+                        ["systemctl", "--user", "stop", p],
+                        capture_output=True,
+                    )
+
+    for event in events:
+        if event["all_day"]:
+            continue
+
+        event_start = datetime.fromisoformat(event["start"])
+        mins_until = (event_start - now).total_seconds() / 60
+
+        # Only schedule reminders for events in the next 2 hours
+        if mins_until < 2 or mins_until > 120:
+            continue
+
+        summary = event["summary"]
+        meeting_url = event.get("meeting_url", "")
+        event_id = event["id"][:12]  # Truncate for unit name
+
+        for remind_mins, urgency in [(10, "normal"), (2, "critical")]:
+            fire_at = event_start - timedelta(minutes=remind_mins)
+            if fire_at <= now:
+                continue
+
+            unit_name = f"gcal-remind-{event_id}-{remind_mins}"
+            timestamp = fire_at.strftime("%Y-%m-%d %H:%M:%S")
+
+            cmd = ["gcal-notify", summary, str(remind_mins), urgency]
+            if meeting_url:
+                cmd.append(meeting_url)
+
+            subprocess.run(
+                [
+                    "systemd-run",
+                    "--user",
+                    "--on-calendar",
+                    timestamp,
+                    "--unit",
+                    unit_name,
+                    "--description",
+                    f"Calendar reminder: {summary}",
+                    "--",
+                ]
+                + cmd,
+                capture_output=True,
+            )
+
+
+def signal_waybar():
+    """Signal waybar to refresh the gcal module."""
+    subprocess.run(["pkill", "-RTMIN+11", "waybar"], capture_output=True)
+
+
+def main():
+    if "--auth" in sys.argv:
+        idx = sys.argv.index("--auth")
+        if idx + 1 >= len(sys.argv):
+            print("Usage: gcal-refresh --auth <name>", file=sys.stderr)
+            sys.exit(1)
+        name = sys.argv[idx + 1]
+        token_path = TOKENS_DIR / f"{name}.json"
+        TOKENS_DIR.mkdir(parents=True, exist_ok=True)
+        print(f"Starting OAuth flow for '{name}'...")
+        get_credentials(token_path)
+        print(f"Authenticated. Token saved to {token_path}")
+        return
+
+    all_creds = get_all_credentials()
+    seen_ids = set()
+    all_events = []
+    for name, creds in all_creds:
+        try:
+            events = fetch_events(creds)
+        except Exception as e:
+            print(f"Warning: failed to fetch events for '{name}': {e}", file=sys.stderr)
+            continue
+        for ev in events:
+            if ev["id"] not in seen_ids:
+                seen_ids.add(ev["id"])
+                all_events.append(ev)
+
+    # Re-sort merged events
+    def sort_key(e):
+        if e["all_day"]:
+            return (0, e["start"])
+        return (1, e["start"])
+
+    all_events.sort(key=sort_key)
+
+    write_cache(all_events)
+    schedule_reminders(all_events)
+    signal_waybar()
+
+
+if __name__ == "__main__":
+    main()

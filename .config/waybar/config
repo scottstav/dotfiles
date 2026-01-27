@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
-    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "custom/system-freshness", "clock", "custom/swaync-open"],
+    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -61,7 +61,9 @@
         "spacing": 10
     },
     "clock": {
-        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
+        "timezones": ["", "UTC"],
+        "tooltip-format": "{tz_list}",
+        "timezone-tooltip-format": "UTC: {:%H:%M:%S}",
         "format-alt": "{:%m/%d at %H:%M}",
         "format": "{:%m/%d at %H:%M:%S}",
         "interval": 1,
@@ -195,6 +197,16 @@
         "interval": 60,
         "signal": 10,
         "on-click": "system-freshness-update",
+        "on-click-right": "system-freshness-details",
+        "tooltip": true
+    },
+    "custom/gcal": {
+        "exec": "gcal-status",
+        "return-type": "json",
+        "interval": 30,
+        "signal": 11,
+        "on-click": "gcal-popup",
+        "on-click-right": "xdg-open https://calendar.google.com",
         "tooltip": true
     },
     "custom/notification": {

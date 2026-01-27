@@ -1,0 +1,34 @@
+#!/bin/bash
+
+# Show detailed pending package list via notification
+# Used as the right-click action for the system-freshness waybar module
+# Reads from the same cache as the waybar module for consistency
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/system-freshness"
+
+official=$(cat "$CACHE_DIR/official.txt" 2>/dev/null || true)
+official_count=$(echo "$official" | grep -c '[^ ]' || echo 0)
+[[ -z "$official" ]] && official_count=0
+
+aur=$(cat "$CACHE_DIR/aur.txt" 2>/dev/null || true)
+aur_count=$(echo "$aur" | grep -c '[^ ]' || echo 0)
+[[ -z "$aur" ]] && aur_count=0
+
+body=""
+
+if [[ $official_count -gt 0 ]]; then
+    official_lines=$(echo "$official" | awk '{printf "  %s  %s → %s\n", $1, $2, $4}')
+    body+="<b>Pacman (${official_count})</b>\n${official_lines}"
+fi
+
+if [[ $aur_count -gt 0 ]]; then
+    [[ -n "$body" ]] && body+="\n\n"
+    aur_lines=$(echo "$aur" | awk '{printf "  %s  %s → %s\n", $1, $2, $4}')
+    body+="<b>AUR (${aur_count})</b>\n${aur_lines}"
+fi
+
+if [[ -z "$body" ]]; then
+    body="All packages are up to date"
+fi
+
+notify-send -a "System Freshness" "Pending Updates" "$body"

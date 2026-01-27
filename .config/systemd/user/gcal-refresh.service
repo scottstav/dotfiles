@@ -1,0 +1,6 @@
+[Unit]
+Description=Refresh Google Calendar cache
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/gcal-refresh

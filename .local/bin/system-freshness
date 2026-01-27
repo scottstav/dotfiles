@@ -48,6 +48,7 @@ refresh() {
     score=$days_since
     score=$((score + total_pending / 10))
     [[ $has_critical -eq 1 ]] && score=$((score + 3))
+    [[ $total_pending -gt 0 && $score -eq 0 ]] && score=1
 
     # Plant stage
     if [[ $score -eq 0 ]]; then
@@ -73,6 +74,10 @@ refresh() {
         --arg class "$class" \
         '{text: $text, tooltip: $tooltip, class: $class}' \
         > "$CACHE_FILE"
+
+    # Cache raw package lists for detail view
+    echo "$official" > "$CACHE_DIR/official.txt"
+    echo "$aur" > "$CACHE_DIR/aur.txt"
 }
 
 output() {

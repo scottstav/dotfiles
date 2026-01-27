@@ -1,0 +1,11 @@
+#!/bin/bash
+# Read gcal cache and output waybar JSON.
+# Called by waybar custom/gcal module every 30s + on signal.
+
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/gcal/waybar.json"
+
+if [[ -f "$CACHE" ]]; then
+    cat "$CACHE"
+else
+    echo '{"text":"","tooltip":"Calendar not synced","class":"none"}'
+fi

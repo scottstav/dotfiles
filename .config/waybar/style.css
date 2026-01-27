@@ -216,3 +216,33 @@ window#waybar {
     animation-iteration-count: infinite;
     animation-direction: alternate;
 }
+
+/* Google Calendar module */
+#custom-gcal.urgent {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-gcal.soon {
+    color: #ffa500;
+}
+
+#custom-gcal.upcoming {
+    color: #89cff0;
+}
+
+#custom-gcal.later {
+    color: #e0e0e0;
+}
+
+#custom-gcal.idle {
+    color: #808080;
+}
+
+#custom-gcal.none {
+    color: #404040;
+}

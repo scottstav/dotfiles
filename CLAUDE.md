@@ -10,7 +10,7 @@ This is a dotfiles tracking repo managed with GNU Stow.
 cd /home/ifit/dotfiles && stow .
 ```
 
-This symlinks files from the dotfiles repo structure to their corresponding locations under `$HOME`.
+This symlinks files from the dotfiles repo structure to their corresponding locations under `$HOME`. Do NOT run stow when editing existing files — they are already symlinked, so changes are reflected immediately.
 
 **Emacs configuration:** All Emacs config changes must be made to `.emacs.d/init.org`, NOT `init.el` directly. This is a literate config in org-mode that tangles to `init.el` on save. After editing `init.org`, always:
 

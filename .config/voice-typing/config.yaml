@@ -1,8 +1,8 @@
 # Voice typing configuration
 # See ~/repos/voice-typing-linux/CLAUDE.md for full options
 
-# Model: medium for balance of speed and accuracy
-model: small
+# Model: base is ~2x faster than small; use Vosk streaming for quick dictation
+model: base
 
 # Run on CPU (stable, your Ryzen handles it well)
 device: cpu

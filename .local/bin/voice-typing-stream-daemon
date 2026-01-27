@@ -1,0 +1,25 @@
+#!/bin/bash
+# Start streaming voice typing daemon (Vosk) — run once at login
+# Model loads once, stays in memory.  Starts paused.
+
+export YDOTOOL_SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+
+VOICE_DIR="$HOME/.local/share/streaming-voice-typing"
+VENV="$VOICE_DIR/.venv"
+
+# Don't start if already running
+if pgrep -f "streaming-voice-typing.py" >/dev/null; then
+    echo "Already running"
+    exit 0
+fi
+
+if [ ! -d "$VENV" ]; then
+    echo "Venv not found. Run setup first:"
+    echo "  bash $VOICE_DIR/setup.sh"
+    notify-send -u critical -t 5000 "Stream Typing" "Run setup.sh first"
+    exit 1
+fi
+
+cd "$VOICE_DIR"
+source "$VENV/bin/activate"
+exec python streaming-voice-typing.py

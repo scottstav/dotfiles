@@ -58,6 +58,13 @@ try:
 except ImportError:
     VISUALIZER_AVAILABLE = False
 
+# Vosk preview (optional — shows words in real time while Whisper transcribes)
+try:
+    import vosk as _vosk
+    VOSK_AVAILABLE = True
+except ImportError:
+    VOSK_AVAILABLE = False
+
 # Hotkey name to pynput format mapping
 HOTKEY_MAP = {
     'f12': '<f12>',
@@ -115,6 +122,8 @@ CONFIG_DEFAULTS = {
     "viz": False,
     "viz_position": "bottom-right",
     "viz_hide_delay": 1500,
+    "preview": False,
+    "preview_model": "~/.local/share/vosk-models/vosk-model-en-us-0.22",
 }
 
 
@@ -187,6 +196,8 @@ def _apply_env_overrides(config: dict) -> dict:
         "viz": "VOICE_VIZ",
         "viz_position": "VOICE_VIZ_POSITION",
         "viz_hide_delay": "VOICE_VIZ_HIDE_DELAY",
+        "preview": "VOICE_PREVIEW",
+        "preview_model": "VOICE_PREVIEW_MODEL",
     }
 
     for key, env_var in mapping.items():
@@ -265,7 +276,8 @@ class VoiceTyping:
                  command_confirm_seconds=5.0, input_device=None, notify=False,
                  status_interval=0.0, ptt_enabled=False, ptt_hotkey='f9',
                  ptt_mode='hold', logger=None, viz_enabled=False,
-                 viz_position='bottom-right', viz_hide_delay=1500):
+                 viz_position='bottom-right', viz_hide_delay=1500,
+                 preview=False, preview_model=None):
         self.model_size = model_size
         self.device = device
         self.language = language
@@ -343,6 +355,24 @@ class VoiceTyping:
         self.socket_thread = None
         self.socket_token = None
         self.bad_socket_tokens = 0
+
+        # Vosk preview (real-time word display while Whisper processes)
+        self.vosk_recognizer = None
+        self._vosk_last_partial = ""
+        self._preview_thread = None
+        if preview and VOSK_AVAILABLE:
+            _model_path = os.path.expanduser(
+                preview_model or "~/.local/share/vosk-models/vosk-model-en-us-0.22"
+            )
+            if os.path.isdir(_model_path):
+                _vosk.SetLogLevel(-1)
+                _vm = _vosk.Model(_model_path)
+                self.vosk_recognizer = _vosk.KaldiRecognizer(_vm, 16000)
+                print(f"Preview enabled (Vosk: {os.path.basename(_model_path)})")
+            else:
+                print(f"Preview model not found: {_model_path}")
+        elif preview and not VOSK_AVAILABLE:
+            print("Preview requested but vosk not installed (pip install vosk)")
 
         # Voice activity detection (accuracy-optimized settings)
         self.vad_aggressiveness = 2  # Level 2: better noise rejection
@@ -910,6 +940,22 @@ class VoiceTyping:
             self.visualizer.push_audio(raw_chunk)
             self.visualizer.set_speaking(is_speech)
 
+        # Feed Vosk preview recognizer (< 1 ms, non-blocking)
+        if self.vosk_recognizer is not None:
+            try:
+                if self.vosk_recognizer.AcceptWaveform(in_data):
+                    res = json.loads(self.vosk_recognizer.Result())
+                    final_text = res.get("text", "").strip()
+                    if final_text:
+                        self._vosk_last_partial = final_text
+                else:
+                    partial = json.loads(self.vosk_recognizer.PartialResult())
+                    p_text = partial.get("partial", "").strip()
+                    if p_text:
+                        self._vosk_last_partial = p_text
+            except Exception:
+                pass
+
         if not is_speech:
             self._update_ambient(raw_rms)
             self._maybe_update_vad_mode()
@@ -990,10 +1036,49 @@ class VoiceTyping:
             except Exception as e:
                 print(f"❌ Transcription worker error: {e}")
 
+    def _preview_thread_fn(self):
+        """Background thread: show Vosk partial results as notifications."""
+        last_shown = ""
+        while self.running:
+            time.sleep(0.15)  # ~7 updates/sec max
+            text = self._vosk_last_partial
+            if text != last_shown:
+                last_shown = text
+                if text:
+                    try:
+                        subprocess.Popen(
+                            [
+                                "notify-send", "-t", "3000",
+                                "-h", "string:x-canonical-private-synchronous:vosk-preview",
+                                "hearing...", text,
+                            ],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
+                    except FileNotFoundError:
+                        pass
+                else:
+                    try:
+                        subprocess.Popen(
+                            [
+                                "notify-send", "-t", "1",
+                                "-h", "string:x-canonical-private-synchronous:vosk-preview",
+                                "", "",
+                            ],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
+                    except FileNotFoundError:
+                        pass
+
     def _process_audio(self, recording_buffer):
         """Process recorded audio with Whisper"""
         if not recording_buffer:
             return
+
+        # Clear Vosk preview — Whisper is about to produce the real output
+        if self.vosk_recognizer is not None:
+            self._vosk_last_partial = ""
 
         try:
             audio_data = np.concatenate(recording_buffer)
@@ -1248,6 +1333,15 @@ class VoiceTyping:
             )
             self.transcription_thread.start()
 
+            # Start Vosk preview thread
+            if self.vosk_recognizer is not None:
+                self._preview_thread = threading.Thread(
+                    target=self._preview_thread_fn,
+                    daemon=True,
+                    name="VoskPreview"
+                )
+                self._preview_thread.start()
+
             # Start audio stream
             self.stream.start_stream()
 
@@ -1452,6 +1546,11 @@ def _build_parser(defaults: dict) -> argparse.ArgumentParser:
                        help='Visualization popup position')
     parser.add_argument('--viz-hide-delay', type=int, default=defaults["viz_hide_delay"],
                        help='Milliseconds to wait before hiding after silence')
+    parser.add_argument('--preview', action=argparse.BooleanOptionalAction,
+                       default=defaults["preview"],
+                       help='Show real-time Vosk word preview in notifications')
+    parser.add_argument('--preview-model', default=defaults["preview_model"],
+                       help='Path to Vosk model for preview')
     return parser
 
 
@@ -1535,6 +1634,8 @@ def main():
         viz_enabled=args.viz,
         viz_position=args.viz_position,
         viz_hide_delay=args.viz_hide_delay,
+        preview=args.preview,
+        preview_model=args.preview_model,
     )
 
     # State file for Waybar integration

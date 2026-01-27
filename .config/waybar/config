@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing", "custom/voice-typing-stream"],
+    "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
     "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "custom/system-freshness", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
@@ -188,12 +188,6 @@
         "return-type": "json",
         "interval": 1,
         "on-click": "voice-typing"
-    },
-    "custom/voice-typing-stream": {
-        "exec": "voice-typing-stream-status",
-        "return-type": "json",
-        "interval": 1,
-        "on-click": "voice-typing-stream"
     },
     "custom/system-freshness": {
         "exec": "system-freshness",

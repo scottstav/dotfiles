@@ -1,8 +1,8 @@
 # Voice typing configuration
 # See ~/repos/voice-typing-linux/CLAUDE.md for full options
 
-# Model: base is ~2x faster than small; use Vosk streaming for quick dictation
-model: base
+# Model: tiny is the fastest (39M params); Vosk preview handles perceived latency
+model: tiny
 
 # Run on CPU (stable, your Ryzen handles it well)
 device: cpu
@@ -22,3 +22,6 @@ agc_max_gain: 20.0
 
 # Audio visualization disabled - was stealing focus
 viz: false
+
+# Vosk real-time preview (shows words in notification as you speak)
+preview: true

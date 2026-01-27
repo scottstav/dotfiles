@@ -336,8 +336,8 @@ class VoiceTyping:
         self.running = False
         self.input_device_index = None
 
-        # Pause state
-        self.is_paused = False
+        # Pause state (start paused; user activates with keybinding)
+        self.is_paused = True
         self.hotkey_listener = None
         self.socket_server = None
         self.socket_thread = None
@@ -1566,8 +1566,8 @@ def main():
 
     signal.signal(signal.SIGUSR1, toggle_handler)
 
-    # Write initial state
-    write_state("listening")
+    # Write initial state (paused until user toggles)
+    write_state("paused")
 
     vt.run()
 

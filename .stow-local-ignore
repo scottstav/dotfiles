@@ -7,6 +7,12 @@
 README\.md
 CLAUDE\.md
 
+# Repo scripts and metadata — not part of the home directory
+bootstrap\.sh
+setup\.sh
+sync-to-vc\.sh
+packages.*\.txt
+
 # Android stuff is pushed via ADB, not stowed
 android
 

@@ -216,6 +216,16 @@ def write_cache(events):
             minutes_until = int(diff)
             break
 
+    # Check if user dismissed the current event
+    dismiss_file = CACHE_DIR / "dismissed"
+    dismissed_id = None
+    if dismiss_file.exists():
+        dismissed_id = dismiss_file.read_text().strip()
+        # Clear stale dismiss if it doesn't match the current event
+        if not next_event or dismissed_id != next_event["id"]:
+            dismiss_file.unlink(missing_ok=True)
+            dismissed_id = None
+
     if next_event and minutes_until is not None:
         if minutes_until <= 0:
             text = " NOW"
@@ -226,7 +236,11 @@ def write_cache(events):
             m = minutes_until % 60
             text = f" {h}h{m:02d}m"
 
-        if minutes_until <= 2:
+        if dismissed_id == next_event["id"]:
+            css_class = "idle"
+        elif minutes_until <= 0:
+            css_class = "active"
+        elif minutes_until <= 2:
             css_class = "urgent"
         elif minutes_until <= 10:
             css_class = "soon"

@@ -21,11 +21,10 @@ args=(
 )
 
 if [[ -n "$meeting_url" ]]; then
-    # "default" action makes clicking the notification body itself open the meeting
     action=$(notify-send "${args[@]}" "$prefix: $summary" "Click to join" \
-        --action "default=Join Meeting" --wait 2>/dev/null)
-    if [[ "$action" == "default" ]]; then
-        xdg-open "$meeting_url" &
+        --action "join=Join Meeting" --wait 2>/dev/null)
+    if [[ "$action" == "join" ]]; then
+        xdg-open "$meeting_url"
     fi
 else
     notify-send "${args[@]}" "$prefix: $summary"

@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
-    "modules-right": ["custom/notification", "tray", "memory", "temperature", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
+    "modules-right": ["custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -72,24 +72,14 @@
         "format": "{usage}% ",
         "tooltip": false
     },
-    "memory": {
-        "interval": 5,
-        "format": " {}%",
-        "format-alt": " {used:0.1f}G/{total:0.1f}G",
+    "custom/sysinfo": {
+        "exec": "sysinfo-status",
+        "return-type": "json",
+        "interval": 3,
         "tooltip": true,
-        "tooltip-format": "RAM: {used:0.2f}GiB used / {total:0.2f}GiB total\n{percentage}% used\n\nSwap: {swapUsed:0.2f}GiB used / {swapTotal:0.2f}GiB total\n{swapPercentage}% used",
-        "states": {
-            "warning": 70,
-            "critical": 90
-        }
-    },
-    "temperature": {
-        "thermal-zone": 3,
-        "critical-threshold": 85,
-        "format": "{icon} {temperatureC}°C",
-        "format-critical": "{icon} {temperatureC}°C",
-        "format-icons": ["", "", ""],
-        "tooltip": true
+        "on-click": "sysinfo-cycle",
+        "on-click-right": "foot -e top",
+        "on-click-middle": "sysinfo-top"
     },
     "backlight": {
         "format": "{percent}% {icon}",
@@ -206,6 +196,7 @@
         "interval": 30,
         "signal": 11,
         "on-click": "gcal-popup",
+        "on-click-middle": "gcal-dismiss",
         "on-click-right": "xdg-open https://calendar.google.com",
         "tooltip": true
     },

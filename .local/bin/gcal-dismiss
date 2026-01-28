@@ -1,0 +1,53 @@
+#!/bin/bash
+# Dismiss the current calendar event from waybar blinking/active display.
+# Middle-click on the gcal waybar module to trigger this.
+
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/gcal"
+EVENTS_FILE="$CACHE_DIR/events.json"
+DISMISS_FILE="$CACHE_DIR/dismissed"
+WAYBAR_FILE="$CACHE_DIR/waybar.json"
+
+# Find the current/next event ID from the events cache
+next_id=$(python3 -c "
+import json, sys
+from datetime import datetime
+
+try:
+    data = json.load(open('$EVENTS_FILE'))
+except Exception:
+    sys.exit(1)
+
+now = datetime.now().astimezone()
+today = now.strftime('%Y-%m-%d')
+
+for e in data['events']:
+    if e['all_day'] or not e['start'].startswith(today):
+        continue
+    start = datetime.fromisoformat(e['start'])
+    diff = (start - now).total_seconds() / 60
+    if diff > -5:
+        print(e['id'])
+        break
+" 2>/dev/null)
+
+if [[ -z "$next_id" ]]; then
+    exit 0
+fi
+
+# Write dismiss marker
+echo "$next_id" > "$DISMISS_FILE"
+
+# Update waybar cache to idle immediately
+if [[ -f "$WAYBAR_FILE" ]]; then
+    python3 -c "
+import json
+with open('$WAYBAR_FILE') as f:
+    data = json.load(f)
+data['class'] = 'idle'
+with open('$WAYBAR_FILE', 'w') as f:
+    json.dump(data, f)
+"
+fi
+
+# Signal waybar to refresh
+pkill -RTMIN+11 waybar

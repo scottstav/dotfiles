@@ -2,7 +2,7 @@
 # See ~/repos/voice-typing-linux/CLAUDE.md for full options
 
 # Model: tiny is the fastest (39M params); Vosk preview handles perceived latency
-model: tiny
+model: base
 
 # Run on CPU (stable, your Ryzen handles it well)
 device: cpu

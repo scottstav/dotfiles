@@ -1,0 +1,154 @@
+#!/bin/bash
+
+# Combined system info module for waybar
+# Outputs JSON with text (current metric) and tooltip (all metrics)
+
+STATE_FILE="$HOME/.cache/waybar-sysinfo-mode"
+MODES=(temp cpu ram disk load)
+
+# Read current display mode (default: temp)
+mode="temp"
+if [ -f "$STATE_FILE" ]; then
+    mode=$(cat "$STATE_FILE")
+fi
+
+# --- Gather all metrics ---
+
+# CPU usage (average across all cores)
+cpu_usage=$(awk '/^cpu / {usage=100-($5*100/($2+$3+$4+$5+$6+$7+$8)); printf "%.0f", usage}' /proc/stat)
+
+# CPU temperature
+cpu_temp=""
+if [ -f /sys/class/thermal/thermal_zone3/temp ]; then
+    raw=$(cat /sys/class/thermal/thermal_zone3/temp)
+    cpu_temp=$((raw / 1000))
+fi
+
+# Memory
+read -r mem_total mem_avail <<< "$(awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} END{print t, a}' /proc/meminfo)"
+mem_used_kb=$((mem_total - mem_avail))
+mem_pct=$((mem_used_kb * 100 / mem_total))
+mem_used_gb=$(awk "BEGIN{printf \"%.1f\", $mem_used_kb/1048576}")
+mem_total_gb=$(awk "BEGIN{printf \"%.1f\", $mem_total/1048576}")
+
+# Swap
+read -r swap_total swap_free <<< "$(awk '/SwapTotal/{t=$2} /SwapFree/{f=$2} END{print t, f}' /proc/meminfo)"
+swap_used_kb=$((swap_total - swap_free))
+if [ "$swap_total" -gt 0 ]; then
+    swap_pct=$((swap_used_kb * 100 / swap_total))
+    swap_used_gb=$(awk "BEGIN{printf \"%.1f\", $swap_used_kb/1048576}")
+    swap_total_gb=$(awk "BEGIN{printf \"%.1f\", $swap_total/1048576}")
+    swap_line="Swap: ${swap_used_gb}G / ${swap_total_gb}G (${swap_pct}%)"
+else
+    swap_line="Swap: none"
+fi
+
+# Root disk
+read -r disk_used disk_total disk_pct <<< "$(df -h / | awk 'NR==2{print $3, $2, $5}')"
+disk_pct_num=${disk_pct%\%}
+
+# External / attached drives
+ext_drives=""
+mount_dir="/run/media/$USER"
+if [ -d "$mount_dir" ] && [ "$(ls -A "$mount_dir" 2>/dev/null)" ]; then
+    while IFS= read -r d; do
+        name=$(basename "$d")
+        read -r eused etotal epct <<< "$(df -h "$d" | awk 'NR==2{print $3, $2, $5}')"
+        ext_drives="${ext_drives}  ${name}: ${eused} / ${etotal} (${epct})\n"
+    done < <(find "$mount_dir" -mindepth 1 -maxdepth 1 -type d)
+fi
+
+# Load average
+read -r load1 load5 load15 _ <<< "$(cat /proc/loadavg)"
+nproc=$(nproc)
+
+# Uptime
+uptime_str=$(uptime -p | sed 's/^up //')
+
+# Network throughput (quick snapshot from /proc/net/dev for the active interface)
+net_info=""
+active_iface=$(ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="dev") print $(i+1)}' | head -1)
+if [ -n "$active_iface" ]; then
+    read -r rx1 tx1 <<< "$(awk -v iface="$active_iface:" '$1==iface{print $2, $10}' /proc/net/dev)"
+    sleep 0.2
+    read -r rx2 tx2 <<< "$(awk -v iface="$active_iface:" '$1==iface{print $2, $10}' /proc/net/dev)"
+    if [ -n "$rx1" ] && [ -n "$rx2" ]; then
+        rx_rate=$(( (rx2 - rx1) * 5 ))  # bytes/sec (0.2s sample * 5)
+        tx_rate=$(( (tx2 - tx1) * 5 ))
+        rx_fmt=$(awk "BEGIN{v=$rx_rate; if(v>1048576) printf \"%.1fM\",v/1048576; else if(v>1024) printf \"%.0fK\",v/1024; else printf \"%dB\",v}")
+        tx_fmt=$(awk "BEGIN{v=$tx_rate; if(v>1048576) printf \"%.1fM\",v/1048576; else if(v>1024) printf \"%.0fK\",v/1024; else printf \"%dB\",v}")
+        net_info="Net ($active_iface): ↓${rx_fmt}/s ↑${tx_fmt}/s"
+    fi
+fi
+
+# --- Build tooltip ---
+tooltip="CPU: ${cpu_usage}%"
+[ -n "$cpu_temp" ] && tooltip="$tooltip  |  ${cpu_temp}°C"
+tooltip="$tooltip\nRAM: ${mem_used_gb}G / ${mem_total_gb}G (${mem_pct}%)\n${swap_line}"
+tooltip="$tooltip\nDisk /: ${disk_used} / ${disk_total} (${disk_pct})"
+if [ -n "$ext_drives" ]; then
+    tooltip="$tooltip\n$(echo -e "$ext_drives" | sed '/^$/d')"
+fi
+tooltip="$tooltip\nLoad: ${load1} ${load5} ${load15} (${nproc} cores)"
+[ -n "$net_info" ] && tooltip="$tooltip\n${net_info}"
+tooltip="$tooltip\nUptime: ${uptime_str}"
+
+# --- Build display text based on mode ---
+icon=""
+text=""
+class=""
+
+case "$mode" in
+    temp)
+        if [ -n "$cpu_temp" ]; then
+            if [ "$cpu_temp" -ge 85 ]; then
+                icon=""; class="critical"
+            elif [ "$cpu_temp" -ge 65 ]; then
+                icon=""; class="warning"
+            else
+                icon=""; class=""
+            fi
+            text="${icon} ${cpu_temp}°C"
+        else
+            text=" N/A"
+        fi
+        ;;
+    cpu)
+        if [ "$cpu_usage" -ge 90 ]; then
+            class="critical"
+        elif [ "$cpu_usage" -ge 70 ]; then
+            class="warning"
+        fi
+        text=" ${cpu_usage}%"
+        ;;
+    ram)
+        if [ "$mem_pct" -ge 90 ]; then
+            class="critical"
+        elif [ "$mem_pct" -ge 70 ]; then
+            class="warning"
+        fi
+        text=" ${mem_pct}%"
+        ;;
+    disk)
+        if [ "$disk_pct_num" -ge 90 ]; then
+            class="critical"
+        elif [ "$disk_pct_num" -ge 70 ]; then
+            class="warning"
+        fi
+        text=" ${disk_pct}"
+        ;;
+    load)
+        text=" ${load1}"
+        load_int=${load1%.*}
+        if [ "${load_int:-0}" -ge "$nproc" ]; then
+            class="critical"
+        elif [ "${load_int:-0}" -ge $((nproc / 2)) ]; then
+            class="warning"
+        fi
+        ;;
+esac
+
+# Escape tooltip for JSON
+tooltip=$(echo -e "$tooltip" | sed 's/\\/\\\\/g; s/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+
+echo "{\"text\":\"${text}\",\"tooltip\":\"${tooltip}\",\"class\":\"${class}\"}"

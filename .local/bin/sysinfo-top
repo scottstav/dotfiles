@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Show top resource consumers via notification (middle click)
+
+# Top 5 CPU consumers
+top_cpu=$(ps aux --sort=-%cpu | awk 'NR>1 && NR<=6{printf "  %5.1f%%  %s\n", $3, $11}')
+
+# Top 5 RAM consumers
+top_mem=$(ps aux --sort=-%mem | awk 'NR>1 && NR<=6{printf "  %5.1f%%  %s\n", $4, $11}')
+
+# Top I/O (if iotop data available, fall back to simple approach)
+top_io=""
+if [ -r /proc/diskstats ]; then
+    top_io=$(find /proc/*/io -maxdepth 0 2>/dev/null | head -50 | while read f; do
+        pid=$(echo "$f" | cut -d/ -f3)
+        if [ -r "$f" ] && [ -r "/proc/$pid/comm" ]; then
+            bytes=$(awk '/^write_bytes/{print $2}' "$f" 2>/dev/null)
+            comm=$(cat "/proc/$pid/comm" 2>/dev/null)
+            [ -n "$bytes" ] && [ "$bytes" -gt 0 ] && echo "$bytes $comm"
+        fi
+    done | sort -rn | head -5 | awk '{
+        b=$1;
+        if(b>1073741824) printf "  %5.1fG  %s\n",b/1073741824,$2;
+        else if(b>1048576) printf "  %5.1fM  %s\n",b/1048576,$2;
+        else if(b>1024) printf "  %5.1fK  %s\n",b/1024,$2;
+        else printf "  %5dB  %s\n",b,$2
+    }')
+fi
+
+msg="<b>Top CPU:</b>\n${top_cpu}\n\n<b>Top RAM:</b>\n${top_mem}"
+if [ -n "$top_io" ]; then
+    msg="${msg}\n\n<b>Top I/O (writes):</b>\n${top_io}"
+fi
+
+notify-send -t 10000 "System Top Consumers" "$(echo -e "$msg")"

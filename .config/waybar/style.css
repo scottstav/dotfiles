@@ -114,15 +114,15 @@ window#waybar {
     color: #89cff0;
 }
 
-#memory {
+#custom-sysinfo {
     color: #89cff0;
 }
 
-#memory.warning {
+#custom-sysinfo.warning {
     color: #ffa500;
 }
 
-#memory.critical {
+#custom-sysinfo.critical {
     color: #dc143c;
     animation-name: blink;
     animation-duration: 0.5s;
@@ -218,6 +218,10 @@ window#waybar {
 }
 
 /* Google Calendar module */
+#custom-gcal.active {
+    color: #00ff7f;
+}
+
 #custom-gcal.urgent {
     color: #dc143c;
     animation-name: blink;

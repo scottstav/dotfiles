@@ -102,10 +102,18 @@ if [ -d "$DOTFILES/root" ]; then
     if sudo stow --target=/ root 2>/dev/null; then
         ok "System configs stowed to /etc"
     else
-        warn "Conflicts detected in /etc — adopting existing files"
-        sudo stow --adopt --target=/ root
-        git -C "$DOTFILES" checkout -- root/
-        ok "System configs adopted and restored from repo"
+        # Conflicts are usually stale symlinks from another user's dotfiles repo.
+        # Remove them so we can stow our own.
+        warn "Conflicts detected in /etc — clearing stale targets"
+        while IFS= read -r line; do
+            target=$(echo "$line" | sed -n 's/.*existing target is not owned by stow: //p')
+            if [ -n "$target" ] && [ -L "/$target" ]; then
+                sudo rm "/$target"
+                ok "Removed stale symlink /$target"
+            fi
+        done < <(sudo stow --target=/ root 2>&1)
+        sudo stow --target=/ root
+        ok "System configs stowed to /etc"
     fi
 fi
 

@@ -148,9 +148,9 @@ if command -v kwallet-query &>/dev/null; then
 
         read -rp "  Set up KWallet credentials now? (y/n) " answer
         if [[ "$answer" =~ ^[Yy]$ ]]; then
-            # kwalletd5 may not be running yet outside a desktop session
-            if ! pgrep -x kwalletd5 &>/dev/null; then
-                warn "kwalletd5 is not running — start a desktop session first, then re-run this step"
+            # kwalletd6 may not be running yet outside a desktop session
+            if ! pgrep -x kwalletd6 &>/dev/null; then
+                warn "kwalletd6 is not running — start a desktop session first, then re-run this step"
             else
                 read -rp "  BW_CLIENTID: " bw_clientid
                 read -rsp "  BW_CLIENTSECRET: " bw_clientsecret; echo
@@ -158,12 +158,12 @@ if command -v kwallet-query &>/dev/null; then
 
                 # Write entries to kwallet using dbus (kwallet-query is read-only)
                 # We use qdbus to write; kwalletmanager can also be used manually
-                WALLET_HANDLE=$(qdbus org.kde.kwalletd5 /modules/kwalletd5 open kdewallet 0 setup-dotfiles)
+                WALLET_HANDLE=$(qdbus org.kde.kwalletd6 /modules/kwalletd6 open kdewallet 0 setup-dotfiles)
                 if [ -n "$WALLET_HANDLE" ]; then
-                    qdbus org.kde.kwalletd5 /modules/kwalletd5 writePassword "$WALLET_HANDLE" Bitwarden BW_CLIENTID "$bw_clientid" setup-dotfiles
-                    qdbus org.kde.kwalletd5 /modules/kwalletd5 writePassword "$WALLET_HANDLE" Bitwarden BW_CLIENTSECRET "$bw_clientsecret" setup-dotfiles
-                    qdbus org.kde.kwalletd5 /modules/kwalletd5 writePassword "$WALLET_HANDLE" Bitwarden BW_PASSWORD "$bw_password" setup-dotfiles
-                    qdbus org.kde.kwalletd5 /modules/kwalletd5 close "$WALLET_HANDLE" false setup-dotfiles
+                    qdbus org.kde.kwalletd6 /modules/kwalletd6 writePassword "$WALLET_HANDLE" Bitwarden BW_CLIENTID "$bw_clientid" setup-dotfiles
+                    qdbus org.kde.kwalletd6 /modules/kwalletd6 writePassword "$WALLET_HANDLE" Bitwarden BW_CLIENTSECRET "$bw_clientsecret" setup-dotfiles
+                    qdbus org.kde.kwalletd6 /modules/kwalletd6 writePassword "$WALLET_HANDLE" Bitwarden BW_PASSWORD "$bw_password" setup-dotfiles
+                    qdbus org.kde.kwalletd6 /modules/kwalletd6 close "$WALLET_HANDLE" false setup-dotfiles
                     ok "Credentials written to KWallet"
                 else
                     fail "Could not open kwallet — try using KDE Wallet Manager (kwalletmanager) manually"
@@ -236,14 +236,18 @@ if [ -d "$VT_DIR" ]; then
     if [ ! -d "$VT_DIR/.venv" ]; then
         if command -v python3.11 &>/dev/null; then
             python3.11 -m venv "$VT_DIR/.venv"
-            "$VT_DIR/.venv/bin/pip" install -r "$VT_DIR/requirements.txt"
-            "$VT_DIR/.venv/bin/pip" install requests vosk
             ok "Voice typing venv created"
         else
             warn "python3.11 not found — needed for onnxruntime compatibility"
         fi
     else
         ok "Voice typing venv already exists"
+    fi
+
+    if [ -d "$VT_DIR/.venv" ]; then
+        "$VT_DIR/.venv/bin/pip" install -q -r "$VT_DIR/requirements.txt"
+        "$VT_DIR/.venv/bin/pip" install -q requests vosk
+        ok "Voice typing dependencies installed"
     fi
 
     # Vosk model

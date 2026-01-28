@@ -84,12 +84,29 @@ fi
 step "Stow dotfiles"
 
 cd "$DOTFILES"
-stow .
-ok "Home directory configs stowed"
+
+# Both stow calls use the same pattern: try normally first, fall back to
+# --adopt if another user (or manual install) already owns the targets.
+# After adopting, git checkout restores our repo versions as the source of truth.
+
+if stow . 2>/dev/null; then
+    ok "Home directory configs stowed"
+else
+    warn "Conflicts detected in home dir — adopting existing files"
+    stow --adopt .
+    git -C "$DOTFILES" checkout -- .
+    ok "Home configs adopted and restored from repo"
+fi
 
 if [ -d "$DOTFILES/root" ]; then
-    sudo stow --target=/ root
-    ok "System configs stowed to /etc"
+    if sudo stow --target=/ root 2>/dev/null; then
+        ok "System configs stowed to /etc"
+    else
+        warn "Conflicts detected in /etc — adopting existing files"
+        sudo stow --adopt --target=/ root
+        git -C "$DOTFILES" checkout -- root/
+        ok "System configs adopted and restored from repo"
+    fi
 fi
 
 # ------------------------------------------------------------------

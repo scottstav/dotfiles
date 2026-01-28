@@ -89,11 +89,11 @@ cd "$DOTFILES"
 # --adopt if another user (or manual install) already owns the targets.
 # After adopting, git checkout restores our repo versions as the source of truth.
 
-if stow . 2>/dev/null; then
+if stow --no-folding . 2>/dev/null; then
     ok "Home directory configs stowed"
 else
     warn "Conflicts detected in home dir — adopting existing files"
-    stow --adopt .
+    stow --no-folding --adopt .
     git -C "$DOTFILES" checkout -- .
     ok "Home configs adopted and restored from repo"
 fi

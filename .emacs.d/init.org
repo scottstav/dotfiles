@@ -175,10 +175,10 @@
 
 * completion, search, etc
 #+begin_src emacs-lisp
-  ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
+    ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
 
 
-  ;;; Minibuffer Completion (Vertico + Orderless)
+    ;;; Minibuffer Completion (Vertico + Orderless)
   (use-package vertico
     :ensure t
     :init (vertico-mode)
@@ -204,7 +204,7 @@
     (completion-styles '(orderless basic))
     (completion-category-overrides '((file (styles basic partial-completion)))))
 
-  ;;; In-Buffer Completion (Corfu)
+    ;;; In-Buffer Completion (Corfu)
   (use-package corfu
     :ensure t
     :custom
@@ -226,12 +226,12 @@
     :after corfu
     :init (corfu-terminal-mode))
 
-  ;;; Annotations (Marginalia)
+    ;;; Annotations (Marginalia)
   (use-package marginalia
     :ensure t
     :init (marginalia-mode))
 
-  ;;; Enhanced Commands (Consult)
+    ;;; Enhanced Commands (Consult)
   (use-package consult
     :ensure t
     :bind
@@ -252,7 +252,7 @@
     (setq register-preview-delay 0.5
           register-preview-function #'consult-register-format)
     (setq consult-fd-args
-      "fd --full-path --color=never --hidden")
+  	"fd --full-path --color=never --hidden")
     (advice-add #'register-preview :override #'consult-register-window)
     :config
     (consult-customize
@@ -262,12 +262,16 @@
      :preview-key '(:debounce 0.4 any))
     (setq consult-narrow-key "<")
     (setq consult-ripgrep-args
-  	"rg --null --line-buffered --color=never --max-columns=1000 --path-separator / --smart-case --no-heading --with-filename --line-number --hidden"))
+    	"rg --null --line-buffered --color=never --max-columns=1000 --path-separator / --smart-case --no-heading --with-filename --line-number --hidden"))
 
   (use-package consult-dir
-    :bind ("C-c ;" . consult-dir))
+    :ensure t
+    :bind (("C-c ;" . consult-dir)
+           :map vertico-map
+           ("C-c ;" . consult-dir)
+           ))
 
-  ;;; Actions (Embark)
+    ;;; Actions (Embark)
   (use-package embark
     :ensure t
     :bind
@@ -288,10 +292,10 @@
 
   (defun my-project-shell ()
     "Start an inferior shell in the current project's root directory.
-  If a buffer already exists for running a shell in the project's root,
-  switch to it.  Otherwise, create a new shell buffer.
-  With \\[universal-argument] prefix arg, create a new inferior shell buffer even
-  if one already exists."
+    If a buffer already exists for running a shell in the project's root,
+    switch to it.  Otherwise, create a new shell buffer.
+    With \\[universal-argument] prefix arg, create a new inferior shell buffer even
+    if one already exists."
     (interactive)
     (require 'comint)
     (let* ((default-directory (project-root (project-current t)))
@@ -305,7 +309,7 @@
 
   (advice-add 'project-shell :override #'my-project-shell)
 
-  ;;; Project Management (project.el)
+    ;;; Project Management (project.el)
   (use-package project
     :ensure nil  ; built-in
     :bind-keymap ("C-c p" . project-prefix-map)
@@ -315,7 +319,7 @@
           ("b" . consult-project-buffer)
           ("r" . consult-ripgrep)
           ("f" . consult-fd)
-  	("v" . project-shell))
+    	("v" . project-shell))
     :config
     (setq project-list-file (expand-file-name "projects" user-emacs-directory))
     (setq project-switch-commands
@@ -333,7 +337,7 @@
     (recentf-max-saved-items 200)
     (recentf-exclude '("/tmp/" "/ssh:" "COMMIT_EDITMSG")))
 
-  ;;; Optional: Better candidate info in corfu
+    ;;; Optional: Better candidate info in corfu
   (use-package cape
     :ensure t
     :init

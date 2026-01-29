@@ -1,0 +1,27 @@
+;;;; Emacs Bookmark Format Version 1;;;; -*- coding: utf-8-emacs; mode: lisp-data -*-
+;;; This format is meant to be slightly human-readable;
+;;; nevertheless, you probably don't want to edit it.
+;;; -*- End Of Bookmark File Format Version Stamp -*-
+(("wantana-android"
+ (filename . "/ssh:u0_a427@10.0.0.208#8022:~/")
+ (front-context-string . "  /ssh:u0_a427@1")
+ (rear-context-string)
+ (position . 1)
+ (last-modified 26968 27758 981902 789000))
+("sudopihole"
+ (filename . "/ssh:root@pi.hole:~/")
+ (front-context-string . ".bash_history\n  ")
+ (rear-context-string . "22 Dec 11 05:16 ")
+ (position . 177)
+ (last-modified 26938 21426 938620 408000))
+("sudoslash"
+ (filename .
+	   #("/sudo:root@0mar:/" 6 10
+	     (tramp-default t)
+	     11 15
+	     (tramp-default t)))
+ (front-context-string . "bin -> usr/bin\n ")
+ (rear-context-string . " 7 Oct 12 11:21 ")
+ (position . 165)
+ (last-modified 26936 56850 146353 467000))
+)

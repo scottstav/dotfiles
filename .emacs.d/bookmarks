@@ -2,7 +2,13 @@
 ;;; This format is meant to be slightly human-readable;
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
-(("wantana-android"
+(("quicknote.org"
+ (filename . "~/Dropbox/org/denote/quicknote.org")
+ (front-context-string . "- [X] order new ")
+ (rear-context-string)
+ (position . 1)
+ (last-modified 27003 309 925203 24000))
+("wantana-android"
  (filename . "/ssh:u0_a427@10.0.0.208#8022:~/")
  (front-context-string . "  /ssh:u0_a427@1")
  (rear-context-string)
@@ -24,4 +30,3 @@
  (rear-context-string . " 7 Oct 12 11:21 ")
  (position . 165)
  (last-modified 26936 56850 146353 467000))
-)

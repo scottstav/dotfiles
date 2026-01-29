@@ -94,7 +94,7 @@
     (setq org-msg-enforce-css
           (expand-file-name "org-msg.css" user-emacs-directory))
 
-    (org-msg-mode)
+    (org-msg-mode))
 
   (defun my/org-msg-paste-image ()
     "Paste clipboard image into an org-msg compose buffer."
@@ -184,7 +184,7 @@
                    :icon mu4e-alert-icon
                    :data msgid)))))
 
-    (setq mu4e-alert-email-notification-function #'my/mu4e-alert-notify)
+    (advice-add 'mu4e-alert-notify-unread-messages :override #'my/mu4e-alert-notify)
 
     (mu4e-alert-enable-notifications)
     (mu4e-alert-enable-mode-line-display))

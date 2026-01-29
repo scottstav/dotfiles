@@ -587,3 +587,5 @@ Shows clean service names for completion (e.g., 'user-service')."
   (openwith-mode t))
 
 (setq large-file-warning-threshold nil)
+
+(org-babel-load-file (expand-file-name "email.org" user-emacs-directory))

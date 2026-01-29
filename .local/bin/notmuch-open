@@ -1,3 +1,3 @@
 #!/bin/bash
 
-emacsclient -c -a emacs -q --eval "(progn (notmuch) (delete-other-windows))"
+emacsclient -c -a emacs -q --eval "(progn (mu4e) (delete-other-windows))"

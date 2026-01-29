@@ -681,6 +681,11 @@ Shows clean service names for completion (e.g., 'user-service')."
 
 (setq large-file-warning-threshold nil)
 #+end_src
+* email
+#+begin_src emacs-lisp
+  (org-babel-load-file (expand-file-name "email.org" user-emacs-directory))
+#+end_src
+
 * /Local Variables/
 # Local Variables:
 # eval: (add-hook 'after-save-hook (lambda () (org-babel-tangle)) nil t)

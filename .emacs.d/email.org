@@ -1,0 +1,106 @@
+#+TITLE: Email Configuration (mu4e + Gmail)
+#+PROPERTY: header-args:emacs-lisp :tangle ~/.emacs.d/email.el
+
+* mu4e core
+#+begin_src emacs-lisp
+  (use-package mu4e
+    :straight nil
+    :load-path "/usr/share/emacs/site-lisp/mu4e/"
+    :config
+    ;; Sync
+    (setq mu4e-get-mail-command "mbsync -Va"
+          mu4e-update-interval 180
+          mu4e-index-update-in-background t)
+
+    ;; CRITICAL for mbsync — rename files when moving between folders
+    (setq mu4e-change-filenames-when-moving t)
+
+    ;; Gmail saves sent mail server-side, so don't store locally
+    (setq mu4e-sent-messages-behavior 'delete)
+
+    ;; Display
+    (setq mu4e-view-show-images t
+          mu4e-headers-date-format "%Y-%m-%d"
+          mu4e-headers-time-format "%H:%M"
+          mu4e-headers-fields '((:human-date . 12)
+                                (:flags . 6)
+                                (:from . 22)
+                                (:subject)))
+
+    ;; Don't keep message buffers around
+    (setq message-kill-buffer-on-exit t)
+
+    ;; Set mu4e as the default mail agent (needed for org-msg integration)
+    (setq mail-user-agent 'mu4e-user-agent)
+
+    ;; Send via msmtp
+    (setq sendmail-program "/usr/bin/msmtp"
+          send-mail-function #'smtpmail-send-it
+          message-sendmail-f-is-evil t
+          message-sendmail-extra-arguments '("--read-envelope-from")
+          message-send-mail-function #'message-send-mail-with-sendmail)
+
+    ;; HTML rendering with shr (built-in)
+    (setq mu4e-view-html-plaintext-ratio-heuristic most-positive-fixnum)
+
+    ;; View in browser action for complex HTML
+    (add-to-list 'mu4e-view-actions '("ViewInBrowser" . mu4e-action-view-in-browser) t)
+
+    ;; Bookmarks
+    (setq mu4e-bookmarks
+          '((:name "Unread"    :query "flag:unread AND NOT flag:trashed" :key ?u)
+            (:name "Inbox"     :query "maildir:/gmail/Inbox"             :key ?i)
+            (:name "Today"     :query "date:today..now"                  :key ?t)
+            (:name "This week" :query "date:7d..now"                     :key ?w)
+            (:name "Flagged"   :query "flag:flagged"                     :key ?f)
+            (:name "Sent"      :query "maildir:/gmail/Sent"              :key ?s))))
+#+end_src
+
+* Gmail account context
+#+begin_src emacs-lisp
+  (setq mu4e-contexts
+        (list
+         (make-mu4e-context
+          :name "gmail"
+          :match-func (lambda (msg)
+                        (when msg
+                          (string-prefix-p "/gmail" (mu4e-message-field msg :maildir))))
+          :vars '((user-mail-address  . "scottstavinoha@gmail.com")
+                  (user-full-name     . "Scott Stavinoha")
+                  (mu4e-drafts-folder . "/gmail/Drafts")
+                  (mu4e-sent-folder   . "/gmail/Sent")
+                  (mu4e-refile-folder . "/gmail/Archive")
+                  (mu4e-trash-folder  . "/gmail/Trash")))))
+#+end_src
+
+* org-msg (compose in org-mode, send HTML)
+#+begin_src emacs-lisp
+  (use-package org-msg
+    :after mu4e
+    :config
+    (setq org-msg-options "html-postamble:nil H:5 num:nil ^:{} toc:nil author:nil email:nil \\n:t"
+          org-msg-startup "hidestars indent inlineimages"
+          org-msg-greeting-fmt nil
+          org-msg-signature nil
+          org-msg-default-alternatives '((new        . (text html))
+                                         (reply-to-html . (text html))
+                                         (reply-to-text . (text)))
+          org-msg-convert-citation t)
+
+    ;; Clean inline CSS
+    (setq org-msg-enforce-css
+          (expand-file-name "org-msg.css" user-emacs-directory))
+
+    (org-msg-mode))
+#+end_src
+
+* mu4e-alert (desktop notifications)
+#+begin_src emacs-lisp
+  (use-package mu4e-alert
+    :after mu4e
+    :config
+    (mu4e-alert-set-default-style 'libnotify)
+    (setq mu4e-alert-interesting-mail-query "flag:unread AND maildir:/gmail/Inbox")
+    (mu4e-alert-enable-notifications)
+    (mu4e-alert-enable-mode-line-display))
+#+end_src

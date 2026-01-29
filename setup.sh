@@ -189,7 +189,7 @@ step "Systemd user services"
 
 systemctl --user daemon-reload
 
-TIMERS=(gcal-refresh.timer system-freshness.timer)
+TIMERS=(gcal-refresh.timer system-freshness.timer mbsync.timer)
 for timer in "${TIMERS[@]}"; do
     if systemctl --user is-enabled "$timer" &>/dev/null; then
         ok "$timer already enabled"
@@ -291,6 +291,65 @@ fi
 
 
 # ------------------------------------------------------------------
+# 8. Email (mu4e + mbsync + msmtp)
+# ------------------------------------------------------------------
+step "Email setup (mu4e)"
+
+read -rp "  Set up email (mu4e + Gmail)? (y/n) " answer
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+    # Install mu (provides mu CLI + mu4e elisp)
+    if ! command -v mu &>/dev/null; then
+        if command -v yay &>/dev/null; then
+            yay -S --needed --noconfirm mu
+            ok "mu installed"
+        else
+            warn "yay not found — install mu manually: yay -S mu"
+        fi
+    else
+        ok "mu already installed"
+    fi
+
+    # Create maildir structure
+    for folder in Inbox Sent Drafts Trash Archive Spam; do
+        mkdir -p "$HOME/.mail/gmail/$folder"/{cur,new,tmp}
+    done
+    ok "Maildir structure created"
+
+    # First sync
+    if command -v mbsync &>/dev/null; then
+        echo "  Running first mail sync (this may take a moment)..."
+        mbsync -Va && ok "Mail synced" || warn "mbsync failed — check BW_SESSION and .mbsyncrc"
+    else
+        warn "mbsync not found — install isync package"
+    fi
+
+    # Initialize mu index
+    if command -v mu &>/dev/null; then
+        mu init --maildir="$HOME/.mail" --my-address=scottstavinoha@gmail.com 2>/dev/null
+        mu index
+        ok "mu index initialized"
+    fi
+
+    # Enable mbsync timer
+    if systemctl --user is-enabled mbsync.timer &>/dev/null; then
+        ok "mbsync.timer already enabled"
+    else
+        systemctl --user enable --now mbsync.timer
+        ok "mbsync.timer enabled"
+    fi
+
+    # Export BW_SESSION so the timer can use bw
+    if [ -n "${BW_SESSION:-}" ]; then
+        systemctl --user import-environment BW_SESSION
+        ok "BW_SESSION exported to systemd"
+    else
+        warn "BW_SESSION not set — mbsync timer won't be able to fetch passwords until start-emacs-daemon runs"
+    fi
+else
+    skip "Email setup"
+fi
+
+# ------------------------------------------------------------------
 # Decrypt ssh key
 # ------------------------------------------------------------------
 step "Decrypt ssh key"
@@ -312,4 +371,6 @@ echo "    2. If KWallet credentials were skipped, set them up via kwalletmanager
 echo "       (folder: Bitwarden, entries: BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD)"
 echo "    3. Authenticate Dropbox if not already: ~/.dropbox-dist/dropboxd"
 echo "    4. Start Hyprland from tty1 (happens automatically via .profile)"
+echo "    5. If email was skipped: re-run setup or manually run the email steps"
+echo "       (mu init, mbsync -Va, systemctl --user enable --now mbsync.timer)"
 echo ""

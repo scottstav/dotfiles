@@ -1,0 +1,69 @@
+IMAPAccount gmail
+Host imap.gmail.com
+User scottstavinoha@gmail.com
+PassCmd "bw get password a5ed5643-21a5-4664-8b03-b3e100931aac"
+SSLType IMAPS
+CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+IMAPStore gmail-remote
+Account gmail
+
+MaildirStore gmail-local
+SubFolders Verbatim
+Path ~/.mail/gmail/
+Inbox ~/.mail/gmail/Inbox
+
+Channel gmail-inbox
+Far :gmail-remote:INBOX
+Near :gmail-local:Inbox
+MaxMessages 500
+Create Both
+Expunge Both
+SyncState *
+
+Channel gmail-sent
+Far ":gmail-remote:[Gmail]/Sent Mail"
+Near :gmail-local:Sent
+MaxMessages 200
+Create Both
+Expunge Both
+SyncState *
+
+Channel gmail-drafts
+Far ":gmail-remote:[Gmail]/Drafts"
+Near :gmail-local:Drafts
+Create Both
+Expunge Both
+SyncState *
+
+Channel gmail-trash
+Far ":gmail-remote:[Gmail]/Trash"
+Near :gmail-local:Trash
+MaxMessages 100
+Create Both
+Expunge Both
+SyncState *
+
+Channel gmail-archive
+Far ":gmail-remote:[Gmail]/All Mail"
+Near :gmail-local:Archive
+MaxMessages 1000
+Create Both
+Expunge Both
+SyncState *
+
+Channel gmail-spam
+Far ":gmail-remote:[Gmail]/Spam"
+Near :gmail-local:Spam
+MaxMessages 50
+Create Both
+Expunge Both
+SyncState *
+
+Group gmail
+Channel gmail-inbox
+Channel gmail-sent
+Channel gmail-drafts
+Channel gmail-trash
+Channel gmail-archive
+Channel gmail-spam

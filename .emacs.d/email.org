@@ -30,6 +30,9 @@
     ;; Don't keep message buffers around
     (setq message-kill-buffer-on-exit t)
 
+    ;; Don't warn about long lines (org-msg HTML produces them)
+    (setq mu4e-compose-format-flowed t)
+
     ;; Set mu4e as the default mail agent (needed for org-msg integration)
     (setq mail-user-agent 'mu4e-user-agent)
 
@@ -91,7 +94,21 @@
     (setq org-msg-enforce-css
           (expand-file-name "org-msg.css" user-emacs-directory))
 
-    (org-msg-mode))
+    (org-msg-mode)
+
+  (defun my/org-msg-paste-image ()
+    "Paste clipboard image into an org-msg compose buffer."
+    (interactive)
+    (let* ((fname (format-time-string "screenshot_%Y%m%d_%H%M%S.png"))
+           (path (expand-file-name fname temporary-file-directory)))
+      (unless (zerop (call-process-shell-command
+                      (format "wl-paste --type image/png > %s" (shell-quote-argument path))))
+        (user-error "No image in clipboard"))
+      (insert (format "[[file:%s]]" path))
+      (org-display-inline-images nil nil (line-beginning-position) (line-end-position))))
+
+  (with-eval-after-load 'org-msg
+    (define-key org-msg-edit-mode-map (kbd "C-c C-v") #'my/org-msg-paste-image))
 #+end_src
 
 * mu4e-alert (desktop notifications)

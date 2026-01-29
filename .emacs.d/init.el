@@ -223,7 +223,10 @@
    :preview-key '(:debounce 0.4 any))
   (setq consult-narrow-key "<")
   (setq consult-ripgrep-args
-  "rg --null --line-buffered --color=never --max-columns=1000 --path-separator / --smart-case --no-heading --with-filename --line-number --hidden"))
+	"rg --null --line-buffered --color=never --max-columns=1000 --path-separator / --smart-case --no-heading --with-filename --line-number --hidden"))
+
+(use-package consult-dir
+  :bind ("C-c ;" . consult-dir))
 
 ;;; Actions (Embark)
 (use-package embark

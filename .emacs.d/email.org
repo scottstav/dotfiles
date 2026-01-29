@@ -116,8 +116,76 @@
   (use-package mu4e-alert
     :after mu4e
     :config
-    (mu4e-alert-set-default-style 'libnotify)
-    (setq mu4e-alert-interesting-mail-query "flag:unread AND maildir:/gmail/Inbox")
+    (setq mu4e-alert-interesting-mail-query "flag:unread AND maildir:/gmail/Inbox"
+          mu4e-alert-email-notification-types '(subjects))
+
+    (defun my/mu4e-alert-sender-name (mail)
+      "Extract sender name from MAIL, falling back to email address."
+      (let ((from (car (plist-get mail :from))))
+        (or (plist-get from :name) (plist-get from :email) "Unknown")))
+
+    (defun my/mu4e-alert-notification-formatter (mail-group _all-mails)
+      "Format notification showing sender and subject."
+      (let* ((mail-count (length mail-group))
+             (first-mail (car mail-group))
+             (sender (my/mu4e-alert-sender-name first-mail))
+             (subject (plist-get first-mail :subject)))
+        (if (= mail-count 1)
+            (list :title sender :body subject)
+          (list :title (format "%d new emails" mail-count)
+                :body (mapconcat
+                       (lambda (m)
+                         (format "%s: %s"
+                                 (my/mu4e-alert-sender-name m)
+                                 (plist-get m :subject)))
+                       mail-group "\n")))))
+
+    (setq mu4e-alert-grouped-mail-notification-formatter
+          #'my/mu4e-alert-notification-formatter)
+
+    ;; Use D-Bus notifications (supports click actions, unlike notify-send)
+    (defvar my/mu4e-alert-pending-msgids (make-hash-table)
+      "Map notification ID -> message-id for click-to-open.")
+
+    (alert-define-style 'mu4e-open
+      :title "mu4e notifications with click-to-open"
+      :notifier
+      (lambda (info)
+        (let* ((msgid (plist-get info :data))
+               (nid (notifications-notify
+                     :title (or (plist-get info :title) "mu4e")
+                     :body (or (plist-get info :message) "")
+                     :app-name "mu4e"
+                     :actions '("default" "Open")
+                     :on-action
+                     (lambda (id _action)
+                       (let ((mid (gethash id my/mu4e-alert-pending-msgids)))
+                         (remhash id my/mu4e-alert-pending-msgids)
+                         (if mid
+                             (mu4e-view-message-with-message-id mid)
+                           (mu4e))
+                         (delete-other-windows))))))
+          (when (and nid msgid)
+            (puthash nid msgid my/mu4e-alert-pending-msgids)))))
+    (mu4e-alert-set-default-style 'mu4e-open)
+
+    ;; Override notification sender to pass message-id via :data
+    (defun my/mu4e-alert-notify (mails)
+      "Notify for MAILS, passing message-id for click-to-open."
+      (let* ((mail-groups (funcall mu4e-alert-mail-grouper mails))
+             (sorted (sort mail-groups mu4e-alert-grouped-mail-sorter)))
+        (dolist (group (cl-subseq sorted 0 (min 5 (length sorted))))
+          (let* ((notif (funcall mu4e-alert-grouped-mail-notification-formatter group mails))
+                 (msgid (when (= 1 (length group))
+                          (plist-get (car group) :message-id))))
+            (alert (plist-get notif :body)
+                   :title (plist-get notif :title)
+                   :category "mu4e-alert"
+                   :icon mu4e-alert-icon
+                   :data msgid)))))
+
+    (setq mu4e-alert-email-notification-function #'my/mu4e-alert-notify)
+
     (mu4e-alert-enable-notifications)
     (mu4e-alert-enable-mode-line-display))
 #+end_src

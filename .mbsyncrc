@@ -56,6 +56,7 @@ Channel gmail-spam
 Far ":gmail-remote:[Gmail]/Spam"
 Near :gmail-local:Spam
 MaxMessages 50
+ExpireUnread yes
 Create Both
 Expunge Both
 SyncState *

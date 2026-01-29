@@ -119,7 +119,6 @@ maim 5.8.1-3
 make 4.4.1-2
 memtest86+ 7.20-2
 mkchromecast-git 0.3.8.1.r315.g6e583366-1
-monero-gui 0.18.4.5-1
 mongodb-compass-bin 1.49.0-1
 mongodb-tools 1:100.14.0-1
 mongosh-bin 2.6.0-1

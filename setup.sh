@@ -289,6 +289,18 @@ else
     fi
 fi
 
+
+# ------------------------------------------------------------------
+# Decrypt ssh key
+# ------------------------------------------------------------------
+step "Decrypt ssh key"
+if gpg --card-status &>/dev/null; then
+    gpg -d $HOME/.ssh/id_ed25519.gpg > ~/.ssh/id_ed25519
+    chmod 600 ~/.ssh/id_ed25519
+else
+    echo "Warning: No hardware key detected. Skipping SSH key decryption."
+fi
+
 # ------------------------------------------------------------------
 # Done
 # ------------------------------------------------------------------

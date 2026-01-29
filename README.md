@@ -25,8 +25,10 @@
 
 ## Quick Setup
 
+Youll need your gpg hardware key (yubikey) and your bw info
+
 ```bash
-git clone <repo-url> ~/dotfiles
+git clone https://github.com/scottstav/dotfiles.git
 cd ~/dotfiles
 ./setup.sh
 ```
@@ -96,4 +98,3 @@ cd ~/.local/share/vosk-models
 wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.22.zip
 unzip vosk-model-en-us-0.22.zip
 ```
-

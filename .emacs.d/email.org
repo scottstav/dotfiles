@@ -159,6 +159,7 @@
                      :actions '("default" "Open")
                      :on-action
                      (lambda (id _action)
+                       (select-frame (make-frame))
                        (let ((mid (gethash id my/mu4e-alert-pending-msgids)))
                          (remhash id my/mu4e-alert-pending-msgids)
                          (if mid
@@ -188,4 +189,8 @@
 
     (mu4e-alert-enable-notifications)
     (mu4e-alert-enable-mode-line-display))
+
+  ;; Start mu4e in the background on daemon startup so notifications work
+  (when (daemonp)
+    (mu4e))
 #+end_src

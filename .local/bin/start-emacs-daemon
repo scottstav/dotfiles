@@ -40,14 +40,26 @@ if [ -z "$BW_CLIENTID" ] || [ -z "$BW_CLIENTSECRET" ] || [ -z "$BW_PASSWORD" ]; 
 fi
 
 bw logout &>/dev/null
+sleep 1
+
 notify "Logging into Bitwarden..."
-bw login --apikey &>/dev/null
+for attempt in 1 2 3; do
+  bw login --apikey &>/dev/null && break
+  notify "Login attempt $attempt failed, retrying..."
+  sleep 2
+done
 
 notify "Unlocking Bitwarden vault..."
 export BW_PASSWORD
-output=$(bw unlock --passwordenv BW_PASSWORD 2>&1)
+for attempt in 1 2 3; do
+  output=$(bw unlock --passwordenv BW_PASSWORD 2>&1)
+  BW_SESSION=$(echo "$output" | grep -oP 'export\s+\w+="[^"]*"' | cut -d'"' -f2)
+  [ -n "$BW_SESSION" ] && break
+  notify "Unlock attempt $attempt failed, retrying..."
+  sleep 2
+done
 unset BW_PASSWORD
-export BW_SESSION=$(echo "$output" | grep -oP 'export\s+\w+="[^"]*"' | cut -d'"' -f2)
+export BW_SESSION
 
 if [ -z "$BW_SESSION" ]; then
   notify "Failed: Could not unlock Bitwarden"

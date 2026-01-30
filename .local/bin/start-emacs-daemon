@@ -56,9 +56,6 @@ fi
 
 notify "Bitwarden session initialized"
 
-# Export BW_SESSION to systemd user services (needed by mbsync timer)
-systemctl --user import-environment BW_SESSION
-
 # check if emacs daemon is running
 if pgrep -x "emacs" > /dev/null; then
     emacsclient -e "(setenv \"BW_SESSION\" \"$BW_SESSION\")" &>/dev/null

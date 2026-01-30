@@ -24,7 +24,8 @@ fail()  { echo -e "  ${RED}✗ $1${NC}"; }
 # ------------------------------------------------------------------
 step "System packages"
 
-if command -v pacman &>/dev/null; then
+read -rp "  Install system packages? (y/n) " answer
+if [[ "$answer" =~ ^[Yy]$ ]] && command -v pacman &>/dev/null; then
     PKG_FILE="$DOTFILES/packages-01-27-2026.txt"
     if [ -f "$PKG_FILE" ]; then
         # Extract just the package names (first column) from the PACMAN section
@@ -74,6 +75,8 @@ if command -v pacman &>/dev/null; then
     else
         warn "Package list not found at $PKG_FILE"
     fi
+elif [[ ! "$answer" =~ ^[Yy]$ ]]; then
+    skip "Package installation"
 else
     skip "Not an Arch system — install packages manually"
 fi
@@ -183,7 +186,41 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 5. Systemd user services
+# 5. Bitwarden session (for fetching secrets during setup)
+# ------------------------------------------------------------------
+step "Bitwarden session"
+
+if command -v bw &>/dev/null && command -v kwallet-query &>/dev/null; then
+    if kwallet-query -l -f Bitwarden kdewallet &>/dev/null; then
+        export BW_CLIENTID=$(kwallet-query -r BW_CLIENTID -f Bitwarden kdewallet)
+        export BW_CLIENTSECRET=$(kwallet-query -r BW_CLIENTSECRET -f Bitwarden kdewallet)
+        BW_PASSWORD=$(kwallet-query -r BW_PASSWORD -f Bitwarden kdewallet)
+
+        if [ -n "$BW_CLIENTID" ] && [ -n "$BW_CLIENTSECRET" ] && [ -n "$BW_PASSWORD" ]; then
+            bw logout &>/dev/null
+            bw login --apikey &>/dev/null
+            export BW_PASSWORD
+            output=$(bw unlock --passwordenv BW_PASSWORD 2>&1)
+            unset BW_PASSWORD
+            export BW_SESSION=$(echo "$output" | grep -oP 'export\s+\w+="[^"]*"' | cut -d'"' -f2)
+
+            if [ -n "$BW_SESSION" ]; then
+                ok "Bitwarden session active"
+            else
+                warn "Could not unlock Bitwarden vault"
+            fi
+        else
+            warn "Missing KWallet credentials — skipping Bitwarden login"
+        fi
+    else
+        warn "KWallet Bitwarden folder not found — skipping"
+    fi
+else
+    warn "bw or kwallet-query not found — skipping Bitwarden login"
+fi
+
+# ------------------------------------------------------------------
+# 6. Systemd user services
 # ------------------------------------------------------------------
 step "Systemd user services"
 
@@ -226,7 +263,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 6. Voice typing
+# 7. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"
 
@@ -272,7 +309,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 7. NVM / Node
+# 8. NVM / Node
 # ------------------------------------------------------------------
 step "NVM / Node.js"
 
@@ -291,7 +328,7 @@ fi
 
 
 # ------------------------------------------------------------------
-# 8. Email (mu4e + mbsync + msmtp)
+# 9. Email (mu4e + mbsync + msmtp)
 # ------------------------------------------------------------------
 step "Email setup (mu4e)"
 
@@ -309,6 +346,25 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
         ok "mu already installed"
     fi
 
+    # Store Gmail app password for mbsync
+    MBSYNC_PW_FILE="$HOME/.config/mbsync/password"
+    if [ -f "$MBSYNC_PW_FILE" ]; then
+        ok "mbsync password file already exists"
+    else
+        mkdir -p "$(dirname "$MBSYNC_PW_FILE")"
+        if [ -n "${BW_SESSION:-}" ] && command -v bw &>/dev/null; then
+            bw get password a5ed5643-21a5-4664-8b03-b3e100931aac > "$MBSYNC_PW_FILE"
+            chmod 600 "$MBSYNC_PW_FILE"
+            ok "mbsync password fetched from Bitwarden and saved"
+        else
+            read -rsp "  Gmail app password (for mbsync): " gmail_pw; echo
+            printf '%s' "$gmail_pw" > "$MBSYNC_PW_FILE"
+            chmod 600 "$MBSYNC_PW_FILE"
+            unset gmail_pw
+            ok "mbsync password saved"
+        fi
+    fi
+
     # Create maildir structure
     for folder in Inbox Sent Drafts Trash Archive Spam; do
         mkdir -p "$HOME/.mail/gmail/$folder"/{cur,new,tmp}
@@ -318,7 +374,7 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
     # First sync
     if command -v mbsync &>/dev/null; then
         echo "  Running first mail sync (this may take a moment)..."
-        mbsync -Va && ok "Mail synced" || warn "mbsync failed — check BW_SESSION and .mbsyncrc"
+        mbsync -Va && ok "Mail synced" || warn "mbsync failed — check ~/.config/mbsync/password and .mbsyncrc"
     else
         warn "mbsync not found — install isync package"
     fi
@@ -336,14 +392,6 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
     else
         systemctl --user enable --now mbsync.timer
         ok "mbsync.timer enabled"
-    fi
-
-    # Export BW_SESSION so the timer can use bw
-    if [ -n "${BW_SESSION:-}" ]; then
-        systemctl --user import-environment BW_SESSION
-        ok "BW_SESSION exported to systemd"
-    else
-        warn "BW_SESSION not set — mbsync timer won't be able to fetch passwords until start-emacs-daemon runs"
     fi
 else
     skip "Email setup"

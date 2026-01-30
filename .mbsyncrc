@@ -1,7 +1,7 @@
 IMAPAccount gmail
 Host imap.gmail.com
 User scottstavinoha@gmail.com
-PassCmd "bw get password a5ed5643-21a5-4664-8b03-b3e100931aac"
+PassCmd "cat ~/.config/mbsync/password"
 SSLType IMAPS
 CertificateFile /etc/ssl/certs/ca-certificates.crt
 

@@ -146,23 +146,26 @@
     (setq mu4e-alert-grouped-mail-notification-formatter
           #'my/mu4e-alert-notification-formatter)
 
-    ;; Use D-Bus notifications (supports click actions, unlike notify-send)
+    ;; Notify directly via D-Bus — one notification per email, click to open
     (defvar my/mu4e-alert-pending-msgids (make-hash-table)
       "Map notification ID -> message-id for click-to-open.")
 
-    (alert-define-style 'mu4e-open
-      :title "mu4e notifications with click-to-open"
-      :notifier
-      (lambda (info)
-        (let* ((msgid (plist-get info :data))
+    (defun my/mu4e-alert-notify (mails)
+      "Send one D-Bus notification per unread mail with click-to-open."
+      (dolist (mail (seq-take mails 10))
+        (let* ((sender (let ((from (car (plist-get mail :from))))
+                         (or (plist-get from :name) (plist-get from :email) "Unknown")))
+               (subject (or (plist-get mail :subject) "(no subject)"))
+               (msgid (plist-get mail :message-id))
                (nid (notifications-notify
-                     :title (or (plist-get info :title) "mu4e")
-                     :body (or (plist-get info :message) "")
+                     :title sender
+                     :body subject
                      :app-name "mu4e"
                      :actions '("default" "Open")
                      :on-action
                      (lambda (id _action)
-                       (select-frame (make-frame '((window-system . pgtk))))
+                       (select-frame-set-input-focus
+                        (make-frame '((window-system . pgtk))))
                        (let ((mid (gethash id my/mu4e-alert-pending-msgids)))
                          (remhash id my/mu4e-alert-pending-msgids)
                          (if mid
@@ -171,22 +174,6 @@
                          (delete-other-windows))))))
           (when (and nid msgid)
             (puthash nid msgid my/mu4e-alert-pending-msgids)))))
-    (mu4e-alert-set-default-style 'mu4e-open)
-
-    ;; Override notification sender to pass message-id via :data
-    (defun my/mu4e-alert-notify (mails)
-      "Notify for MAILS, passing message-id for click-to-open."
-      (let* ((mail-groups (funcall mu4e-alert-mail-grouper mails))
-             (sorted (sort mail-groups mu4e-alert-grouped-mail-sorter)))
-        (dolist (group (cl-subseq sorted 0 (min 5 (length sorted))))
-          (let* ((notif (funcall mu4e-alert-grouped-mail-notification-formatter group mails))
-                 (msgid (when (= 1 (length group))
-                          (plist-get (car group) :message-id))))
-            (alert (plist-get notif :body)
-                   :title (plist-get notif :title)
-                   :category "mu4e-alert"
-                   :icon mu4e-alert-icon
-                   :data msgid)))))
 
     (advice-add 'mu4e-alert-notify-unread-messages :override #'my/mu4e-alert-notify)
 

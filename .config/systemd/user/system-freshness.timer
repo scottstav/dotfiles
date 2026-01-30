@@ -2,7 +2,7 @@
 Description=Refresh system freshness cache periodically
 
 [Timer]
-OnBootSec=1min
+OnActiveSec=1min
 OnUnitActiveSec=4h
 Persistent=true
 

@@ -348,21 +348,14 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
 
     # Store Gmail app password for mbsync
     MBSYNC_PW_FILE="$HOME/.config/mbsync/password"
-    if [ -f "$MBSYNC_PW_FILE" ]; then
+    if [ -s "$MBSYNC_PW_FILE" ]; then
         ok "mbsync password file already exists"
     else
+        rm -f "$MBSYNC_PW_FILE"
         mkdir -p "$(dirname "$MBSYNC_PW_FILE")"
-        if [ -n "${BW_SESSION:-}" ] && command -v bw &>/dev/null; then
-            bw get password a5ed5643-21a5-4664-8b03-b3e100931aac > "$MBSYNC_PW_FILE"
-            chmod 600 "$MBSYNC_PW_FILE"
-            ok "mbsync password fetched from Bitwarden and saved"
-        else
-            read -rsp "  Gmail app password (for mbsync): " gmail_pw; echo
-            printf '%s' "$gmail_pw" > "$MBSYNC_PW_FILE"
-            chmod 600 "$MBSYNC_PW_FILE"
-            unset gmail_pw
-            ok "mbsync password saved"
-        fi
+        bw get password a5ed5643-21a5-4664-8b03-b3e100931aac > "$MBSYNC_PW_FILE"
+        chmod 600 "$MBSYNC_PW_FILE"
+        ok "mbsync password saved"
     fi
 
     # Create maildir structure

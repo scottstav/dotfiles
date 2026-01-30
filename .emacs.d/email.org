@@ -12,6 +12,9 @@
           mu4e-update-interval 180
           mu4e-index-update-in-background t)
 
+    ;; Auto-select first context (avoids interactive prompt that hangs daemon)
+    (setq mu4e-context-policy 'pick-first)
+
     ;; CRITICAL for mbsync — rename files when moving between folders
     (setq mu4e-change-filenames-when-moving t)
 
@@ -159,7 +162,7 @@
                      :actions '("default" "Open")
                      :on-action
                      (lambda (id _action)
-                       (select-frame (make-frame))
+                       (select-frame (make-frame '((window-system . pgtk))))
                        (let ((mid (gethash id my/mu4e-alert-pending-msgids)))
                          (remhash id my/mu4e-alert-pending-msgids)
                          (if mid

@@ -487,12 +487,20 @@ class CommandExecutor:
 
         # Common app aliases
         app_map = {
-            'browser': 'firefox',
             'terminal': 'x-terminal-emulator',
             'editor': 'code',
             'files': 'nautilus',
             'calculator': 'gnome-calculator',
         }
+
+        # Use xdg-open for browser to respect system default
+        if app.lower() == 'browser':
+            subprocess.Popen(
+                ['xdg-open', 'about:blank'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            return True
 
         app_cmd = app_map.get(app.lower(), app)
 
@@ -579,7 +587,7 @@ commands:
   # Example: Launch apps
   "open browser":
     type: launch
-    app: firefox
+    app: browser
 
   "open code":
     type: launch

@@ -5,7 +5,7 @@ commands:
   # Example: Launch apps
   "open browser":
     type: launch
-    app: firefox
+    app: browser
 
   "open code":
     type: launch

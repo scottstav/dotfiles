@@ -1,3 +1,0 @@
-#!/bin/bash
-
-firefox --new-window "https://mail.google.com/mail/u/0/#search/is%3Aunread"

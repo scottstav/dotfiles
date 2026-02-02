@@ -1,8 +1,0 @@
-[Desktop Entry]
-Name=Gmail
-GenericName=Email
-Comment=Email
-Exec=open-gmail
-Icon=gmail
-Type=Application
-Terminal=false

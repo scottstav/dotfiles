@@ -346,8 +346,10 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
         ok "mu already installed"
     fi
 
-    # Store Gmail app password for mbsync
+    # Store Gmail app password for mbsync and msmtp
     MBSYNC_PW_FILE="$HOME/.config/mbsync/password"
+    MSMTP_PW_FILE="$HOME/.config/msmtp/password"
+
     if [ -s "$MBSYNC_PW_FILE" ]; then
         ok "mbsync password file already exists"
     else
@@ -356,6 +358,16 @@ if [[ "$answer" =~ ^[Yy]$ ]]; then
         bw get password a5ed5643-21a5-4664-8b03-b3e100931aac > "$MBSYNC_PW_FILE"
         chmod 600 "$MBSYNC_PW_FILE"
         ok "mbsync password saved"
+    fi
+
+    if [ -s "$MSMTP_PW_FILE" ]; then
+        ok "msmtp password file already exists"
+    else
+        rm -f "$MSMTP_PW_FILE"
+        mkdir -p "$(dirname "$MSMTP_PW_FILE")"
+        bw get password a5ed5643-21a5-4664-8b03-b3e100931aac > "$MSMTP_PW_FILE"
+        chmod 600 "$MSMTP_PW_FILE"
+        ok "msmtp password saved"
     fi
 
     # Create maildir structure

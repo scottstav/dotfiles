@@ -5,12 +5,13 @@
 \.git
 \.gitignore
 README\.md
-CLAUDE\.md
+^/CLAUDE\.md
 
 # Repo scripts and metadata — not part of the home directory
 bootstrap\.sh
 setup\.sh
 sync-to-vc\.sh
+sync-claude\.sh
 packages.*\.txt
 
 # Android stuff is pushed via ADB, not stowed

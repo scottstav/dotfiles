@@ -177,8 +177,11 @@
 
     (advice-add 'mu4e-alert-notify-unread-messages :override #'my/mu4e-alert-notify)
 
-    (mu4e-alert-enable-notifications)
-    (mu4e-alert-enable-mode-line-display))
+    (mu4e-alert-enable-notifications))
+
+  ;; Disable mu4e's built-in modeline indicator (U:n/n)
+  (with-eval-after-load 'mu4e
+    (mu4e-modeline-mode -1))
 
   ;; Start mu4e in the background on daemon startup so notifications work
   (when (daemonp)

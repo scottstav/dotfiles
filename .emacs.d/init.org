@@ -376,9 +376,11 @@
       :stream t))
 
 
-  (use-package agent-shell)
+  (use-package agent-shell
+    :straight (:host github :repo "xenodium/agent-shell"))
 
   (use-package agent-shell-attention
+    :straight (:host github :repo "ultronozm/agent-shell-attention.el")
     :after agent-shell
     :config
     (defun my/agent-shell-attention-notify (buffer title body)

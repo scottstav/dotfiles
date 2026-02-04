@@ -329,6 +329,27 @@
     :position (point)
     :stream t))
 
+
+(use-package agent-shell)
+
+(use-package agent-shell-attention
+  :after agent-shell
+  :config
+  (defun my/agent-shell-attention-notify (buffer title body)
+    "Desktop notification that opens BUFFER when clicked."
+    (require 'notifications)
+    (notifications-notify
+     :app-name "agent-shell"
+     :title title
+     :body body
+     :actions '("default" "Open")
+     :on-action (lambda (_id _key)
+                  (when (buffer-live-p buffer)
+                    (agent-shell-attention--jump-to-buffer buffer)
+                    (select-frame-set-input-focus (selected-frame))))))
+  (setq agent-shell-attention-notify-function #'my/agent-shell-attention-notify)
+  (agent-shell-attention-mode 1))
+
 ;; todo
 
 (use-package mcp

@@ -52,19 +52,9 @@ Create Both
 Expunge Both
 SyncState *
 
-Channel gmail-spam
-Far ":gmail-remote:[Gmail]/Spam"
-Near :gmail-local:Spam
-MaxMessages 50
-ExpireUnread yes
-Create Both
-Expunge Both
-SyncState *
-
 Group gmail
 Channel gmail-inbox
 Channel gmail-sent
 Channel gmail-drafts
 Channel gmail-trash
 Channel gmail-archive
-Channel gmail-spam

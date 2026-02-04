@@ -54,7 +54,7 @@
 
     ;; Bookmarks
     (setq mu4e-bookmarks
-          '((:name "Unread"    :query "flag:unread AND NOT flag:trashed" :key ?u)
+          '((:name "Unread"    :query "flag:unread AND maildir:/gmail/Inbox" :key ?u)
             (:name "Inbox"     :query "maildir:/gmail/Inbox"             :key ?i)
             (:name "Today"     :query "date:today..now"                  :key ?t)
             (:name "This week" :query "date:7d..now"                     :key ?w)

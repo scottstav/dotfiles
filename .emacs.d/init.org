@@ -319,7 +319,8 @@
           ("b" . consult-project-buffer)
           ("r" . consult-ripgrep)
           ("f" . consult-fd)
-    	("v" . project-shell))
+          ("v" . project-shell)
+          ("a" . agent-shell))
     :config
     (setq project-list-file (expand-file-name "projects" user-emacs-directory))
     (setq project-switch-commands
@@ -377,7 +378,9 @@
 
 
   (use-package agent-shell
-    :straight (:host github :repo "xenodium/agent-shell"))
+    :straight (:host github :repo "xenodium/agent-shell")
+    :custom
+    (agent-shell-anthropic-default-model-id "claude-opus-4-6"))
 
   (use-package agent-shell-attention
     :straight (:host github :repo "ultronozm/agent-shell-attention.el")
@@ -486,6 +489,7 @@
     (global-treesit-auto-mode))
 
   (use-package eglot
+    :straight nil
     :hook ((python-ts-mode . eglot-ensure)
            (js-ts-mode . eglot-ensure)
            (typescript-ts-mode . eglot-ensure)

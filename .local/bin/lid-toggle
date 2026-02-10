@@ -1,0 +1,16 @@
+#!/bin/bash
+# Toggle laptop lid behavior between suspend and ignore (stay awake)
+
+CONF="/etc/systemd/logind.conf"
+
+current=$(grep -E '^HandleLidSwitch=' "$CONF" 2>/dev/null | head -1 | cut -d= -f2)
+
+if [[ "$current" == "ignore" ]]; then
+    sudo sed -i 's/^HandleLidSwitch=.*/HandleLidSwitch=suspend/' "$CONF"
+    sudo systemctl kill -s HUP systemd-logind
+    echo "Lid close: SUSPEND (normal behavior)"
+else
+    sudo sed -i '/^#\?HandleLidSwitch=/c\HandleLidSwitch=ignore' "$CONF"
+    sudo systemctl kill -s HUP systemd-logind
+    echo "Lid close: IGNORE (stays awake)"
+fi

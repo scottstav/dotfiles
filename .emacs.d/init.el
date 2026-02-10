@@ -116,8 +116,8 @@
 (setq vc-follow-symlinks t)
 
 (add-hook 'before-save-hook 'delete-trailing-whitespace)
-(global-set-key (kbd "C-c C-u") 'uncomment-region)
-(global-set-key (kbd "C-c C-p") 'comment-region)
+(delete-selection-mode 1)
+
 
 ;; Enable visual line mode globally
 (global-visual-line-mode 1)
@@ -130,9 +130,10 @@
 (use-package multiple-cursors
   :init (multiple-cursors-mode)
   :bind (("C-c m c" . mc/edit-lines)
-         ("C-=" . mc/mark-next-like-this)
-         ("C--" . mc/skip-to-next-like-this)
-         ("C-<" . mc/mark-previous-like-this)))
+         ("C-c m n" . mc/mark-next-like-this)
+         ("C-c m s" . mc/skip-to-next-like-this)
+         ("C-c m p" . mc/mark-previous-like-this)
+         ("C-c m a" . mc/mark-all-like-this)))
 
 ;;; completion-and-project.el --- Modern completion + project setup -*- lexical-binding: t; -*-
 
@@ -315,8 +316,8 @@
           (gptel-make-anthropic "Claude"
             :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))))
 
-;; set a global keybind for gptel send to C-c enter
-(global-set-key (kbd "C-c <return>") 'gptel-send)
+(global-set-key (kbd "C-c a g") 'gptel-send)
+(global-set-key (kbd "C-c a r") 'gptel-rewrite)
 
 (defun gptel-generate-code-here (prompt)
   "Generate code at point from PROMPT with file context."
@@ -333,6 +334,7 @@
 
 (use-package agent-shell
   :straight (:host github :repo "xenodium/agent-shell")
+  :bind ("C-c a s" . agent-shell-send-dwim)
   :custom
   (agent-shell-anthropic-default-model-id "claude-opus-4-6"))
 

@@ -383,6 +383,14 @@
 
 ;; todo
 
+(add-to-list 'load-path "~/.emacs.d/efrit/lisp")
+(require 'efrit)
+(setq efrit-model "claude-opus-4-6")
+(global-set-key (kbd "C-c a c") 'efrit-chat)
+(global-set-key (kbd "C-c a d") 'efrit-do)
+(global-set-key (kbd "C-c a a") 'efrit-agent)
+(global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
+
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
   :hook (prog-mode . copilot-mode)

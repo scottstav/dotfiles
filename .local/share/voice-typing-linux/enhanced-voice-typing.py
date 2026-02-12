@@ -17,6 +17,7 @@ import pyaudio
 import webrtcvad
 import collections
 import subprocess
+import shutil
 import sys
 import signal
 import time
@@ -301,15 +302,17 @@ class VoiceTyping:
         self.display_server = detect_display_server()
         print(f"🖥️  Display server: {self.display_server.upper()}")
 
-        # Check ydotool daemon for Wayland
+        # Detect typing backend for Wayland (prefer wtype over ydotool)
+        self.has_wtype = shutil.which('wtype') is not None
         if self.display_server == 'wayland':
-            if check_ydotool_daemon():
-                print(f"✅ ydotoold daemon running")
+            if self.has_wtype:
+                print(f"✅ Using wtype (native Wayland virtual-keyboard)")
+            elif check_ydotool_daemon():
+                print(f"✅ ydotoold daemon running (using ydotool)")
             else:
-                print(f"❌ ydotoold daemon NOT running!")
-                print(f"   Keyboard input won't work without it.")
-                print(f"   Start with: sudo ydotoold &")
-                print(f"   Or enable NixOS service from ydotool-service.nix")
+                print(f"❌ No typing backend! Install wtype or start ydotoold.")
+                print(f"   wtype (recommended): pacman -S wtype")
+                print(f"   ydotool: sudo ydotoold &")
 
         # Initialize command detection if enabled
         self.command_detector = None
@@ -1258,13 +1261,14 @@ class VoiceTyping:
         print(f"🤔 Confirm command '{action}'? Say 'confirm' or 'cancel'.")
 
     def type_text(self, text):
-        """Type text using xdotool (X11) or ydotool (Wayland)"""
+        """Type text using wtype/ydotool (Wayland) or xdotool (X11)"""
         try:
             if self.display_server == 'wayland':
-                # ydotool for Wayland (--key-delay=0 --key-hold=0 for instant typing)
-                subprocess.run(['ydotool', 'type', '-d', '0', '-H', '0', '--', text], check=True, env=self._ydotool_env())
+                if self.has_wtype:
+                    subprocess.run(['wtype', '--', text], check=True)
+                else:
+                    subprocess.run(['ydotool', 'type', '-d', '0', '-H', '0', '--', text], check=True, env=self._ydotool_env())
             else:
-                # xdotool for X11
                 subprocess.run(['xdotool', 'type', '--delay', '0', text], check=True)
             print(f"⌨️  Typed: '{text}'")
 
@@ -1276,7 +1280,7 @@ class VoiceTyping:
         except subprocess.CalledProcessError as e:
             print(f"❌ Failed to type: {e}")
         except FileNotFoundError:
-            tool = 'ydotool' if self.display_server == 'wayland' else 'xdotool'
+            tool = 'wtype/ydotool' if self.display_server == 'wayland' else 'xdotool'
             print(f"❌ {tool} not found")
 
     def _scratch_that(self):
@@ -1285,10 +1289,16 @@ class VoiceTyping:
             last_text, char_count = self.typing_history.pop()
             try:
                 if self.display_server == 'wayland':
-                    # ydotool key syntax: repeat backspace
-                    env = self._ydotool_env()
-                    for _ in range(char_count):
-                        subprocess.run(['ydotool', 'key', '14:1', '14:0'], check=True, env=env)  # 14 = BackSpace keycode
+                    if self.has_wtype:
+                        # wtype -k sends key tap; chain multiple -k BackSpace args
+                        cmd = ['wtype']
+                        for _ in range(char_count):
+                            cmd.extend(['-k', 'BackSpace'])
+                        subprocess.run(cmd, check=True)
+                    else:
+                        env = self._ydotool_env()
+                        for _ in range(char_count):
+                            subprocess.run(['ydotool', 'key', '14:1', '14:0'], check=True, env=env)
                 else:
                     subprocess.run([
                         'xdotool', 'key', '--repeat', str(char_count), 'BackSpace'

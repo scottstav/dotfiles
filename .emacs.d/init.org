@@ -411,24 +411,7 @@
 #+begin_src emacs-lisp
   ;; todo
 #+end_src
-**** mcp
-#+begin_src emacs-lisp
-    (use-package mcp
-      :after gptel
-      :custom
-      (mcp-hub-servers
-       `(("github" . (:command "docker"
-    			   :args ("run" "-i" "--rm" "-e" "GITHUB_PERSONAL_ACCESS_TOKEN"
-    				  "ghcr.io/github/github-mcp-server")
-    			   :env (:GITHUB_PERSONAL_ACCESS_TOKEN
-    				 ,(shell-command-to-string "bw get password 396252b4-ca8d-40db-9afe-b3950038c380"))))
-         ("context7" . (:url "https://mcp.context7.com/mcp"))
-         ))
-      :config (require 'mcp-hub)
-      :hook (after-init . mcp-hub-start-all-server))
-    (require 'gptel-integrations)
-    (gptel-mcp-connect)
-#+end_src
+
 *** agents
 #+begin_src emacs-lisp
   (use-package gptel-agent

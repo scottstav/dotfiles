@@ -77,6 +77,16 @@ mongosh "$MONGO_URI"
 
 The MongoDB host and database name can be found in the service's Terraform variables for the given environment (e.g. `terraform/envs/<env>/`). If not found there, check config files or env vars. Ask the user as a last resort.
 
+# Fixing Tests
+
+When fixing failing tests, always verify the fix by running the tests:
+
+1. **Reproduce the failure first** — run the failing test(s) to confirm the error
+2. **Make the fix**
+3. **Run the test(s) again** to prove the fix works
+
+Never push test fixes without confirming they pass locally.
+
 # Agents and Commands
 
 After creating or modifying a file in `~/.claude/agents/` or `~/.claude/commands/`, run `~/dotfiles/sync-claude.sh` to adopt it into the dotfiles repo and symlink it back. This ensures new agents and skills are version-controlled.

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+REGION=$(slurp)
+sleep 0.1
+grim -g "$REGION" -t png - | tesseract stdin stdout 2>/dev/null | wl-copy

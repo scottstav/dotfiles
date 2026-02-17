@@ -87,6 +87,10 @@ When fixing failing tests, always verify the fix by running the tests:
 
 Never push test fixes without confirming they pass locally.
 
+# Git Commits
+
+Never add `Co-Authored-By` trailers to commits. No co-sign lines.
+
 # Agents and Commands
 
 After creating or modifying a file in `~/.claude/agents/` or `~/.claude/commands/`, run `~/dotfiles/sync-claude.sh` to adopt it into the dotfiles repo and symlink it back. This ensures new agents and skills are version-controlled.

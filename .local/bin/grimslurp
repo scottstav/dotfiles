@@ -2,5 +2,5 @@
 
 IMG=~/Dropbox/Screenshots/$(date +%Y-%m-%d_%H-%m-%s).png
 REGION=$(slurp)
-sleep 0.1
+sleep 0.3
 grim -g "$REGION" $IMG && wl-copy < $IMG

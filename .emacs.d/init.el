@@ -600,6 +600,60 @@ Shows clean service names for completion (e.g., 'user-service')."
 
   (global-set-key (kbd "C-c n i") #'my/find-ifit-service)
 
+(use-package markdown-mode :ensure t)
+
+(use-package org-modern :ensure t)
+
+(defvar-local my/preview-active nil
+  "Whether document preview mode is active in the current buffer.")
+
+(defun my/org-align-all-tables ()
+  "Align every table in the buffer."
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward "^[ \t]*|" nil t)
+      (org-table-align)
+      (goto-char (org-table-end)))))
+
+(defun my/markdown-preview-browser ()
+  "Render current markdown buffer to HTML with pandoc and open in browser."
+  (let* ((input (buffer-string))
+         (html-file (concat (make-temp-file "md-preview-" nil ".html"))))
+    (with-temp-buffer
+      (insert input)
+      (call-process-region (point-min) (point-max) "pandoc"
+                           t t nil
+                           "-f" "gfm" "-t" "html5" "--standalone"
+                           "--metadata" "title= "
+                           "--css" "data:text/css;base64,Ym9keXtmb250LWZhbWlseTotYXBwbGUtc3lzdGVtLEJsaW5rTWFjU3lzdGVtRm9udCxTZWdvZSBVSSxIZWx2ZXRpY2Esc2Fucy1zZXJpZjttYXgtd2lkdGg6NTBlbTttYXJnaW46MmVtIGF1dG87cGFkZGluZzowIDFlbTtiYWNrZ3JvdW5kOiMwZDExMTc7Y29sb3I6I2MzYzhkNTtsaW5lLWhlaWdodDoxLjZ9dGFibGV7Ym9yZGVyLWNvbGxhcHNlOmNvbGxhcHNlO3dpZHRoOjEwMCV9dGgsdGR7Ym9yZGVyOjFweCBzb2xpZCAjMzA0MDUwO3BhZGRpbmc6OHB4IDEycHh9dGh7YmFja2dyb3VuZDojMTYxYjIyfXRyOm50aC1jaGlsZChldmVuKXtiYWNrZ3JvdW5kOiMxMjE3MWV9Y29kZXtiYWNrZ3JvdW5kOiMxNjFiMjI7cGFkZGluZzoycHggNnB4O2JvcmRlci1yYWRpdXM6NHB4fXByZXtiYWNrZ3JvdW5kOiMxNjFiMjI7cGFkZGluZzoxZW07Ym9yZGVyLXJhZGl1czo4cHg7b3ZlcmZsb3cteDphdXRvfWgxLGgyLGgze2NvbG9yOiNlMmU4ZjB9YXtjb2xvcjojNThhZWYyfQ==")
+      (write-region (point-min) (point-max) html-file nil 'silent))
+    (browse-url (concat "file://" html-file))))
+
+(defun my/toggle-document-preview ()
+  "Toggle a rendered/styled preview for org and markdown buffers."
+  (interactive)
+  (cond
+   ((derived-mode-p 'org-mode)
+    (if my/preview-active
+        (progn
+          (org-modern-mode -1)
+          (org-indent-mode -1)
+          (org-toggle-inline-images)
+          (setq my/preview-active nil)
+          (message "Org preview off"))
+      (my/org-align-all-tables)
+      (org-modern-mode 1)
+      (org-indent-mode 1)
+      (org-toggle-inline-images)
+      (setq my/preview-active t)
+      (message "Org preview on")))
+   ((derived-mode-p 'markdown-mode)
+    (my/markdown-preview-browser)
+    (message "Markdown preview opened in browser"))
+   (t (message "Not an org or markdown buffer"))))
+
+(global-set-key (kbd "C-c t p") #'my/toggle-document-preview)
+
 (use-package vterm)
 
 (use-package openwith

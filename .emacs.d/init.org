@@ -38,6 +38,14 @@
 #+RESULTS:
 : other-window
 
+** avy
+#+begin_src emacs-lisp
+  (use-package avy
+    :bind (("C-'" . avy-goto-char-2)
+           ("M-g w" . avy-goto-word-1)
+           ("M-g l" . avy-goto-line)))
+#+end_src
+
 * ui
 #+begin_src emacs-lisp
   (scroll-bar-mode -1)                     ; Disable visible scrollbar
@@ -65,6 +73,35 @@
     ;; but you can use any other Nerd Font if you want
     ;; (nerd-icons-font-family "Symbols Nerd Font Mono")
     )
+
+  ;; Undo/redo window layouts with C-c left/right
+  (winner-mode 1)
+
+  ;; Inline dired previews and subtree expansion
+  (use-package dired-preview
+    :hook (dired-mode . dired-preview-mode))
+
+  (use-package dired-subtree
+    :bind (:map dired-mode-map
+                ("TAB" . dired-subtree-toggle)))
+
+  ;; Pulse current line after navigation
+  (use-package pulsar
+    :config
+    (pulsar-global-mode 1)
+    (add-to-list 'pulsar-pulse-functions #'recenter-top-bottom)
+    (add-to-list 'pulsar-pulse-functions #'scroll-up-command)
+    (add-to-list 'pulsar-pulse-functions #'scroll-down-command)
+    (add-to-list 'pulsar-pulse-functions #'other-window)
+    (add-to-list 'pulsar-pulse-functions #'bookmark-jump)
+    (add-to-list 'pulsar-pulse-functions #'avy-goto-char-2)
+    (add-to-list 'pulsar-pulse-functions #'avy-goto-word-1)
+    (add-to-list 'pulsar-pulse-functions #'avy-goto-line))
+
+  ;; Subtle internal border padding
+  (use-package spacious-padding
+    :config
+    (spacious-padding-mode 1))
 #+end_src
 
 #+RESULTS:
@@ -76,6 +113,15 @@
 
 #+RESULTS:
 : t
+
+* which-key
+#+begin_src emacs-lisp
+  (use-package which-key
+    :custom
+    (which-key-idle-delay 0.5)
+    :config
+    (which-key-mode))
+#+end_src
 
 * backup and auto-save files
 #+begin_src emacs-lisp
@@ -173,6 +219,22 @@
 
 #+RESULTS:
 : mc/mark-previous-like-this
+
+* tempel
+#+begin_src emacs-lisp
+  (use-package tempel
+    :bind (("M-+" . tempel-insert)
+           ("M-*" . tempel-complete))
+    :custom
+    (tempel-path (expand-file-name "~/Dropbox/org/denote/templates.eld"))
+    :init
+    (defun tempel-setup-capf ()
+      (setq-local completion-at-point-functions
+                  (cons #'tempel-complete
+                        completion-at-point-functions)))
+    (add-hook 'prog-mode-hook #'tempel-setup-capf)
+    (add-hook 'text-mode-hook #'tempel-setup-capf))
+#+end_src
 
 * completion, search, etc
 #+begin_src emacs-lisp
@@ -439,6 +501,71 @@
 #+end_src
 
 
+** ai dired rename
+#+begin_src emacs-lisp
+  (defun my/ai-dired-rename (prompt)
+    "Rename marked dired files using AI. PROMPT describes the pattern."
+    (interactive "sRename pattern: ")
+    (unless (derived-mode-p 'dired-mode)
+      (user-error "Not in a dired buffer"))
+    (let ((dir default-directory)
+          (marked (dired-get-marked-files t)))
+      (message "Asking AI for rename suggestions...")
+      (gptel-request
+        (format "Rename these files according to: %s\n\nFiles:\n%s\n\nReturn ONLY a JSON array of objects with \"old\" and \"new\" keys."
+                prompt (mapconcat #'identity marked "\n"))
+        :system "Return ONLY valid JSON array. No markdown fences, no explanation, no other text."
+        :callback
+        (lambda (response _info)
+          (condition-case err
+              (let* ((json-array-type 'list)
+                     (json-object-type 'alist)
+                     (clean (string-trim (replace-regexp-in-string "```json\\|```" "" response)))
+                     (renames (json-read-from-string clean)))
+                (my/ai-dired-rename--preview dir renames))
+            (error (message "AI rename failed: %s" (error-message-string err))))))))
+
+  (defun my/ai-dired-rename--preview (dir renames)
+    "Show rename preview buffer for DIR with RENAMES alist."
+    (let ((buf (get-buffer-create "*AI Rename Preview*")))
+      (with-current-buffer buf
+        (let ((inhibit-read-only t))
+          (erase-buffer)
+          (insert (propertize "AI Rename Preview\n" 'face 'bold))
+          (insert (make-string 40 ?-) "\n\n")
+          (dolist (r renames)
+            (insert (format "  %s  ->  %s\n" (alist-get 'old r) (alist-get 'new r))))
+          (insert "\nPress y to apply, q to cancel.\n")
+          (goto-char (point-min)))
+        (special-mode)
+        (setq-local my/ai-rename-data (cons dir renames))
+        (local-set-key (kbd "y") #'my/ai-dired-rename--apply)
+        (local-set-key (kbd "q") (lambda () (interactive) (quit-window t) (message "Cancelled"))))
+      (pop-to-buffer buf)))
+
+  (defun my/ai-dired-rename--apply ()
+    "Apply renames from the preview buffer."
+    (interactive)
+    (let* ((data my/ai-rename-data)
+           (dir (car data))
+           (renames (cdr data)))
+      (dolist (r renames)
+        (let ((old (expand-file-name (alist-get 'old r) dir))
+              (new (expand-file-name (alist-get 'new r) dir)))
+          (when (file-exists-p old)
+            (rename-file old new t))))
+      (message "Renamed %d files" (length renames))
+      (quit-window t)
+      (dolist (b (buffer-list))
+        (with-current-buffer b
+          (when (and (derived-mode-p 'dired-mode)
+                     (equal default-directory dir))
+            (revert-buffer))))))
+
+  (with-eval-after-load 'dired
+    (define-key dired-mode-map (kbd "C-c a") #'my/ai-dired-rename))
+#+end_src
+
 ** copilot
 #+begin_src emacs-lisp
   (use-package copilot
@@ -507,12 +634,18 @@
     :config
     (setq org-directory "~/Dropbox/org"
           org-agenda-files (list "~/Dropbox/org/denote/"
-  			       "~/Dropbox/org/denote/journal")
+  			       "~/Dropbox/org/denote/journal"
+                                 "~/Dropbox/org/denote/work/"
+                                 "~/Dropbox/org/denote/work/journal/")
           org-clock-persist 'history
+          org-clock-into-drawer t
           org-export-with-section-numbers nil
           org-hide-block-startup t
           org-src-window-setup 'current-window
           org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate))
+
+  (org-clock-persistence-insinuate)
+  (global-set-key (kbd "C-c c") #'org-capture)
 
   ;; Org babel
   (use-package ob-http)
@@ -583,6 +716,48 @@
   (add-hook 'gptel-mode-hook #'my/gptel-image-download-setup)
 #+end_src
 
+** org-capture, clock, agenda
+#+begin_src emacs-lisp
+  (defun my/work-journal-file ()
+    "Return path to today's work journal file, creating if needed."
+    (let ((denote-journal-directory (expand-file-name "~/Dropbox/org/denote/work/journal"))
+          (denote-journal-file-name-title "work"))
+      (denote-journal-path-to-new-or-existing-entry)))
+
+  (setq org-capture-templates
+        `(("t" "Todo" entry (file+headline "~/Dropbox/org/denote/quicknote.org" "Inbox")
+           "* TODO %?\n%U\n")
+          ("n" "Quick note" entry (file+headline "~/Dropbox/org/denote/quicknote.org" "Notes")
+           "* %?\n%U\n")
+          ("s" "Tempel snippet" plain (file "~/Dropbox/org/denote/templates.eld")
+           "\n%?\n")
+          ("w" "Work")
+          ("wt" "Work todo" entry (file+headline my/work-journal-file "Tasks")
+           "* TODO %?\n%U\n")
+          ("wn" "Work note" entry (file my/work-journal-file)
+           "* %?\n%U\n")))
+
+  ;; Clock and agenda keybinds under C-c o
+  (define-prefix-command 'my/org-command-map)
+  (global-set-key (kbd "C-c o") 'my/org-command-map)
+  (define-key my/org-command-map (kbd "c") #'org-clock-in)
+  (define-key my/org-command-map (kbd "o") #'org-clock-out)
+  (define-key my/org-command-map (kbd "r") #'org-clock-report)
+  (define-key my/org-command-map (kbd "t") (lambda () (interactive) (org-agenda nil "p")))
+  (define-key my/org-command-map (kbd "w") (lambda () (interactive) (org-agenda nil "w")))
+
+  ;; Custom agenda views
+  (setq org-agenda-custom-commands
+        '(("p" "Personal TODOs"
+           ((todo "TODO"
+                  ((org-agenda-files (list "~/Dropbox/org/denote/"
+                                           "~/Dropbox/org/denote/journal"))))))
+          ("w" "Work TODOs"
+           ((todo "TODO"
+                  ((org-agenda-files (list "~/Dropbox/org/denote/work/"
+                                           "~/Dropbox/org/denote/work/journal/"))))))))
+#+end_src
+
 ** denote
 
 #+begin_src emacs-lisp
@@ -612,15 +787,12 @@
     (add-to-list 'savehist-additional-variables 'denote-history))
 
 
-  ;; Optional: Work notes
+  ;; Work notes
   (defun my/denote-work ()
-    "Create or open today's work journal entry."
+    "Create a new work note."
     (interactive)
-    (let ((denote-directory (expand-file-name "~/Dropbox/org/denote/work"))
-          (denote-file-name-title "work"))
-      (denote-create-note)))
-
-  (global-set-key (kbd "C-c n W") #'my/denote-work)
+    (let ((denote-directory (expand-file-name "~/Dropbox/org/denote/work")))
+      (call-interactively #'denote)))
 
   (use-package denote-journal
     :straight t
@@ -646,8 +818,17 @@
           (denote-journal-file-name-title "work"))
       (denote-journal-new-or-existing-entry)))
 
-  (global-set-key (kbd "C-c n w") #'my/denote-journal-work)
+  ;; Work prefix keymap under C-c n w
+  (defun my/consult-denote-work ()
+    "Find work note with consult."
+    (interactive)
+    (consult-find (expand-file-name "~/Dropbox/org/denote/work")))
 
+  (define-prefix-command 'my/denote-work-map)
+  (global-set-key (kbd "C-c n w") 'my/denote-work-map)
+  (define-key my/denote-work-map (kbd "j") #'my/denote-journal-work)
+  (define-key my/denote-work-map (kbd "n") #'my/denote-work)
+  (define-key my/denote-work-map (kbd "f") #'my/consult-denote-work)
 
   ;; Consult integration (if you use consult)
   (with-eval-after-load 'consult
@@ -748,6 +929,14 @@ Shows clean service names for completion (e.g., 'user-service')."
      (t (message "Not an org or markdown buffer"))))
 
   (global-set-key (kbd "C-c t p") #'my/toggle-document-preview)
+#+end_src
+
+* tmr
+#+begin_src emacs-lisp
+  (use-package tmr
+    :bind (("C-c k t" . tmr)
+           ("C-c k l" . tmr-tabulated-view)
+           ("C-c k c" . tmr-cancel)))
 #+end_src
 
 * terminal

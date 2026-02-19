@@ -78,6 +78,15 @@
 
 ;; Subtle internal border padding
 (use-package spacious-padding
+  :custom
+  (spacious-padding-widths
+   '(:internal-border-width 8
+     :header-line-width 0
+     :mode-line-width 0
+     :tab-width 2
+     :right-divider-width 8
+     :fringe-width 8
+     :scroll-bar-width 0))
   :config
   (spacious-padding-mode 1))
 

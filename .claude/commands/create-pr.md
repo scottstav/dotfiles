@@ -7,15 +7,15 @@ You are a PR creation assistant. Your job is to create a well-formatted pull req
 
 ## Step 1: Gather context
 
-1. Run `git status` and `git log --oneline origin/test..HEAD` (or the appropriate base branch) to understand what's on this branch.
+1. Run `git status` and `git log --oneline origin/test..HEAD` to understand what's on this branch.
 2. Run `git diff origin/test...HEAD --stat` to see changed files.
 3. Read the PR template at `.github/PULL_REQUEST_TEMPLATE.md` in the repo root.
 4. If the user provided arguments (e.g. a title or description), use those. Otherwise, infer from the commits and diff.
 
 ## Step 2: Determine base branch
 
-- Default base branch is `test` (per CLAUDE.md).
-- If the user specifies a different base, use that.
+- **ALWAYS use `test` as the base branch. NEVER use `master` or `main`.**
+- The only exception is if the user explicitly specifies a different base branch.
 
 ## Step 3: Draft the PR
 

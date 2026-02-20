@@ -23,6 +23,7 @@ video/x-msvideo=mpv.desktop
 video/x-ms-wmv=mpv.desktop
 image/png=feh.desktop=mpv.desktop
 x-scheme-handler/discord=vesktop.desktop
+x-scheme-handler/mailto=google-chrome.desktop
 
 [Added Associations]
 x-scheme-handler/http=chromium.desktop;

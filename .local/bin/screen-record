@@ -1,0 +1,31 @@
+#!/bin/bash
+# Toggle screen recording. First call: select area & record. Second call: stop, save & copy.
+
+PIDFILE="/tmp/screen-record.pid"
+OUTDIR="$HOME/Dropbox/recordings"
+
+if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    # Stop recording
+    kill -INT "$(cat "$PIDFILE")"
+    rm "$PIDFILE"
+
+    # Wait for wf-recorder to finalize the file
+    sleep 1
+
+    FILE=$(cat /tmp/screen-record-path)
+    rm /tmp/screen-record-path
+
+    # Copy to clipboard
+    wl-copy -t video/mp4 < "$FILE"
+    notify-send "Recording saved" "$(basename "$FILE")" -i camera-video
+else
+    # Start recording
+    GEOM=$(slurp) || exit 1
+    mkdir -p "$OUTDIR"
+    FILE="$OUTDIR/rec-$(date +%Y%m%d-%H%M%S).mp4"
+    echo "$FILE" > /tmp/screen-record-path
+
+    wf-recorder -g "$GEOM" -f "$FILE" -c libx264 -p crf=23 &
+    echo $! > "$PIDFILE"
+    notify-send "Recording started" "Press Super+Shift+R to stop" -i camera-video
+fi

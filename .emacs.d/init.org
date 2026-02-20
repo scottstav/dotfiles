@@ -85,6 +85,13 @@
     :bind (:map dired-mode-map
                 ("TAB" . dired-subtree-toggle)))
 
+  (defun my/find-grep-dired-here ()
+    "Run `find-grep-dired' against the current dired directory."
+    (interactive)
+    (find-grep-dired dired-directory (read-string "Grep for: ")))
+  (with-eval-after-load 'dired
+    (define-key dired-mode-map (kbd "M-i") #'my/find-grep-dired-here))
+
   ;; Pulse current line after navigation
   (use-package pulsar
     :config

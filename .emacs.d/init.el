@@ -377,32 +377,6 @@
   (add-to-list 'completion-at-point-functions #'cape-dabbrev))
 (use-package wgrep)
 
-(use-package gptel
-    :config
-    (setq gptel-default-mode 'org-mode
-          gptel-use-tools 'ask
-          gptel-track-media t
-          gptel-model 'claude-sonnet-4-5-20250929
-          gptel-backend
-          (gptel-make-anthropic "Claude"
-            :key (shell-command-to-string "bw get password 5322bf93-eb74-4ba6-bf47-b3950038928a"))))
-
-(global-set-key (kbd "C-c a g") 'gptel-send)
-(global-set-key (kbd "C-c a r") 'gptel-rewrite)
-
-(defun gptel-generate-code-here (prompt)
-  "Generate code at point from PROMPT with file context."
-  (interactive "sCode to generate: ")
-  (gptel-request
-    (format "File: %s\nLanguage: %s\n\nGenerate: %s"
-            (or (buffer-file-name) "unknown")
-            (symbol-name major-mode)
-            prompt)
-    :system "You are a code generator. Return ONLY the requested code. No markdown fences, no explanations, no prose. Raw code only, ready to be inserted directly into a source file."
-    :position (point)
-    :stream t))
-
-
 (use-package claude-code-ide
   :straight (:type git :host github :repo "manzaltu/claude-code-ide.el")
   :bind (("C-c a s" . claude-code-ide-menu)
@@ -420,16 +394,6 @@
   :config
   (claude-code-ide-emacs-tools-setup))
 
-;; todo
-
-(use-package gptel-agent
-  :config (gptel-agent-update))
-
-(use-package gptel-magit
-  :hook (magit-mode . gptel-magit-install))
-
-;; todo
-
 (use-package efrit
   :straight (:host github :repo "steveyegge/efrit" :files ("lisp/*.el"))
   :config
@@ -438,68 +402,6 @@
   (global-set-key (kbd "C-c a d") 'efrit-do)
   (global-set-key (kbd "C-c a a") 'efrit-agent)
   (global-set-key (kbd "C-c a p") 'efrit-do-show-progress))
-
-(defun my/ai-dired-rename (prompt)
-  "Rename marked dired files using AI. PROMPT describes the pattern."
-  (interactive "sRename pattern: ")
-  (unless (derived-mode-p 'dired-mode)
-    (user-error "Not in a dired buffer"))
-  (let ((dir default-directory)
-        (marked (dired-get-marked-files t)))
-    (message "Asking AI for rename suggestions...")
-    (gptel-request
-      (format "Rename these files according to: %s\n\nFiles:\n%s\n\nReturn ONLY a JSON array of objects with \"old\" and \"new\" keys."
-              prompt (mapconcat #'identity marked "\n"))
-      :system "Return ONLY valid JSON array. No markdown fences, no explanation, no other text."
-      :callback
-      (lambda (response _info)
-        (condition-case err
-            (let* ((json-array-type 'list)
-                   (json-object-type 'alist)
-                   (clean (string-trim (replace-regexp-in-string "```json\\|```" "" response)))
-                   (renames (json-read-from-string clean)))
-              (my/ai-dired-rename--preview dir renames))
-          (error (message "AI rename failed: %s" (error-message-string err))))))))
-
-(defun my/ai-dired-rename--preview (dir renames)
-  "Show rename preview buffer for DIR with RENAMES alist."
-  (let ((buf (get-buffer-create "*AI Rename Preview*")))
-    (with-current-buffer buf
-      (let ((inhibit-read-only t))
-        (erase-buffer)
-        (insert (propertize "AI Rename Preview\n" 'face 'bold))
-        (insert (make-string 40 ?-) "\n\n")
-        (dolist (r renames)
-          (insert (format "  %s  ->  %s\n" (alist-get 'old r) (alist-get 'new r))))
-        (insert "\nPress y to apply, q to cancel.\n")
-        (goto-char (point-min)))
-      (special-mode)
-      (setq-local my/ai-rename-data (cons dir renames))
-      (local-set-key (kbd "y") #'my/ai-dired-rename--apply)
-      (local-set-key (kbd "q") (lambda () (interactive) (quit-window t) (message "Cancelled"))))
-    (pop-to-buffer buf)))
-
-(defun my/ai-dired-rename--apply ()
-  "Apply renames from the preview buffer."
-  (interactive)
-  (let* ((data my/ai-rename-data)
-         (dir (car data))
-         (renames (cdr data)))
-    (dolist (r renames)
-      (let ((old (expand-file-name (alist-get 'old r) dir))
-            (new (expand-file-name (alist-get 'new r) dir)))
-        (when (file-exists-p old)
-          (rename-file old new t))))
-    (message "Renamed %d files" (length renames))
-    (quit-window t)
-    (dolist (b (buffer-list))
-      (with-current-buffer b
-        (when (and (derived-mode-p 'dired-mode)
-                   (equal default-directory dir))
-          (revert-buffer))))))
-
-(with-eval-after-load 'dired
-  (define-key dired-mode-map (kbd "C-c a") #'my/ai-dired-rename))
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
@@ -614,18 +516,6 @@
   :init
   (setq org-download-method 'directory
         org-download-image-dir "./_res"))
-
-(defun my/gptel-image-download-setup ()
-  (interactive)
-  (when (derived-mode-p 'org-mode)
-    (with-eval-after-load 'org-download
-      (setq-local org-download-image-dir
-		  (file-name-as-directory (concat (file-name-as-directory temporary-file-directory) "gptel")))
-      (setq-local org-download-heading-lvl nil)
-      )
-    )
-  )
-(add-hook 'gptel-mode-hook #'my/gptel-image-download-setup)
 
 (defun my/work-journal-file ()
   "Return path to today's work journal file, creating if needed."

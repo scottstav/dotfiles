@@ -388,8 +388,8 @@
       (if (and shell-buffer (not current-prefix-arg))
           (if (comint-check-proc shell-buffer)
               (pop-to-buffer shell-buffer (bound-and-true-p display-comint-buffer-action))
-            (vterm shell-buffer))
-        (vterm (generate-new-buffer-name default-project-shell-name)))))
+            (eat shell-buffer))
+        (eat (generate-new-buffer-name default-project-shell-name)))))
 
   (advice-add 'project-shell :override #'my-project-shell)
 
@@ -444,7 +444,7 @@
            ("C-c a i" . claude-code-ide-send-prompt)
            ("C-c a e" . claude-code-ide-send-escape))
     :custom
-    (claude-code-ide-terminal-backend 'vterm)
+    (claude-code-ide-terminal-backend 'eat)
     (claude-code-ide-window-side 'right)
     (claude-code-ide-window-width 90)
     (claude-code-ide-use-ide-diff t)
@@ -459,8 +459,7 @@
       (shell-command (format "git clone https://github.com/steveyegge/efrit.git %s" efrit-dir)))
     (add-to-list 'load-path (expand-file-name "lisp" efrit-dir)))
   (require 'efrit)
-  (setq efrit-model "claude-opus-4-6")
-  (setq efrit-default-model "claude-opus-4-6")
+  (setq efrit-default-model "claude-sonnet-4-6")
   (setq efrit-api-excluded-headers '("anthropic-beta"))
   (global-set-key (kbd "C-c a c") 'efrit-chat)
   (global-set-key (kbd "C-c a d") 'efrit-do)
@@ -853,6 +852,14 @@ Shows clean service names for completion (e.g., 'user-service')."
 
 * terminal
 #+begin_src emacs-lisp
+  (use-package eat
+    :straight nil
+    :ensure t
+    :hook (eat-mode . (lambda () (setq-local mode-line-format nil)))
+    :config
+    (setq eat-kill-buffer-on-exit t))
+
+  ;; kept as fallback for claude-code-ide
   (use-package vterm
     :hook (vterm-mode . (lambda () (setq-local mode-line-format nil))))
 

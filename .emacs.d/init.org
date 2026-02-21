@@ -454,14 +454,18 @@
 
 ** efrit
 #+begin_src emacs-lisp
-  (use-package efrit
-    :straight (:host github :repo "steveyegge/efrit" :files ("lisp/*.el"))
-    :config
-    (setq efrit-model "claude-opus-4-6")
-    (global-set-key (kbd "C-c a c") 'efrit-chat)
-    (global-set-key (kbd "C-c a d") 'efrit-do)
-    (global-set-key (kbd "C-c a a") 'efrit-agent)
-    (global-set-key (kbd "C-c a p") 'efrit-do-show-progress))
+  (let ((efrit-dir (expand-file-name "efrit" user-emacs-directory)))
+    (unless (file-directory-p efrit-dir)
+      (shell-command (format "git clone https://github.com/steveyegge/efrit.git %s" efrit-dir)))
+    (add-to-list 'load-path (expand-file-name "lisp" efrit-dir)))
+  (require 'efrit)
+  (setq efrit-model "claude-opus-4-6")
+  (setq efrit-default-model "claude-opus-4-6")
+  (setq efrit-api-excluded-headers '("anthropic-beta"))
+  (global-set-key (kbd "C-c a c") 'efrit-chat)
+  (global-set-key (kbd "C-c a d") 'efrit-do)
+  (global-set-key (kbd "C-c a a") 'efrit-agent)
+  (global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
 #+end_src
 
 ** copilot

@@ -403,30 +403,16 @@
     :stream t))
 
 
-(use-package agent-shell
-  :straight (:host github :repo "xenodium/agent-shell")
-  :bind ("C-c a s" . agent-shell-send-dwim)
+(use-package claude-code-ide
+  :straight (:type git :host github :repo "manzaltu/claude-code-ide.el")
+  :bind (("C-c a s" . claude-code-ide-menu))
   :custom
-  (agent-shell-anthropic-default-model-id "claude-opus-4-6"))
-
-(use-package agent-shell-attention
-  :straight (:host github :repo "ultronozm/agent-shell-attention.el")
-  :after agent-shell
+  (claude-code-ide-terminal-backend 'vterm)
+  (claude-code-ide-window-side 'right)
+  (claude-code-ide-window-width 90)
+  (claude-code-ide-use-ide-diff t)
   :config
-  (defun my/agent-shell-attention-notify (buffer title body)
-    "Desktop notification that opens BUFFER when clicked."
-    (require 'notifications)
-    (notifications-notify
-     :app-name "agent-shell"
-     :title title
-     :body body
-     :actions '("default" "Open")
-     :on-action (lambda (_id _key)
-                  (when (buffer-live-p buffer)
-                    (agent-shell-attention--jump-to-buffer buffer)
-                    (select-frame-set-input-focus (selected-frame))))))
-  (setq agent-shell-attention-notify-function #'my/agent-shell-attention-notify)
-  (agent-shell-attention-mode 1))
+  (claude-code-ide-emacs-tools-setup))
 
 ;; todo
 

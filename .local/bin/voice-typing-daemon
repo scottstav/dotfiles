@@ -1,8 +1,9 @@
 #!/bin/bash
 # Start voice typing daemon - run once at login
 # Model loads once, then stays in memory
+# Managed by: systemctl --user enable --now voice-typing
 
-export YDOTOOL_SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket"
+export YDOTOOL_SOCKET="${YDOTOOL_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/.ydotool_socket}"
 
 VOICE_DIR="$HOME/.local/share/voice-typing-linux"
 VENV="$VOICE_DIR/.venv"
@@ -12,6 +13,14 @@ if pgrep -f "enhanced-voice-typing.py" >/dev/null; then
     echo "Already running"
     exit 0
 fi
+
+# Wait for PulseAudio/PipeWire to be ready (up to 10s)
+for i in $(seq 1 20); do
+    if pactl info >/dev/null 2>&1; then
+        break
+    fi
+    sleep 0.5
+done
 
 # Tell PulseAudio to use whatever PipeWire has as default source
 export PULSE_SOURCE="$(pactl get-default-source 2>/dev/null)"

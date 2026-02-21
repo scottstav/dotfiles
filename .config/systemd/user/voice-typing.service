@@ -1,0 +1,17 @@
+[Unit]
+Description=Voice typing daemon (Whisper + VAD)
+After=pipewire-pulse.service
+Requires=pipewire-pulse.service
+
+[Service]
+Type=simple
+Environment=YDOTOOL_SOCKET=%t/.ydotool_socket
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/.local/bin/voice-typing-daemon
+Restart=on-failure
+RestartSec=3
+# Give model loading time before systemd considers it stuck
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

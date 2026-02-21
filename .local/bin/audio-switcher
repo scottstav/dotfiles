@@ -83,8 +83,7 @@ elif [[ "$mode" == *"Input"* ]]; then
             pactl move-source-output "$output" "$source"
         done
         # Restart voice typing daemon so it picks up the new source
-        pkill -f "enhanced-voice-typing.py" 2>/dev/null
-        nohup voice-typing-daemon > /tmp/voice-typing.log 2>&1 &
+        systemctl --user restart voice-typing 2>/dev/null &
         desc=$(pactl list sources | grep -A1 "Name: $source" | grep "Description:" | sed 's/.*Description: //')
         log_message "  $desc" && sleep 3 && log_message ""
     fi

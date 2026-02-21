@@ -17,8 +17,9 @@ get_sinks() {
         muted=$(pactl get-sink-mute "$name" 2>/dev/null | grep -oP 'yes|no')
         marker="  "
         [[ "$name" == "$default_sink" ]] && marker="${green}*${reset} "
-        [[ "$muted" == "yes" ]] && vol="${dim}${vol} [muted]${reset}"
-        printf "%s${bold}%s${reset} ${dim}%s${reset}\n" "$marker" "$desc" "$vol"
+        mute_label=""
+        [[ "$muted" == "yes" ]] && mute_label=" [muted]"
+        printf "%s${bold}%s${reset} ${dim}%s%s${reset}\t%s\n" "$marker" "$desc" "$vol" "$mute_label" "$name"
     done
 }
 
@@ -30,22 +31,16 @@ get_sources() {
         vol=$(pactl get-source-volume "$name" 2>/dev/null | grep -oP '\d+%' | head -1)
         marker="  "
         [[ "$name" == "$default_source" ]] && marker="${green}*${reset} "
-        printf "%s${bold}%s${reset} ${dim}%s${reset}\n" "$marker" "$desc" "$vol"
+        printf "%s${bold}%s${reset} ${dim}%s${reset}\t%s\n" "$marker" "$desc" "$vol" "$name"
     done
-}
-
-resolve_name() {
-    local desc="$1" type="$2"
-    local list_cmd="sinks"
-    [[ "$type" == "source" ]] && list_cmd="sources"
-    pactl list "$list_cmd" | grep -B1 "Description: $desc" | grep "Name:" | sed 's/.*Name: //'
 }
 
 # Pick category
 mode=$(printf "${cyan}  Output${reset}\n${yellow}  Input${reset}" | fzf \
     --ansi --height=100% --layout=reverse \
     --header="${bold}Audio Switcher${reset}" \
-    --no-info --pointer=">" --no-scrollbar)
+    --no-info --pointer=">" --no-scrollbar \
+    --bind 'left-click:accept')
 
 [[ -z "$mode" ]] && exit 0
 
@@ -53,21 +48,20 @@ if [[ "$mode" == *"Output"* ]]; then
     selection=$(get_sinks | fzf \
         --ansi --height=100% --layout=reverse \
         --header="${bold}Select output${reset}" \
-        --no-info --pointer=">" --no-scrollbar)
+        --no-info --pointer=">" --no-scrollbar \
+        --delimiter='\t' --with-nth=1 \
+        --bind 'left-click:accept')
 
     [[ -z "$selection" ]] && exit 0
 
-    # Strip the marker and volume to get description
-    desc=$(echo "$selection" | sed -E 's/^.{2}//' | sed -E 's/^(\x1b\[[0-9;]*m)*\*(\x1b\[[0-9;]*m)* //' | sed -E 's/ +\x1b\[2m.*$//')
-    # Clean ANSI from desc
-    desc=$(echo "$desc" | sed 's/\x1b\[[0-9;]*m//g' | xargs)
-    sink=$(resolve_name "$desc" "sink")
+    sink=$(printf '%s' "$selection" | awk -F'\t' '{print $NF}')
 
     if [[ -n "$sink" ]]; then
         pactl set-default-sink "$sink"
         pactl list sink-inputs short | awk '{print $1}' | while read -r input; do
             pactl move-sink-input "$input" "$sink"
         done
+        desc=$(pactl list sinks | grep -A1 "Name: $sink" | grep "Description:" | sed 's/.*Description: //')
         log_message "  $desc" && sleep 3 && log_message ""
     fi
 
@@ -75,13 +69,13 @@ elif [[ "$mode" == *"Input"* ]]; then
     selection=$(get_sources | fzf \
         --ansi --height=100% --layout=reverse \
         --header="${bold}Select input${reset}" \
-        --no-info --pointer=">" --no-scrollbar)
+        --no-info --pointer=">" --no-scrollbar \
+        --delimiter='\t' --with-nth=1 \
+        --bind 'left-click:accept')
 
     [[ -z "$selection" ]] && exit 0
 
-    desc=$(echo "$selection" | sed -E 's/^.{2}//' | sed -E 's/^(\x1b\[[0-9;]*m)*\*(\x1b\[[0-9;]*m)* //' | sed -E 's/ +\x1b\[2m.*$//')
-    desc=$(echo "$desc" | sed 's/\x1b\[[0-9;]*m//g' | xargs)
-    source=$(resolve_name "$desc" "source")
+    source=$(printf '%s' "$selection" | awk -F'\t' '{print $NF}')
 
     if [[ -n "$source" ]]; then
         pactl set-default-source "$source"
@@ -91,6 +85,7 @@ elif [[ "$mode" == *"Input"* ]]; then
         # Restart voice typing daemon so it picks up the new source
         pkill -f "enhanced-voice-typing.py" 2>/dev/null
         nohup voice-typing-daemon > /tmp/voice-typing.log 2>&1 &
+        desc=$(pactl list sources | grep -A1 "Name: $source" | grep "Description:" | sed 's/.*Description: //')
         log_message "  $desc" && sleep 3 && log_message ""
     fi
 fi

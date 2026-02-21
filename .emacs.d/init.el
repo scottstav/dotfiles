@@ -438,13 +438,14 @@
 
 ;; todo
 
-(add-to-list 'load-path "~/.emacs.d/efrit/lisp")
-(require 'efrit)
-(setq efrit-model "claude-opus-4-6")
-(global-set-key (kbd "C-c a c") 'efrit-chat)
-(global-set-key (kbd "C-c a d") 'efrit-do)
-(global-set-key (kbd "C-c a a") 'efrit-agent)
-(global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
+(use-package efrit
+  :straight (:host github :repo "steveyegge/efrit" :files ("lisp/*.el"))
+  :config
+  (setq efrit-model "claude-opus-4-6")
+  (global-set-key (kbd "C-c a c") 'efrit-chat)
+  (global-set-key (kbd "C-c a d") 'efrit-do)
+  (global-set-key (kbd "C-c a a") 'efrit-agent)
+  (global-set-key (kbd "C-c a p") 'efrit-do-show-progress))
 
 (defun my/ai-dired-rename (prompt)
   "Rename marked dired files using AI. PROMPT describes the pattern."

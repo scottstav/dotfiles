@@ -512,13 +512,14 @@
 | :description | For quick questions. Small responses to and from minibuf. | :backend | Claude | :model | claude-3-5-haiku-20241022 | :system | You are a robot that provides information. You can search the web with the tool but only if you need to. Be as quick as possible. Limit your responses to 110 characters. | :tools | (get_file_info search_files directory_tree list_directory_with_sizes read_multiple_files read_media_file read_text_file list_directory read_file list_allowed_directories get-library-docs resolve-library-id) | :stream | t | :temperature | 1.0 | :max-tokens | nil | :use-context | user | :track-media | t | :include-reasoning | t |
 ** efrit
 #+begin_src emacs-lisp
-  (add-to-list 'load-path "~/.emacs.d/efrit/lisp")
-  (require 'efrit)
-  (setq efrit-model "claude-opus-4-6")
-  (global-set-key (kbd "C-c a c") 'efrit-chat)
-  (global-set-key (kbd "C-c a d") 'efrit-do)
-  (global-set-key (kbd "C-c a a") 'efrit-agent)
-  (global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
+  (use-package efrit
+    :straight (:host github :repo "steveyegge/efrit" :files ("lisp/*.el"))
+    :config
+    (setq efrit-model "claude-opus-4-6")
+    (global-set-key (kbd "C-c a c") 'efrit-chat)
+    (global-set-key (kbd "C-c a d") 'efrit-do)
+    (global-set-key (kbd "C-c a a") 'efrit-agent)
+    (global-set-key (kbd "C-c a p") 'efrit-do-show-progress))
 #+end_src
 
 

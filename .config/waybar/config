@@ -117,7 +117,7 @@
         "format-icons": {
             "default": ["", "", ""]
         },
-        "on-click": "sleep 0.1 && audio-switcher",
+        "on-click": "sleep 0.1 && foot --app-id=fzf-picker -e audio-switcher",
         "on-scroll-up": "audio-volume up",
         "on-scroll-down": "audio-volume down"
     },
@@ -131,7 +131,7 @@
         "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
 
 
-        "on-click": "sleep 0.2 && bluetooth-controller"
+        "on-click": ""
     },
     "custom/waybarstatus": {
         "exec": "waybar-status",

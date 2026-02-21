@@ -1,69 +1,96 @@
 #!/bin/bash
+# Audio device switcher — fzf in foot for consistency with other pickers
 
-# Audio device switcher for waybar
-# Uses fuzzel for selection menu and pactl for audio control
-# Moves currently playing streams to the selected device
+bold=$'\e[1m'
+dim=$'\e[2m'
+reset=$'\e[0m'
+green=$'\e[32m'
+cyan=$'\e[36m'
+yellow=$'\e[33m'
 
-# First, let user choose between Input or Output
-category=$(printf "Output\nInput" | fuzzel -d -p "Audio: ")
+get_sinks() {
+    local default_sink
+    default_sink=$(pactl get-default-sink 2>/dev/null)
+    pactl list sinks short | while read -r id name _rest; do
+        desc=$(pactl list sinks | grep -A1 "Name: $name" | grep "Description:" | sed 's/.*Description: //')
+        vol=$(pactl get-sink-volume "$name" 2>/dev/null | grep -oP '\d+%' | head -1)
+        muted=$(pactl get-sink-mute "$name" 2>/dev/null | grep -oP 'yes|no')
+        marker="  "
+        [[ "$name" == "$default_sink" ]] && marker="${green}*${reset} "
+        [[ "$muted" == "yes" ]] && vol="${dim}${vol} [muted]${reset}"
+        printf "%s${bold}%s${reset} ${dim}%s${reset}\n" "$marker" "$desc" "$vol"
+    done
+}
 
-if [ -z "$category" ]; then
-    exit 0
-fi
+get_sources() {
+    local default_source
+    default_source=$(pactl get-default-source 2>/dev/null)
+    pactl list sources short | grep -v '\.monitor' | while read -r id name _rest; do
+        desc=$(pactl list sources | grep -A1 "Name: $name" | grep "Description:" | sed 's/.*Description: //')
+        vol=$(pactl get-source-volume "$name" 2>/dev/null | grep -oP '\d+%' | head -1)
+        marker="  "
+        [[ "$name" == "$default_source" ]] && marker="${green}*${reset} "
+        printf "%s${bold}%s${reset} ${dim}%s${reset}\n" "$marker" "$desc" "$vol"
+    done
+}
 
-if [ "$category" = "Output" ]; then
-    # Get list of output sinks
-    devices=$(pactl list sinks short | awk '{print $2}')
+resolve_name() {
+    local desc="$1" type="$2"
+    local list_cmd="sinks"
+    [[ "$type" == "source" ]] && list_cmd="sources"
+    pactl list "$list_cmd" | grep -B1 "Description: $desc" | grep "Name:" | sed 's/.*Name: //'
+}
 
-    # Get human-readable names
-    options=""
-    while IFS= read -r device; do
-        name=$(pactl list sinks | grep -A 1 "Name: $device" | grep "Description:" | sed 's/.*Description: //')
-        if [ -n "$name" ]; then
-            options+="$name\n"
-        fi
-    done <<< "$devices"
+# Pick category
+mode=$(printf "${cyan}  Output${reset}\n${yellow}  Input${reset}" | fzf \
+    --ansi --height=100% --layout=reverse \
+    --header="${bold}Audio Switcher${reset}" \
+    --no-info --pointer=">" --no-scrollbar)
 
-    # Remove trailing newline and show menu
-    selection=$(printf "${options%\\n}" | fuzzel -d -p "Output: ")
+[[ -z "$mode" ]] && exit 0
 
-    if [ -n "$selection" ]; then
-        # Find the sink name for the selected description
-        sink=$(pactl list sinks | grep -B 1 "Description: $selection" | grep "Name:" | sed 's/.*Name: //')
-        if [ -n "$sink" ]; then
-            # Move all current sink-inputs (playing streams) to the new sink
-            pactl list sink-inputs short | awk '{print $1}' | while read -r input; do
-                pactl move-sink-input "$input" "$sink"
-            done
-            log_message "Audio output: $selection" && sleep 3 && log_message ""
-        fi
+if [[ "$mode" == *"Output"* ]]; then
+    selection=$(get_sinks | fzf \
+        --ansi --height=100% --layout=reverse \
+        --header="${bold}Select output${reset}" \
+        --no-info --pointer=">" --no-scrollbar)
+
+    [[ -z "$selection" ]] && exit 0
+
+    # Strip the marker and volume to get description
+    desc=$(echo "$selection" | sed -E 's/^.{2}//' | sed -E 's/^(\x1b\[[0-9;]*m)*\*(\x1b\[[0-9;]*m)* //' | sed -E 's/ +\x1b\[2m.*$//')
+    # Clean ANSI from desc
+    desc=$(echo "$desc" | sed 's/\x1b\[[0-9;]*m//g' | xargs)
+    sink=$(resolve_name "$desc" "sink")
+
+    if [[ -n "$sink" ]]; then
+        pactl set-default-sink "$sink"
+        pactl list sink-inputs short | awk '{print $1}' | while read -r input; do
+            pactl move-sink-input "$input" "$sink"
+        done
+        log_message "  $desc" && sleep 3 && log_message ""
     fi
 
-elif [ "$category" = "Input" ]; then
-    # Get list of input sources
-    devices=$(pactl list sources short | grep -v ".monitor" | awk '{print $2}')
+elif [[ "$mode" == *"Input"* ]]; then
+    selection=$(get_sources | fzf \
+        --ansi --height=100% --layout=reverse \
+        --header="${bold}Select input${reset}" \
+        --no-info --pointer=">" --no-scrollbar)
 
-    # Get human-readable names
-    options=""
-    while IFS= read -r device; do
-        name=$(pactl list sources | grep -A 1 "Name: $device" | grep "Description:" | sed 's/.*Description: //')
-        if [ -n "$name" ]; then
-            options+="$name\n"
-        fi
-    done <<< "$devices"
+    [[ -z "$selection" ]] && exit 0
 
-    # Remove trailing newline and show menu
-    selection=$(printf "${options%\\n}" | fuzzel -d -p "Input: ")
+    desc=$(echo "$selection" | sed -E 's/^.{2}//' | sed -E 's/^(\x1b\[[0-9;]*m)*\*(\x1b\[[0-9;]*m)* //' | sed -E 's/ +\x1b\[2m.*$//')
+    desc=$(echo "$desc" | sed 's/\x1b\[[0-9;]*m//g' | xargs)
+    source=$(resolve_name "$desc" "source")
 
-    if [ -n "$selection" ]; then
-        # Find the source name for the selected description
-        source=$(pactl list sources | grep -B 1 "Description: $selection" | grep "Name:" | sed 's/.*Name: //')
-        if [ -n "$source" ]; then
-            # Move all current source-outputs (recording streams) to the new source
-            pactl list source-outputs short | awk '{print $1}' | while read -r output; do
-                pactl move-source-output "$output" "$source"
-            done
-            log_message "Audio input: $selection" && sleep 3 && log_message ""
-        fi
+    if [[ -n "$source" ]]; then
+        pactl set-default-source "$source"
+        pactl list source-outputs short | awk '{print $1}' | while read -r output; do
+            pactl move-source-output "$output" "$source"
+        done
+        # Restart voice typing daemon so it picks up the new source
+        pkill -f "enhanced-voice-typing.py" 2>/dev/null
+        nohup voice-typing-daemon > /tmp/voice-typing.log 2>&1 &
+        log_message "  $desc" && sleep 3 && log_message ""
     fi
 fi

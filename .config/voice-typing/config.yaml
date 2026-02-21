@@ -7,7 +7,7 @@ model: base
 # Run on CPU (stable, your Ryzen handles it well)
 device: cpu
 
-# Use PipeWire/PulseAudio (handles resampling from Scarlett's 44.1kHz to 16kHz)
+# Use PulseAudio device (handles resampling; Scarlett is pro-audio so we must go through pulse)
 input_device: "pulse"
 
 # Enable commands mode (voice commands + dictation)

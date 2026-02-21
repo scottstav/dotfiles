@@ -13,6 +13,9 @@ if pgrep -f "enhanced-voice-typing.py" >/dev/null; then
     exit 0
 fi
 
+# Tell PulseAudio to use whatever PipeWire has as default source
+export PULSE_SOURCE="$(pactl get-default-source 2>/dev/null)"
+
 cd "$VOICE_DIR"
 source "$VENV/bin/activate"
 exec python enhanced-voice-typing.py

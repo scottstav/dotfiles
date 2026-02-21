@@ -46,6 +46,11 @@
            ("M-g l" . avy-goto-line)))
 #+end_src
 
+** bookmarks
+#+begin_src emacs-lisp
+  (setq bookmark-save-flag 1)
+#+end_src
+
 * ui
 #+begin_src emacs-lisp
   (scroll-bar-mode -1)                     ; Disable visible scrollbar
@@ -292,7 +297,7 @@
     (corfu-auto-prefix 2)
     (corfu-cycle t)
     (corfu-quit-no-match 'separator)
-    :init (global-corfu-mode)
+    :hook ((prog-mode conf-mode) . corfu-mode)
     :bind (:map corfu-map
                 ("C-n" . corfu-next)
                 ("C-p" . corfu-previous)
@@ -824,6 +829,28 @@
     ;; Daily journal (could be 'weekly or 'monthly)
     (setq denote-journal-frequency 'daily))
 
+
+  (defun my/shred-quicknote ()
+    "Shred quicknote.org into a denote note tagged inbox, then clear the file."
+    (interactive)
+    (let* ((capture-file (expand-file-name "~/Dropbox/org/denote/quicknote.org"))
+           (content (with-temp-buffer
+                      (insert-file-contents capture-file)
+                      (string-trim (buffer-string)))))
+      (if (string-empty-p content)
+          (message "Capture file is empty. Nothing to shred.")
+        (let ((new-file (denote "quick note" '("inbox"))))
+          (with-current-buffer (find-file-noselect new-file)
+            (goto-char (point-max))
+            (insert content "\n")
+            (save-buffer))
+          ;; Clear the capture file and revert any open buffer
+          (with-temp-file capture-file (insert ""))
+          (when-let ((buf (find-buffer-visiting capture-file)))
+            (with-current-buffer buf (revert-buffer t t)))
+          (message "Shredded quicknote into %s" (file-name-nondirectory new-file))))))
+
+  (global-set-key (kbd "C-c n q") #'my/shred-quicknote)
 
   ;; Optional: Work journal (separate from personal)
   ;; You can call this function or bind it

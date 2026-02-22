@@ -38,9 +38,6 @@
 
 (setq fit-window-to-buffer-horizontally t)
 
-(set-face-attribute 'mode-line nil :height 0.8)
-(set-face-attribute 'mode-line-inactive nil :height 0.8)
-
 (set-fontset-font t 'emoji "Noto Color Emoji" nil 'prepend)
 (set-fontset-font t '(#xe000 . #xf8ff) "Symbols Nerd Font Mono")
 (set-fontset-font t '(#xf0000 . #xfffff) "Symbols Nerd Font Mono")
@@ -100,6 +97,15 @@
   (spacious-padding-mode 1))
 
 (load-theme 'deeper-blue t)
+
+;; Override theme's mode-line faces. Uses custom-set-faces so they
+;; survive daemon frame creation and spacious-padding's theme hooks.
+(custom-set-faces
+ '(mode-line ((t (:height 0.8))))
+ '(mode-line-active ((t (:background "#353550" :foreground "#b0b0c0"
+                          :box (:line-width 4 :color "#353550")))))
+ '(mode-line-inactive ((t (:height 0.8 :background "#2a2a3a" :foreground "#7a7a8a"
+                            :box (:line-width 4 :color "#2a2a3a"))))))
 
 (use-package which-key
   :custom
@@ -335,8 +341,8 @@
     (if (and shell-buffer (not current-prefix-arg))
         (if (comint-check-proc shell-buffer)
             (pop-to-buffer shell-buffer (bound-and-true-p display-comint-buffer-action))
-          (eat shell-buffer))
-      (eat (generate-new-buffer-name default-project-shell-name)))))
+          (vterm shell-buffer))
+      (vterm (generate-new-buffer-name default-project-shell-name)))))
 
 (advice-add 'project-shell :override #'my-project-shell)
 
@@ -387,7 +393,7 @@
          ("C-c a i" . claude-code-ide-send-prompt)
          ("C-c a e" . claude-code-ide-send-escape))
   :custom
-  (claude-code-ide-terminal-backend 'eat)
+  (claude-code-ide-terminal-backend 'vterm)
   (claude-code-ide-window-side 'right)
   (claude-code-ide-window-width 90)
   (claude-code-ide-use-ide-diff t)
@@ -751,15 +757,7 @@ Shows clean service names for completion (e.g., 'user-service')."
          ("C-c k l" . tmr-tabulated-view)
          ("C-c k c" . tmr-cancel)))
 
-(use-package eat
-    :straight nil
-    :ensure t
-    :hook (eat-mode . (lambda () (setq-local mode-line-format nil)))
-    :config
-    (setq eat-kill-buffer-on-exit t))
-
-  ;; kept as fallback for claude-code-ide
-  (use-package vterm
+(use-package vterm
     :hook (vterm-mode . (lambda () (setq-local mode-line-format nil))))
 
 (use-package openwith

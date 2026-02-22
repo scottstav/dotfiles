@@ -1,39 +1,65 @@
 #!/usr/bin/env bash
 
-########################
-## COLOR/CUSTOMIZE PROMPT
-########################
-reset=$(tput sgr0)
-bold=$(tput bold)
-red=$(tput setaf 1)
-green=$(tput setaf 2)
-magenta=$(tput setaf 5)
-cyan=$(tput setaf 6)
-white=$(tput setaf 7)
+# ── colors ────────────────────────────────────────────────────────────────────
+reset="\[$(tput sgr0)\]"
+bold="\[$(tput bold)\]"
+dim="\[$(tput dim)\]"
+red="\[$(tput setaf 1)\]"
+green="\[$(tput setaf 2)\]"
+yellow="\[$(tput setaf 3)\]"
+blue="\[$(tput setaf 4)\]"
+magenta="\[$(tput setaf 5)\]"
+cyan="\[$(tput setaf 6)\]"
+white="\[$(tput setaf 7)\]"
+gray="\[$(tput setaf 8)\]"
 
-# SSH is CYAN, local is RED
-if [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ]; then
-    session_color=$cyan
-else
-    session_color=$red
-fi
-
-
-cd () { builtin cd "$@" && chpwd; }
-pushd () { builtin pushd "$@" && chpwd; }
-popd () { builtin popd "$@" && chpwd; }
-
-# Show directories 2 layers deep
-chpwd () {
-  case $PWD in
-    $HOME) HPWD="~";;
-    $HOME/*/*) HPWD="${PWD#"${PWD%/*/*}/"}";;
-    $HOME/*) HPWD="~/${PWD##*/}";;
-    /*/*/*) HPWD="${PWD#"${PWD%/*/*}/"}";;
-    *) HPWD="$PWD";;
-  esac
+# ── path: show last 2 segments ────────────────────────────────────────────────
+_prompt_path() {
+  local p="${PWD/#$HOME/\~}"
+  # keep last 2 path components
+  echo "$p" | awk -F/ '{
+    n=NF
+    if (n <= 2) print $0
+    else print $(n-1)"/"$n
+  }'
 }
 
-PS1='\[$reset\]\[$white\][\[$session_color\]$HPWD\[$white\]] →\[$reset\] '
-chpwd # this is to trigger evaluation of chpwd when shell comes up
+# ── git info ──────────────────────────────────────────────────────────────────
+_prompt_git() {
+  local branch dirty
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null) || \
+  branch=$(git rev-parse --short HEAD 2>/dev/null)   || return
 
+  # dirty check
+  git diff --quiet --ignore-submodules HEAD 2>/dev/null || dirty="*"
+
+  printf " %s" "${branch}${dirty}"
+}
+
+# ── exit code indicator ───────────────────────────────────────────────────────
+_prompt_status() {
+  [ "$1" -eq 0 ] && printf "❯" || printf "❯"
+}
+
+# ── build PS1 ─────────────────────────────────────────────────────────────────
+_set_prompt() {
+  local exit_code=$?
+
+  # color the arrow: green on success, red on failure
+  local arrow_color
+  [ "$exit_code" -eq 0 ] && arrow_color="$green" || arrow_color="$red"
+
+  # SSH vs local: tint the path
+  local path_color
+  [ -n "$SSH_CLIENT" ] || [ -n "$SSH_TTY" ] && path_color="$cyan" || path_color="$blue"
+
+  local path_str git_str
+  path_str=$(_prompt_path)
+  git_str=$(_prompt_git)
+
+  PS1="${reset}${bold}${path_color}${path_str}${reset}"
+  PS1+="${gray}${git_str}${reset}"
+  PS1+=" ${arrow_color}❯${reset} "
+}
+
+PROMPT_COMMAND="_set_prompt"

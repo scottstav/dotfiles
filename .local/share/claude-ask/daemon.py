@@ -16,6 +16,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import anthropic
+import tomllib
+
+from sentence_buffer import SentenceBuffer
+from tts import TTSPipeline
+from waybar_state import WaybarState
 
 from format import archive_path, format_conversation
 
@@ -29,6 +34,7 @@ log = logging.getLogger("claude-ask")
 CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
 LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
 USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
+CONFIG_FILE = Path.home() / ".config" / "claude-ask" / "config.toml"
 TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 
 MODEL = "claude-sonnet-4-6"
@@ -62,6 +68,31 @@ You have tools. Use them proactively:
 def get_socket_path():
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
     return os.path.join(runtime_dir, "claude-ask.sock")
+
+
+def load_voice_config():
+    """Load voice configuration from config.toml."""
+    defaults = {
+        "enabled": False,
+        "model": "af_heart",
+        "speed": 1.0,
+        "lang": "a",
+        "filter": {"skip_code_blocks": True, "skip_urls": True},
+    }
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            config = tomllib.load(f)
+        voice = config.get("voice", {})
+        return {
+            "enabled": voice.get("enabled", defaults["enabled"]),
+            "model": voice.get("model", defaults["model"]),
+            "speed": voice.get("speed", defaults["speed"]),
+            "lang": voice.get("lang", defaults["lang"]),
+            "filter": voice.get("filter", defaults["filter"]),
+        }
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        log.warning("Could not load voice config, using defaults")
+        return defaults
 
 
 # ---------------------------------------------------------------------------
@@ -163,6 +194,15 @@ class Daemon:
         self.store = ConversationStore()
         self.client = anthropic.Anthropic(api_key=api_key)
         self.tools = self._load_tools()
+        self.waybar = WaybarState()
+        self._voice_config = load_voice_config()
+        self.waybar.speak_enabled = self._voice_config["enabled"]
+        self.tts = TTSPipeline(
+            model=self._voice_config["model"],
+            speed=self._voice_config["speed"],
+            lang=self._voice_config["lang"],
+        )
+        self._session_tokens = 0
 
     # -- Tool loading -------------------------------------------------------
 
@@ -246,6 +286,45 @@ class Daemon:
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
+        )
+
+    def _notify_speaking(self, tag):
+        """Show a persistent notification while speaking with a Stop action."""
+        def _run():
+            try:
+                result = subprocess.run(
+                    [
+                        "notify-send", "-t", "0",
+                        "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
+                        "-a", "Claude",
+                        "-A", "stop=Stop",
+                        "--wait",
+                        "Claude", "Speaking...",
+                    ],
+                    capture_output=True,
+                    text=True,
+                )
+                if result.stdout.strip() == "stop":
+                    self.tts.stop()
+                    self.waybar.set_status("idle")
+                    subprocess.Popen(
+                        ["notify-send", "-t", "1",
+                         "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
+                         "-a", "Claude", "Claude", "Stopped"],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+            except Exception:
+                log.exception("Error in speaking notification")
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
+
+    def _dismiss_speaking_notify(self, tag):
+        """Dismiss the speaking notification."""
+        subprocess.Popen(
+            ["notify-send", "-t", "1",
+             "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
+             "-a", "Claude", "Claude", ""],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
 
     def _trigger_voice_listen(self, conv_id):
@@ -374,13 +453,7 @@ class Daemon:
     # -- Streaming API call -------------------------------------------------
 
     def _stream_response(self, messages, tag):
-        """Call Claude API with streaming, update notifications, return response.
-
-        This is a synchronous blocking method meant to be called via
-        run_in_executor from async code.
-
-        Returns the full Message object from the API.
-        """
+        """Call Claude API with streaming, update notifications, return response."""
         api_kwargs = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
@@ -392,6 +465,18 @@ class Daemon:
 
         accumulated_text = ""
         last_notify_time = 0.0
+        sentence_buf = SentenceBuffer()
+
+        # Check if speak is enabled (re-read in case toggled externally)
+        self.waybar.reload_speak_enabled()
+        speak_on = self.waybar.speak_enabled
+
+        if speak_on:
+            self.tts.start()
+            self.waybar.set_status("speaking")
+            self._notify_speaking(tag)
+        else:
+            self.waybar.set_status("thinking")
 
         self._notify(tag, "Thinking...")
 
@@ -400,13 +485,25 @@ class Daemon:
                 if event.type == "content_block_delta":
                     if event.delta.type == "text_delta":
                         accumulated_text += event.delta.text
-                        now = time.monotonic()
-                        if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
-                            self._notify(tag, accumulated_text)
-                            last_notify_time = now
 
-            # Final update with complete text
+                        if speak_on:
+                            sentences = sentence_buf.add(event.delta.text)
+                            for sentence in sentences:
+                                self.tts.speak(sentence)
+
+                        if not speak_on:
+                            now = time.monotonic()
+                            if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
+                                self._notify(tag, accumulated_text)
+                                last_notify_time = now
+
             response = stream.get_final_message()
+
+        # Flush remaining text in sentence buffer
+        if speak_on:
+            for sentence in sentence_buf.flush():
+                self.tts.speak(sentence)
+            self.tts.finish()
 
         return response
 
@@ -499,6 +596,13 @@ class Daemon:
             )
             self._log_usage(response)
 
+            # Update Waybar usage display
+            prices = TOKEN_PRICES.get(response.model, TOKEN_PRICES["claude-sonnet-4-6"])
+            query_cost = (response.usage.input_tokens * prices["input"] +
+                          response.usage.output_tokens * prices["output"]) / 1_000_000
+            self._session_tokens += response.usage.input_tokens + response.usage.output_tokens
+            self.waybar.update_usage(query_cost, self._session_tokens)
+
             # Build the assistant message content blocks for the conversation
             # The API returns content blocks that may include text and tool_use
             assistant_content = []
@@ -565,6 +669,14 @@ class Daemon:
         self.store.save(conv)
         self._save_last_state(conv["id"])
 
+        # Wait for TTS to finish speaking if active
+        if self.waybar.status == "speaking":
+            self.tts.wait_done(timeout=120)
+            self.tts.stop()
+            self._dismiss_speaking_notify(tag)
+
+        self.waybar.set_status("idle")
+
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
         # Archive formatted conversation to ~/Dropbox/LLM/Chats/ in background
@@ -574,7 +686,6 @@ class Daemon:
 
         # Show final notification immediately without waiting for archiving
         self._final_notify(tag, final_text, conv["id"], arch)
-        self._notify_usage(tag)
 
     async def run(self):
         """Start the asyncio Unix socket server."""

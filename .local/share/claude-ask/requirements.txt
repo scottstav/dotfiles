@@ -1,4 +1,4 @@
 anthropic
 prompt_toolkit
-duckduckgo-search
+ddgs
 trafilatura

@@ -28,12 +28,19 @@ log = logging.getLogger("claude-ask")
 
 CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
 LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
+USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
 TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
 NOTIFY_DEBOUNCE_SECS = 0.2
 NOTIFY_BODY_MAX_CHARS = 300
+
+TOKEN_PRICES = {  # USD per million tokens
+    "claude-sonnet-4-6":  {"input": 3.0, "output": 15.0},
+    "claude-opus-4-6":    {"input": 5.0, "output": 25.0},
+    "claude-haiku-4-5":   {"input": 1.0, "output": 5.0},
+}
 
 SYSTEM_PROMPT = """\
 You are a quick-answer assistant running as a desktop overlay on a Linux workstation \
@@ -263,6 +270,64 @@ class Daemon:
         except OSError:
             log.exception("Failed to write archive %s", arch)
 
+    # -- Usage tracking -----------------------------------------------------
+
+    def _log_usage(self, response):
+        """Append token usage for one API call to the JSONL log."""
+        usage = response.usage
+        model = response.model
+        prices = TOKEN_PRICES.get(model, TOKEN_PRICES["claude-sonnet-4-6"])
+        cost = (usage.input_tokens * prices["input"] + usage.output_tokens * prices["output"]) / 1_000_000
+        entry = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "model": model,
+            "input_tokens": usage.input_tokens,
+            "output_tokens": usage.output_tokens,
+            "cost_usd": round(cost, 6),
+        }
+        try:
+            USAGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+            with open(USAGE_LOG, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+        except OSError:
+            log.exception("Failed to write usage log")
+
+    def _notify_usage(self, tag):
+        """Show a brief notification with today's and month-to-date spend."""
+        try:
+            if not USAGE_LOG.exists():
+                return
+            now = datetime.now(timezone.utc)
+            today_prefix = now.strftime("%Y-%m-%d")
+            month_prefix = now.strftime("%Y-%m")
+            today_cost = 0.0
+            month_cost = 0.0
+            with open(USAGE_LOG) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    entry = json.loads(line)
+                    ts = entry.get("ts", "")
+                    cost = entry.get("cost_usd", 0.0)
+                    if ts.startswith(today_prefix):
+                        today_cost += cost
+                    if ts.startswith(month_prefix):
+                        month_cost += cost
+            month_name = now.strftime("%b")
+            subprocess.Popen(
+                [
+                    "notify-send", "-t", "5000",
+                    "-h", f"string:x-canonical-private-synchronous:{tag}-usage",
+                    "-a", "Claude",
+                    "Claude", f"Today: ${today_cost:.2f} | {month_name}: ${month_cost:.2f}",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception:
+            log.exception("Failed to send usage notification")
+
     def _final_notify(self, tag, text, conv_id, archive_file=None):
         """Show final notification with Reply and Open actions.
 
@@ -432,6 +497,7 @@ class Daemon:
             response = await loop.run_in_executor(
                 None, self._stream_response, conv["messages"], tag
             )
+            self._log_usage(response)
 
             # Build the assistant message content blocks for the conversation
             # The API returns content blocks that may include text and tool_use
@@ -508,6 +574,7 @@ class Daemon:
 
         # Show final notification immediately without waiting for archiving
         self._final_notify(tag, final_text, conv["id"], arch)
+        self._notify_usage(tag)
 
     async def run(self):
         """Start the asyncio Unix socket server."""

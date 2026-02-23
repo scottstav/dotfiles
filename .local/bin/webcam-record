@@ -1,0 +1,79 @@
+#!/bin/bash
+# Record webcam video with audio. Fzf pickers for device selection, then
+# ffmpeg recording with a live mpv preview that includes an audio level meter.
+
+OUTDIR="$HOME/Dropbox/recordings"
+
+bold=$'\e[1m'
+dim=$'\e[2m'
+reset=$'\e[0m'
+green=$'\e[32m'
+
+FZF_OPTS=(--ansi --height=100% --layout=reverse --no-info --pointer=">" --no-scrollbar --bind 'left-click:accept')
+
+# --- Phase 1: Device Selection ---
+
+# Webcam picker — parse v4l2-ctl, take first /dev/video per camera (second is metadata)
+get_webcams() {
+    local current_name="" got_dev=false
+    v4l2-ctl --list-devices 2>/dev/null | while IFS= read -r line; do
+        if [[ "$line" =~ ^[^$'\t'] ]]; then
+            current_name=$(echo "$line" | sed 's/ (.*//')
+            got_dev=false
+        elif [[ "$line" =~ /dev/video ]] && ! $got_dev; then
+            local dev
+            dev=$(echo "$line" | tr -d '[:space:]')
+            got_dev=true
+            printf "${bold}%s${reset} ${dim}%s${reset}\t%s\n" "$current_name" "$dev" "$dev"
+        fi
+    done
+}
+
+# Mic picker — reuses audio-switcher's pattern
+get_mics() {
+    local default_source
+    default_source=$(pactl get-default-source 2>/dev/null)
+    pactl list sources short | grep -v '\.monitor' | while read -r id name _rest; do
+        desc=$(pactl list sources | grep -A1 "Name: $name" | grep "Description:" | sed 's/.*Description: //')
+        vol=$(pactl get-source-volume "$name" 2>/dev/null | grep -oP '\d+%' | head -1)
+        marker="  "
+        [[ "$name" == "$default_source" ]] && marker="${green}*${reset} "
+        printf "%s${bold}%s${reset} ${dim}%s${reset}\t%s\n" "$marker" "$desc" "$vol" "$name"
+    done
+}
+
+webcam_selection=$(get_webcams | fzf "${FZF_OPTS[@]}" \
+    --header="${bold}Select webcam${reset}" \
+    --delimiter='\t' --with-nth=1)
+[[ -z "$webcam_selection" ]] && exit 0
+WEBCAM=$(printf '%s' "$webcam_selection" | awk -F'\t' '{print $NF}')
+
+mic_selection=$(get_mics | fzf "${FZF_OPTS[@]}" \
+    --header="${bold}Select microphone${reset}" \
+    --delimiter='\t' --with-nth=1)
+[[ -z "$mic_selection" ]] && exit 0
+MIC=$(printf '%s' "$mic_selection" | awk -F'\t' '{print $NF}')
+
+# --- Phase 2: Recording with Live Preview ---
+
+mkdir -p "$OUTDIR"
+FILE="$OUTDIR/cam-$(date +%Y%m%d-%H%M%S).mp4"
+
+# ffmpeg: two outputs — file recording + lightweight preview piped to mpv
+# - File: good quality x264 + aac
+# - Preview: rawvideo in nut container (zero encode cost) with audio meter overlay
+# - mpv: --no-audio prevents feedback loop (mic hearing its own playback)
+ffmpeg -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
+    -f pulse -i "$MIC" \
+    -filter_complex "[1:a]showvolume=w=320:h=20:o=v[meter];[0:v][meter]overlay=10:main_h-overlay_h-10[preview]" \
+    -map 0:v -map 1:a -c:v libx264 -crf 23 -preset fast -c:a aac "$FILE" \
+    -map "[preview]" -f nut -c:v rawvideo pipe:1 \
+    2>/dev/null | mpv --no-audio --no-cache --profile=low-latency \
+    --title="Webcam Recording" - 2>/dev/null
+
+# --- Post-recording ---
+
+if [[ -f "$FILE" ]]; then
+    wl-copy -t text/uri-list "file://$FILE"
+    notify-send "Recording saved" "$(basename "$FILE")" -i camera-video
+fi

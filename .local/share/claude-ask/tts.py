@@ -137,6 +137,7 @@ class TTSPipeline:
     def _play_loop(self):
         """Thread: pull audio arrays, play through speakers."""
         import sounddevice as sd
+        sd.default.device[1] = "pipewire"
 
         while True:
             item = self._audio_q.get()

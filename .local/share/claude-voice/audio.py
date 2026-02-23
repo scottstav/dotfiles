@@ -42,9 +42,10 @@ class AudioPipeline:
     audio and resets for the next cycle.
     """
 
-    def __init__(self, pre_roll_seconds: float = 0.5):
+    def __init__(self, pre_roll_seconds: float = 0.5, input_device: str | None = None):
         self._pa: pyaudio.PyAudio | None = None
         self._stream: pyaudio.Stream | None = None
+        self._input_device = input_device  # device name or None for default
 
         # WebRTC VAD at aggressiveness 2 (moderate filtering)
         self._vad = webrtcvad.Vad(2)
@@ -62,17 +63,34 @@ class AudioPipeline:
     # Stream lifecycle
     # ------------------------------------------------------------------
 
+    def _find_device_index(self, pa: pyaudio.PyAudio) -> int | None:
+        """Find the PyAudio device index matching self._input_device name."""
+        if not self._input_device:
+            return None
+        for i in range(pa.get_device_count()):
+            info = pa.get_device_info_by_index(i)
+            if info["maxInputChannels"] > 0 and info["name"] == self._input_device:
+                log.info("Using input device [%d] %s", i, info["name"])
+                return i
+        log.warning("Input device %r not found, using default", self._input_device)
+        return None
+
     def start(self) -> None:
         """Open the microphone stream."""
-        log.info("Opening mic stream (rate=%d, chunk=%d)", RATE, OWW_CHUNK)
         self._pa = pyaudio.PyAudio()
-        self._stream = self._pa.open(
+        device_index = self._find_device_index(self._pa)
+        log.info("Opening mic stream (rate=%d, chunk=%d, device=%s)",
+                 RATE, OWW_CHUNK, device_index or "default")
+        kwargs = dict(
             format=FORMAT,
             channels=CHANNELS,
             rate=RATE,
             input=True,
             frames_per_buffer=OWW_CHUNK,
         )
+        if device_index is not None:
+            kwargs["input_device_index"] = device_index
+        self._stream = self._pa.open(**kwargs)
 
     def stop(self) -> None:
         """Close the stream and release PyAudio resources."""

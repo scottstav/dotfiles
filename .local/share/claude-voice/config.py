@@ -26,6 +26,7 @@ DEFAULTS = {
 WHISPER_DEFAULTS = {
     "model": "base",
     "device": "cpu",
+    "input_device": None,
 }
 
 _DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/claude-voice/config.yaml")
@@ -81,15 +82,15 @@ def load_config(path: str | None = None) -> dict:
 def load_whisper_config(path: str | None = None) -> dict:
     """Load Whisper model settings from the voice-typing config.
 
-    Extracts only `model` and `device` from the shared voice-typing
-    config file, applying defaults for any missing keys.
+    Extracts `model`, `device`, and `input_device` from the shared
+    voice-typing config file, applying defaults for any missing keys.
 
     Args:
         path: Optional path to whisper config YAML. Defaults to
               ~/.config/voice-typing/config.yaml.
 
     Returns:
-        Dict with 'model' and 'device' keys.
+        Dict with 'model', 'device', and 'input_device' keys.
     """
     if path is None:
         path = _DEFAULT_WHISPER_PATH
@@ -108,4 +109,5 @@ def load_whisper_config(path: str | None = None) -> dict:
     return {
         "model": raw.get("model", defaults["model"]),
         "device": raw.get("device", defaults["device"]),
+        "input_device": raw.get("input_device", defaults["input_device"]),
     }

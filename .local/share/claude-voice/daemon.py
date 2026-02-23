@@ -92,6 +92,7 @@ class Daemon:
         )
         self.audio = AudioPipeline(
             pre_roll_seconds=ww_cfg["pre_roll_seconds"],
+            input_device=self.whisper_config.get("input_device"),
         )
         self.detector = SpeechEndDetector(
             silence_timeout=sp_cfg["silence_timeout"],

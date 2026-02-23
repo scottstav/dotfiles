@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Sync ~/.claude agents and commands into dotfiles and re-stow.
-# Run this after creating new agents or commands in ~/.claude/.
+# Sync ~/.claude agents, commands, and skills into dotfiles and re-stow.
+# Run this after creating new agents, commands, or skills in ~/.claude/.
 
 set -euo pipefail
 
 DOTFILES="$HOME/dotfiles"
 CLAUDE_HOME="$HOME/.claude"
 
-for dir in agents commands; do
+for dir in agents commands skills; do
     src="$CLAUDE_HOME/$dir"
     dest="$DOTFILES/.claude/$dir"
     [ -d "$src" ] || continue

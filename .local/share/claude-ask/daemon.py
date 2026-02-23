@@ -31,6 +31,16 @@ MAX_TOKENS = 4096
 NOTIFY_DEBOUNCE_SECS = 0.2
 NOTIFY_BODY_MAX_CHARS = 300
 
+SYSTEM_PROMPT = """\
+You are a quick-answer assistant running as a desktop overlay on a Linux workstation \
+(Arch Linux, Hyprland/Wayland, Emacs). Responses are displayed in desktop notifications \
+with limited space.
+
+Be extremely concise. Default to 1-3 sentences. Use bullet points over paragraphs. \
+Skip preamble, hedging, and sign-offs. Only give longer responses when the user \
+explicitly asks for detail or the question genuinely requires it.\
+"""
+
 
 def get_socket_path():
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -266,6 +276,7 @@ class Daemon:
         api_kwargs = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
+            "system": SYSTEM_PROMPT,
             "messages": messages,
         }
         if self.tools:

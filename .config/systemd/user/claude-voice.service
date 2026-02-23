@@ -1,0 +1,13 @@
+[Unit]
+Description=Claude Voice daemon (wake word + STT for claude-ask)
+After=claude-ask.service
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/.local/share/claude-voice/.venv/bin/python3 %h/.local/share/claude-voice/daemon.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

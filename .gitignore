@@ -2,6 +2,7 @@
 .projectile
 .aider*
 .agent-shell/
+.venv/
 /.rest-mode
 /.env.dev
 /.env.test

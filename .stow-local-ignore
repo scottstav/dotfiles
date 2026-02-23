@@ -17,5 +17,8 @@ packages.*\.txt
 # Android stuff is pushed via ADB, not stowed
 android
 
+# Python venvs — managed by pip, not stow
+\.venv
+
 # Root/etc configs are stowed separately with: sudo stow --target=/ root
 root

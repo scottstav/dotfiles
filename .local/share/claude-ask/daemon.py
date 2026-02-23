@@ -467,16 +467,7 @@ class Daemon:
         last_notify_time = 0.0
         sentence_buf = SentenceBuffer()
 
-        # Check if speak is enabled (re-read in case toggled externally)
-        self.waybar.reload_speak_enabled()
         speak_on = self.waybar.speak_enabled
-
-        if speak_on:
-            self.tts.start()
-            self.waybar.set_status("speaking")
-            self._notify_speaking(tag)
-        else:
-            self.waybar.set_status("thinking")
 
         self._notify(tag, "Thinking...")
 
@@ -503,7 +494,6 @@ class Daemon:
         if speak_on:
             for sentence in sentence_buf.flush():
                 self.tts.speak(sentence)
-            self.tts.finish()
 
         return response
 
@@ -595,6 +585,15 @@ class Daemon:
 
     async def _complete_conversation(self, conv, tag, loop):
         """Stream responses, handle tool calls in a loop until done."""
+        # Start TTS once for the whole conversation (survives tool call loops)
+        self.waybar.reload_speak_enabled()
+        if self.waybar.speak_enabled:
+            self.tts.start()
+            self.waybar.set_status("speaking")
+            self._notify_speaking(tag)
+        else:
+            self.waybar.set_status("thinking")
+
         while True:
             response = await loop.run_in_executor(
                 None, self._stream_response, conv["messages"], tag
@@ -676,6 +675,7 @@ class Daemon:
 
         # Wait for TTS to finish speaking if active
         if self.waybar.status == "speaking":
+            self.tts.finish()
             self.tts.wait_done(timeout=120)
             self.tts.stop()
             self._dismiss_speaking_notify(tag)

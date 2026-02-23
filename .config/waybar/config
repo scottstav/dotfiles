@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
-    "modules-right": ["custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
+    "modules-right": ["custom/claude-ask", "custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -180,6 +180,14 @@
         "return-type": "json",
         "interval": 1,
         "on-click": "voice-typing"
+    },
+    "custom/claude-ask": {
+        "exec": "claude-ask-status",
+        "return-type": "json",
+        "interval": 2,
+        "on-click": "claude-ask-toggle-speak",
+        "signal": 12,
+        "tooltip": true
     },
     "custom/system-freshness": {
         "exec": "system-freshness",

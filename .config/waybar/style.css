@@ -250,3 +250,28 @@ window#waybar {
 #custom-gcal.none {
     color: #404040;
 }
+
+/* Claude Ask module */
+#custom-claude-ask {
+    color: #b4befe;
+}
+
+#custom-claude-ask.thinking {
+    color: #b4befe;
+    animation-name: pulse;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-claude-ask.speaking {
+    color: #a6e3a1;
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-claude-ask.speak-on {
+    color: #cdd6f4;
+}

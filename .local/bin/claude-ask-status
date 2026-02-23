@@ -1,0 +1,54 @@
+#!/bin/bash
+# Waybar module for claude-ask status
+
+STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
+
+if [ ! -f "$STATE_FILE" ]; then
+    echo '{"text": "󰍩", "class": "idle", "tooltip": "Claude Ask (not running)"}'
+    exit 0
+fi
+
+# Parse JSON with python (always available, no jq dependency)
+eval "$(python3 -c "
+import json, sys
+d = json.load(open('$STATE_FILE'))
+status = d.get('status', 'idle')
+speak = d.get('speak_enabled', False)
+usage = d.get('usage', {})
+session = usage.get('session_cost', '\$0.00')
+last = usage.get('last_query_cost', '\$0.00')
+tokens = usage.get('total_tokens', 0)
+
+# Icons (Nerd Font: nf-md-*)
+if status == 'speaking':
+    icon = '󰔊'  # volume_high
+elif status == 'thinking':
+    icon = '󰍩'  # message_text_outline
+else:
+    # idle
+    icon = '󰍩'
+    if speak:
+        icon += ' 󰕾'  # + volume_high
+    else:
+        icon += ' 󰖁'  # + volume_off
+
+# CSS class
+css = status
+if status == 'idle' and speak:
+    css = 'idle speak-on'
+
+# Tooltip
+tip = f'Session: {session} | Last: {last} | Tokens: {tokens:,}'
+if speak:
+    tip += ' | Voice: ON'
+else:
+    tip += ' | Voice: OFF'
+
+# Escape for JSON
+tip = tip.replace('\"', '\\\\\"')
+print(f'TEXT={icon!r}')
+print(f'CLASS={css!r}')
+print(f'TIP={tip!r}')
+")"
+
+echo "{\"text\":\"${TEXT}\",\"tooltip\":\"${TIP}\",\"class\":\"${CLASS}\"}"

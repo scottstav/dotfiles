@@ -1,0 +1,44 @@
+#!/bin/bash
+# Toggle claude-ask speak mode on/off
+
+STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
+CONFIG_FILE="$HOME/.config/claude-ask/config.toml"
+
+if [ ! -f "$STATE_FILE" ]; then
+    echo "claude-ask not running" >&2
+    exit 1
+fi
+
+# Toggle speak_enabled in state file
+python3 -c "
+import json
+path = '$STATE_FILE'
+with open(path) as f:
+    d = json.load(f)
+d['speak_enabled'] = not d.get('speak_enabled', False)
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+state = 'ON' if d['speak_enabled'] else 'OFF'
+print(f'Voice: {state}')
+"
+
+# Also persist to config file
+python3 -c "
+import re
+path = '$CONFIG_FILE'
+try:
+    with open(path) as f:
+        content = f.read()
+    # Toggle the enabled line
+    if 'enabled = true' in content:
+        content = content.replace('enabled = true', 'enabled = false', 1)
+    else:
+        content = content.replace('enabled = false', 'enabled = true', 1)
+    with open(path, 'w') as f:
+        f.write(content)
+except FileNotFoundError:
+    pass
+"
+
+# Signal Waybar to refresh
+pkill -SIGRTMIN+12 waybar 2>/dev/null

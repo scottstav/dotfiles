@@ -13,6 +13,7 @@ import os
 import socket
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -29,6 +30,7 @@ from prompt_toolkit.layout.layout import Layout
 # Map Shift+Enter (Kitty keyboard protocol: CSI 13;2u) to Escape+Enter so
 # prompt_toolkit treats it the same as Alt+Enter. Foot supports this protocol.
 ANSI_SEQUENCES["\x1b[13;2u"] = (Keys.Escape, Keys.ControlJ)
+
 
 CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
 LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
@@ -206,6 +208,7 @@ def main():
     # Mutable state for the app
     state = {
         "selected_conv_id": selected_conv_id,
+        "image": None,  # base64 PNG data, set by explicit Ctrl+V paste
     }
 
     result = {"submitted": False, "text": ""}
@@ -231,6 +234,16 @@ def main():
     @kb.add("escape")
     def cancel(event):
         event.app.exit()
+
+    @kb.add("c-g")
+    def attach_image(event):
+        """Ctrl+G: attach clipboard image."""
+        def fetch():
+            image = get_clipboard_image()
+            if image:
+                state["image"] = image
+            event.app.invalidate()
+        threading.Thread(target=fetch, daemon=True).start()
 
     @kb.add("tab")
     def toggle_reply(event):
@@ -288,6 +301,7 @@ def main():
     # -- Header -------------------------------------------------------------
 
     def get_header():
+        img = " [image] " if state["image"] else " "
         if state["selected_conv_id"]:
             # Find the preview for the selected conversation
             preview = ""
@@ -296,9 +310,9 @@ def main():
                     preview = truncate(c["user_preview"], 40)
                     break
             return [("class:header",
-                     f" [reply: {preview}]  Enter:send  Shift+Enter:newline  Tab:deselect  C-o:open  Esc:cancel")]
+                     f" [reply: {preview}]{img}Enter:send  S-Enter:newline  C-g:image  Tab:deselect  Esc:cancel")]
         return [("class:header",
-                 " [new]  Enter:send  Shift+Enter:newline  Tab:select  C-o:open  Esc:cancel")]
+                 f" [new]{img}Enter:send  S-Enter:newline  C-g:image  Tab:select  Esc:cancel")]
 
     header = Window(
         content=FormattedTextControl(get_header),
@@ -386,8 +400,7 @@ def main():
 
     if result["submitted"]:
         conv_id = state["selected_conv_id"]
-        image = get_clipboard_image()
-        send_message(result["text"], conv_id, image=image)
+        send_message(result["text"], conv_id, image=state["image"])
 
 
 if __name__ == "__main__":

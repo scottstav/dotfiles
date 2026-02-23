@@ -255,6 +255,14 @@ class Daemon:
         except (ConnectionRefusedError, FileNotFoundError):
             log.warning("claude-voice not running, cannot trigger mic")
 
+    def _archive_conversation(self, conv, arch):
+        """Write formatted transcript to Dropbox. Runs in executor thread."""
+        try:
+            arch.write_text(format_conversation(conv))
+            log.info("Archived conversation to %s", arch)
+        except OSError:
+            log.exception("Failed to write archive %s", arch)
+
     def _final_notify(self, tag, text, conv_id, archive_file=None):
         """Show final notification with Reply and Open actions.
 
@@ -484,17 +492,14 @@ class Daemon:
         self.store.save(conv)
         self._save_last_state(conv["id"])
 
-        # Archive formatted conversation to ~/Dropbox/LLM/Chats/
-        arch = archive_path(conv)
-        try:
-            arch.write_text(format_conversation(conv))
-            log.info("Archived conversation to %s", arch)
-        except OSError:
-            log.exception("Failed to write archive %s", arch)
-
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
-        # Show final notification with actions
+        # Archive formatted conversation to ~/Dropbox/LLM/Chats/ in background
+        arch = archive_path(conv)
+        loop = asyncio.get_running_loop()
+        loop.run_in_executor(None, self._archive_conversation, conv, arch)
+
+        # Show final notification immediately without waiting for archiving
         self._final_notify(tag, final_text, conv["id"], arch)
 
     async def run(self):

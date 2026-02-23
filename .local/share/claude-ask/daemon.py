@@ -24,6 +24,7 @@ logging.basicConfig(
 log = logging.getLogger("claude-ask")
 
 CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
+LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
 TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 
 MODEL = "claude-sonnet-4-6"
@@ -206,6 +207,18 @@ class Daemon:
                 log.exception("Error running tool %s", name)
                 return f"Error: tool {name} raised an exception"
         return f"Error: tool {name} not found"
+
+    # -- State tracking -----------------------------------------------------
+
+    def _save_last_state(self, conv_id):
+        """Write last.json so the TUI knows the most recent conversation."""
+        try:
+            LAST_STATE_FILE.write_text(json.dumps({
+                "conversation_id": conv_id,
+                "timestamp": time.time(),
+            }))
+        except OSError:
+            pass
 
     # -- Notifications ------------------------------------------------------
 
@@ -459,6 +472,7 @@ class Daemon:
                 final_text += block.text
 
         self.store.save(conv)
+        self._save_last_state(conv["id"])
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
         # Show final notification with actions

@@ -158,6 +158,25 @@ window#waybar {
     color: #ffa500;
 }
 
+/* Recording module */
+#custom-recording {
+    color: #404040;
+}
+
+#custom-recording.recording {
+    color: #dc143c;
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-recording.idle {
+    color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
 /* Voice typing module */
 #custom-voice-typing {
     color: #606060;

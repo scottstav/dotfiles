@@ -1,0 +1,236 @@
+#!/bin/bash
+# Unified recording script with fzf menu.
+# Modes: screen (with desktop audio), webcam (with preview), combined (screen + webcam overlay).
+# Press keybind again to stop. Combined mode composites a circular webcam overlay in post.
+
+PIDFILE="/tmp/record.pid"
+MODEFILE="/tmp/record-mode"
+PATHFILE="/tmp/record-path"
+OUTDIR="$HOME/Dropbox/recordings"
+
+signal_waybar() { pkill -SIGRTMIN+13 waybar; }
+
+cleanup_state() {
+    rm -f "$PIDFILE" "$MODEFILE" "$PATHFILE"
+    rm -f /tmp/record-screen.pid /tmp/record-webcam.pid
+    rm -f /tmp/record-screen-path /tmp/record-webcam-path
+    signal_waybar
+}
+
+post_recording() {
+    local file="$1"
+    if [[ -f "$file" ]]; then
+        wl-copy -t text/uri-list "file://$file"
+        systemd-run --user --no-block bash -c \
+            'notify-send "Recording stopped" "$1" -i camera-video --action="open=Open folder" && emacsclient -c "$2"' \
+            _ "$(basename "$file")" "$OUTDIR" 2>/dev/null
+    fi
+}
+
+# --- Toggle: stop if already recording ---
+
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+    MODE=$(cat "$MODEFILE" 2>/dev/null)
+    case "$MODE" in
+        screen)
+            kill -INT "$(cat "$PIDFILE")"
+            sleep 1
+            FILE=$(cat "$PATHFILE" 2>/dev/null)
+            cleanup_state
+            post_recording "$FILE"
+            ;;
+        webcam)
+            kill -INT "$(cat "$PIDFILE")"
+            # Cleanup handled by the webcam foot instance
+            ;;
+        combined)
+            # Kill both recording processes
+            for pf in /tmp/record-screen.pid /tmp/record-webcam.pid; do
+                [[ -f "$pf" ]] && kill -INT "$(cat "$pf" 2>/dev/null)" 2>/dev/null
+            done
+            sleep 1
+
+            SCREEN_FILE=$(cat /tmp/record-screen-path 2>/dev/null)
+            WEBCAM_FILE=$(cat /tmp/record-webcam-path 2>/dev/null)
+            FINAL="$OUTDIR/rec-$(date +%Y%m%d-%H%M%S).mp4"
+
+            cleanup_state
+
+            notify-send "Recording stopped" "Compositing..." -i camera-video
+
+            # Background compositing via systemd-run (separate script avoids quoting hell)
+            systemd-run --user --no-block record-composite \
+                "$SCREEN_FILE" "$WEBCAM_FILE" "$FINAL" 2>/dev/null
+            ;;
+    esac
+    exit 0
+fi
+
+# --- Stale PID? Clean up ---
+if [[ -f "$PIDFILE" ]]; then
+    cleanup_state
+fi
+
+# --- FZF Menu ---
+
+bold=$'\e[1m'
+dim=$'\e[2m'
+reset=$'\e[0m'
+green=$'\e[32m'
+
+FZF_OPTS=(--ansi --height=100% --layout=reverse --no-info --pointer=">" --no-scrollbar --bind 'left-click:accept')
+
+mode=$(printf '%s\n' \
+    "${bold}Screen${reset}        ${dim}Screen region + desktop audio${reset}" \
+    "${bold}Webcam${reset}        ${dim}Webcam + microphone with preview${reset}" \
+    "${bold}Screen + Webcam${reset} ${dim}Combined with circular overlay${reset}" \
+    | fzf "${FZF_OPTS[@]}" --header="${bold}Select recording mode${reset}")
+
+[[ -z "$mode" ]] && exit 0
+
+# --- Device pickers (reused from webcam-record) ---
+
+get_webcams() {
+    local current_name="" got_dev=false
+    v4l2-ctl --list-devices 2>/dev/null | while IFS= read -r line; do
+        if [[ "$line" =~ ^[^$'\t'] ]]; then
+            current_name=$(echo "$line" | sed 's/ (.*//')
+            got_dev=false
+        elif [[ "$line" =~ /dev/video ]] && ! $got_dev; then
+            local dev
+            dev=$(echo "$line" | tr -d '[:space:]')
+            got_dev=true
+            printf "${bold}%s${reset} ${dim}%s${reset}\t%s\n" "$current_name" "$dev" "$dev"
+        fi
+    done
+}
+
+get_mics() {
+    local default_source
+    default_source=$(pactl get-default-source 2>/dev/null)
+    pactl list sources short | grep -v '\.monitor' | while read -r id name _rest; do
+        desc=$(pactl list sources | grep -A1 "Name: $name" | grep "Description:" | sed 's/.*Description: //')
+        vol=$(pactl get-source-volume "$name" 2>/dev/null | grep -oP '\d+%' | head -1)
+        marker="  "
+        [[ "$name" == "$default_source" ]] && marker="${green}*${reset} "
+        printf "%s${bold}%s${reset} ${dim}%s${reset}\t%s\n" "$marker" "$desc" "$vol" "$name"
+    done
+}
+
+pick_webcam() {
+    local sel
+    sel=$(get_webcams | fzf "${FZF_OPTS[@]}" \
+        --header="${bold}Select webcam${reset}" \
+        --delimiter='\t' --with-nth=1)
+    [[ -z "$sel" ]] && return 1
+    printf '%s' "$sel" | awk -F'\t' '{print $NF}'
+}
+
+pick_mic() {
+    local sel
+    sel=$(get_mics | fzf "${FZF_OPTS[@]}" \
+        --header="${bold}Select microphone${reset}" \
+        --delimiter='\t' --with-nth=1)
+    [[ -z "$sel" ]] && return 1
+    printf '%s' "$sel" | awk -F'\t' '{print $NF}'
+}
+
+get_desktop_audio() {
+    echo "$(pactl get-default-sink).monitor"
+}
+
+# --- Mode: Screen ---
+
+start_screen() {
+    local GEOM
+    GEOM=$(slurp) || exit 1
+    sleep 0.3
+
+    mkdir -p "$OUTDIR"
+    local FILE="$OUTDIR/rec-$(date +%Y%m%d-%H%M%S).mp4"
+    local DESKTOP_AUDIO
+    DESKTOP_AUDIO=$(get_desktop_audio)
+
+    echo "screen" > "$MODEFILE"
+    echo "$FILE" > "$PATHFILE"
+
+    setsid wf-recorder -g "$GEOM" -f "$FILE" -c libx264 -p crf=23 \
+        --audio="$DESKTOP_AUDIO" -C aac &
+    echo $! > "$PIDFILE"
+
+    signal_waybar
+}
+
+# --- Mode: Webcam ---
+
+start_webcam() {
+    local WEBCAM MIC
+    WEBCAM=$(pick_webcam) || exit 0
+    MIC=$(pick_mic) || exit 0
+
+    mkdir -p "$OUTDIR"
+    local FILE="$OUTDIR/cam-$(date +%Y%m%d-%H%M%S).mp4"
+    local WC_PIDFILE="/tmp/record-webcam.pid"
+
+    echo "webcam" > "$MODEFILE"
+    echo "$FILE" > "$PATHFILE"
+
+    # Use subshell PID for toggle — same pattern as old webcam-record
+    ( echo $BASHPID > "$PIDFILE"; exec ffmpeg \
+        -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
+        -f pulse -thread_queue_size 1024 -i "$MIC" \
+        -filter_complex "[1:a]showvolume=w=320:h=20:o=v[meter];[0:v][meter]overlay=10:main_h-overlay_h-10[preview]" \
+        -map 0:v -map 1:a -c:v libx264 -crf 23 -tune zerolatency -preset ultrafast -c:a aac "$FILE" \
+        -map "[preview]" -f nut -c:v rawvideo -flush_packets 1 pipe:1 \
+    ) 2>/dev/null | mpv --no-audio --no-cache --profile=low-latency --untimed \
+        --video-latency-hacks=yes --title="Webcam Recording" - 2>/dev/null
+
+    # Cleanup (mpv exited or ffmpeg killed)
+    FILE=$(cat "$PATHFILE" 2>/dev/null)
+    cleanup_state
+    post_recording "$FILE"
+}
+
+# --- Mode: Combined ---
+
+start_combined() {
+    # Interactive pickers FIRST (while foot is still visible)
+    local WEBCAM MIC GEOM
+    WEBCAM=$(pick_webcam) || exit 0
+    MIC=$(pick_mic) || exit 0
+    GEOM=$(slurp) || exit 1
+    sleep 0.3
+
+    mkdir -p "$OUTDIR"
+    local SCREEN_FILE="$OUTDIR/.rec-screen-$(date +%Y%m%d-%H%M%S).mp4"
+    local WEBCAM_FILE="$OUTDIR/.rec-webcam-$(date +%Y%m%d-%H%M%S).mp4"
+    local DESKTOP_AUDIO
+    DESKTOP_AUDIO=$(get_desktop_audio)
+
+    echo "combined" > "$MODEFILE"
+    echo "$SCREEN_FILE" > /tmp/record-screen-path
+    echo "$WEBCAM_FILE" > /tmp/record-webcam-path
+
+    # Screen recording (wf-recorder in new session so foot can't kill it)
+    setsid wf-recorder -g "$GEOM" -f "$SCREEN_FILE" -c libx264 -p crf=23 \
+        --audio="$DESKTOP_AUDIO" -C aac &
+    echo $! > /tmp/record-screen.pid
+    echo $! > "$PIDFILE"  # primary PID for toggle detection
+
+    # Webcam recording (ffmpeg headless, no mpv preview)
+    setsid ffmpeg -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
+        -f pulse -thread_queue_size 1024 -i "$MIC" \
+        -c:v libx264 -crf 23 -tune zerolatency -preset ultrafast \
+        -c:a aac "$WEBCAM_FILE" </dev/null &>/dev/null &
+    echo $! > /tmp/record-webcam.pid
+
+    signal_waybar
+}
+
+# --- Dispatch ---
+
+case "$mode" in
+    *Screen\ +\ Webcam*) start_combined ;;
+    *Screen*)            start_screen ;;
+    *Webcam*)            start_webcam ;;
+esac

@@ -1,0 +1,21 @@
+#!/bin/bash
+# Waybar recording indicator. Hidden when not recording.
+
+PIDFILE="/tmp/record.pid"
+MODEFILE="/tmp/record-mode"
+
+# Not recording → empty text hides the module
+if [[ ! -f "$PIDFILE" ]] || ! kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; then
+    echo '{"text": "", "class": "idle"}'
+    exit 0
+fi
+
+mode=$(cat "$MODEFILE" 2>/dev/null)
+case "$mode" in
+    screen)   label="REC" ;;
+    webcam)   label="CAM" ;;
+    combined) label="REC+CAM" ;;
+    *)        label="REC" ;;
+esac
+
+echo "{\"text\": \"\u25cf $label\", \"class\": \"recording\", \"tooltip\": \"Recording ($mode)\"}"

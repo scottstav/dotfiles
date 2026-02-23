@@ -1,0 +1,36 @@
+#!/bin/bash
+# Composite webcam overlay onto screen recording.
+# Usage: record-composite SCREEN_FILE WEBCAM_FILE OUTPUT
+
+screen="$1"
+webcam="$2"
+output="$3"
+
+if [[ ! -f "$screen" ]]; then
+    notify-send "Recording failed" "Screen capture missing" -i dialog-error
+    exit 1
+fi
+
+if [[ -f "$webcam" ]]; then
+    screen_w=$(ffprobe -v error -select_streams v:0 \
+        -show_entries stream=width -of csv=p=0 "$screen")
+    d=$(( screen_w / 6 ))
+    r=$(( d / 2 ))
+    pad=20
+
+    ffmpeg -y -i "$screen" -i "$webcam" -filter_complex "
+[1:v]scale=${d}:${d}:force_original_aspect_ratio=decrease,pad=${d}:${d}:(ow-iw)/2:(oh-ih)/2:color=black@0.0,format=yuva420p,geq=lum='p(X,Y)':a='if(lt(pow(X-${r},2)+pow(Y-${r},2),pow(${r},2)),255,0)'[cam];
+[0:v][cam]overlay=main_w-overlay_w-${pad}:main_h-overlay_h-${pad}[vout];
+[0:a][1:a]amix=inputs=2:duration=shortest:dropout_transition=2[aout]
+" -map "[vout]" -map "[aout]" -shortest \
+        -c:v libx264 -crf 23 -preset medium \
+        -c:a aac -b:a 192k "$output"
+else
+    cp "$screen" "$output"
+fi
+
+rm -f "$screen" "$webcam"
+
+wl-copy -t text/uri-list "file://$output"
+notify-send "Recording saved" "$(basename "$output")" -i camera-video --action="open=Open folder"
+emacsclient -c "$(dirname "$output")"

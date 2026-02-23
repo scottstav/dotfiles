@@ -6,6 +6,7 @@ import importlib.util
 import json
 import logging
 import os
+import socket
 import subprocess
 import sys
 import threading
@@ -238,6 +239,20 @@ class Daemon:
             stderr=subprocess.DEVNULL,
         )
 
+    def _trigger_voice_listen(self, conv_id):
+        """Send a listen command to the claude-voice daemon."""
+        runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+        sock_path = os.path.join(runtime_dir, "claude-voice.sock")
+        payload = json.dumps({"action": "listen", "conversation_id": conv_id})
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(sock_path)
+            sock.sendall(payload.encode("utf-8"))
+            sock.close()
+            log.info("Triggered claude-voice listen for conv %s", conv_id[:8])
+        except (ConnectionRefusedError, FileNotFoundError):
+            log.warning("claude-voice not running, cannot trigger mic")
+
     def _final_notify(self, tag, text, conv_id):
         """Show final notification with Reply and Open actions.
 
@@ -255,6 +270,7 @@ class Daemon:
                         "-h", f"string:x-canonical-private-synchronous:{tag}",
                         "-a", "Claude",
                         "-A", "reply=Reply",
+                        "-A", "mic=Mic",
                         "-A", "open=Open in Emacs",
                         "--wait",
                         "Claude", truncated,
@@ -265,6 +281,8 @@ class Daemon:
                 action = result.stdout.strip()
                 if action == "reply":
                     subprocess.Popen(["claude-ask", "--reply", conv_id])
+                elif action == "mic":
+                    self._trigger_voice_listen(conv_id)
                 elif action == "open":
                     # Escape for elisp string: backslashes, then double quotes, then newlines
                     escaped = text.replace("\\", "\\\\")

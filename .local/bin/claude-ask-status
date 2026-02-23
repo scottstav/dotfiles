@@ -8,9 +8,9 @@ if [ ! -f "$STATE_FILE" ]; then
     exit 0
 fi
 
-# Parse JSON with python (always available, no jq dependency)
-eval "$(python3 -c "
-import json, sys
+python3 -c "
+import json
+
 d = json.load(open('$STATE_FILE'))
 status = d.get('status', 'idle')
 speak = d.get('speak_enabled', False)
@@ -21,34 +21,22 @@ tokens = usage.get('total_tokens', 0)
 
 # Icons (Nerd Font: nf-md-*)
 if status == 'speaking':
-    icon = '󰔊'  # volume_high
+    icon = '\U000f042a'  # nf-md-volume_high
 elif status == 'thinking':
-    icon = '󰍩'  # message_text_outline
+    icon = '\U000f0369'  # nf-md-message_text_outline
 else:
-    # idle
-    icon = '󰍩'
+    icon = '\U000f0369'
     if speak:
-        icon += ' 󰕾'  # + volume_high
+        icon += ' \U000f057e'  # + nf-md-volume_high
     else:
-        icon += ' 󰖁'  # + volume_off
+        icon += ' \U000f0581'  # + nf-md-volume_off
 
-# CSS class
 css = status
 if status == 'idle' and speak:
     css = 'idle speak-on'
 
-# Tooltip
 tip = f'Session: {session} | Last: {last} | Tokens: {tokens:,}'
-if speak:
-    tip += ' | Voice: ON'
-else:
-    tip += ' | Voice: OFF'
+tip += ' | Voice: ON' if speak else ' | Voice: OFF'
 
-# Escape for JSON
-tip = tip.replace('\"', '\\\\\"')
-print(f'TEXT={icon!r}')
-print(f'CLASS={css!r}')
-print(f'TIP={tip!r}')
-")"
-
-echo "{\"text\":\"${TEXT}\",\"tooltip\":\"${TIP}\",\"class\":\"${CLASS}\"}"
+print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
+"

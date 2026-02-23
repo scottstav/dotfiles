@@ -1,0 +1,13 @@
+[Unit]
+Description=Claude Ask daemon (desktop chat overlay)
+After=gpg-agent.service
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/.local/share/claude-ask/.venv/bin/python3 %h/.local/share/claude-ask/daemon.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

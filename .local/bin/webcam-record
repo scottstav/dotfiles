@@ -1,8 +1,18 @@
 #!/bin/bash
 # Record webcam video with audio. Fzf pickers for device selection, then
 # ffmpeg recording with a live mpv preview that includes an audio level meter.
+# Press keybind again (or close mpv) to stop recording.
 
+PIDFILE="/tmp/webcam-record.pid"
+PATHFILE="/tmp/webcam-record-path"
 OUTDIR="$HOME/Dropbox/recordings"
+
+# --- Toggle: stop recording if already running ---
+
+if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+    kill -INT "$(cat "$PIDFILE")"
+    exit 0
+fi
 
 bold=$'\e[1m'
 dim=$'\e[2m'
@@ -58,22 +68,32 @@ MIC=$(printf '%s' "$mic_selection" | awk -F'\t' '{print $NF}')
 
 mkdir -p "$OUTDIR"
 FILE="$OUTDIR/cam-$(date +%Y%m%d-%H%M%S).mp4"
+echo "$FILE" > "$PATHFILE"
 
-# ffmpeg: two outputs — file recording + lightweight preview piped to mpv
-# - File: good quality x264 + aac
-# - Preview: rawvideo in nut container (zero encode cost) with audio meter overlay
-# - mpv: --no-audio prevents feedback loop (mic hearing its own playback)
-ffmpeg -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
-    -f pulse -i "$MIC" \
+# Pipe approach: ffmpeg pipes rawvideo preview to mpv, records x264 to file.
+# Subshell + exec captures ffmpeg's actual PID for the toggle keybind.
+# - -tune zerolatency: no B-frames or lookahead, minimum encode delay
+# - --no-audio on mpv: prevents feedback loop (mic hearing its own playback)
+# - --untimed on mpv: display frames immediately, don't pace by timestamps
+( echo $BASHPID > "$PIDFILE"; exec ffmpeg \
+    -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
+    -f pulse -thread_queue_size 1024 -i "$MIC" \
     -filter_complex "[1:a]showvolume=w=320:h=20:o=v[meter];[0:v][meter]overlay=10:main_h-overlay_h-10[preview]" \
-    -map 0:v -map 1:a -c:v libx264 -crf 23 -preset fast -c:a aac "$FILE" \
-    -map "[preview]" -f nut -c:v rawvideo pipe:1 \
-    2>/dev/null | mpv --no-audio --no-cache --profile=low-latency \
-    --title="Webcam Recording" - 2>/dev/null
+    -map 0:v -map 1:a -c:v libx264 -crf 23 -tune zerolatency -preset ultrafast -c:a aac "$FILE" \
+    -map "[preview]" -f nut -c:v rawvideo -flush_packets 1 pipe:1 \
+) 2>/dev/null | mpv --no-audio --no-cache --profile=low-latency --untimed \
+    --video-latency-hacks=yes --title="Webcam Recording" - 2>/dev/null
 
-# --- Post-recording ---
+# --- Cleanup (mpv exited via q/close, or ffmpeg killed via toggle) ---
+
+rm -f "$PIDFILE"
+
+FILE=$(cat "$PATHFILE" 2>/dev/null)
+rm -f "$PATHFILE"
 
 if [[ -f "$FILE" ]]; then
     wl-copy -t text/uri-list "file://$FILE"
-    notify-send "Recording saved" "$(basename "$FILE")" -i camera-video
+    systemd-run --user --no-block bash -c \
+        'notify-send "Recording saved" "$1" -i camera-video --action="open=Open folder" && emacsclient -c "$2"' \
+        _ "$(basename "$FILE")" "$OUTDIR" 2>/dev/null
 fi

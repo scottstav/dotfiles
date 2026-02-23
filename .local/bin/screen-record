@@ -17,7 +17,9 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
 
     # Copy file to clipboard (for pasting into Slack/Discord)
     wl-copy -t text/uri-list "file://$FILE"
-    notify-send "Recording saved" "$(basename "$FILE")" -i camera-video
+    systemd-run --user --no-block bash -c \
+        'notify-send "Recording saved" "$1" -i camera-video --action="open=Open folder" && emacsclient -c "$2"' \
+        _ "$(basename "$FILE")" "$OUTDIR" 2>/dev/null
 else
     # Start recording
     GEOM=$(slurp) || exit 1

@@ -353,9 +353,9 @@ def main():
         layout = Layout(HSplit([header, body, separator, conv_list_window]))
 
     style_defs = {
-        "class:conv-user": "#888888",
-        "class:conv-asst": "#666666",
-        "class:separator": "#444444",
+        "conv-user": "#888888",
+        "conv-asst": "#666666",
+        "separator": "#444444",
     }
 
     from prompt_toolkit.styles import Style

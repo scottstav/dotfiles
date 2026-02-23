@@ -1,0 +1,9 @@
+[voice]
+enabled = false
+model = "af_heart"
+speed = 1.0
+lang = "a"
+
+[voice.filter]
+skip_code_blocks = true
+skip_urls = true

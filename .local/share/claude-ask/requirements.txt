@@ -2,3 +2,6 @@ anthropic
 prompt_toolkit
 ddgs
 trafilatura
+kokoro>=0.9.4
+soundfile
+sounddevice

@@ -579,12 +579,17 @@ class Daemon:
         except anthropic.APIError as e:
             log.error("API error: %s", e)
             self._notify(tag, f"API error: {e}")
-            # Save conversation so the user message is preserved for retry
+            self.tts.stop()
+            self._dismiss_speaking_notify(tag)
+            self.waybar.set_status("idle")
             self.store.save(conv)
             return
         except Exception:
             log.exception("Unexpected error during API call")
             self._notify(tag, "Unexpected error (check logs)")
+            self.tts.stop()
+            self._dismiss_speaking_notify(tag)
+            self.waybar.set_status("idle")
             self.store.save(conv)
             return
 
@@ -719,6 +724,9 @@ def main():
         asyncio.run(daemon.run())
     except KeyboardInterrupt:
         log.info("Shutting down")
+    finally:
+        daemon.tts.stop()
+        daemon.waybar.set_status("idle")
 
 
 if __name__ == "__main__":

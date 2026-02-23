@@ -28,7 +28,7 @@ log = logging.getLogger("claude-voice")
 
 from audio import RATE, AudioPipeline
 from config import load_config, load_whisper_config
-from notify import notify_dismiss, notify_listening, notify_sending, notify_transcription
+from notify import notify_ack, notify_dismiss, notify_listening, notify_sending, notify_transcription
 from speech_detector import SpeechEndDetector
 from stt import transcribe
 from wake_word import WakeWordListener
@@ -134,12 +134,14 @@ class Daemon:
                 # Check for external listen request first
                 req = self._check_listen_request()
                 if req is not None:
+                    notify_ack()
                     self._capture_and_send(conversation_id=req.get("conversation_id"))
                     continue
 
                 # Read audio and check for wake word
                 chunk = self.audio.read_oww_chunk()
                 if self.wake_word.detect(chunk):
+                    notify_ack()
                     self._capture_and_send()
         except KeyboardInterrupt:
             log.info("Interrupted")

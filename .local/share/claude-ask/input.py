@@ -16,6 +16,7 @@ import sys
 import time
 from pathlib import Path
 
+from format import archive_path
 from prompt_toolkit import Application
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.input.vt100_parser import ANSI_SEQUENCES
@@ -264,6 +265,26 @@ def main():
             picker_index[0] -= 1
             event.app.invalidate()
 
+    @kb.add("c-o")
+    def open_in_emacs(event):
+        if not conversations:
+            return
+        idx = picker_index[0]
+        if 0 <= idx < len(conversations):
+            conv_id = conversations[idx]["id"]
+            conv_path = CONVERSATIONS_DIR / f"{conv_id}.json"
+            if conv_path.exists():
+                with open(conv_path) as f:
+                    conv = json.load(f)
+                arch = archive_path(conv)
+                if arch.exists():
+                    subprocess.Popen(
+                        ["emacsclient", "-c", str(arch)],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    event.app.exit()
+
     # -- Header -------------------------------------------------------------
 
     def get_header():
@@ -275,9 +296,9 @@ def main():
                     preview = truncate(c["user_preview"], 40)
                     break
             return [("class:header",
-                     f" [reply: {preview}]  Enter:send  Shift+Enter:newline  Tab:deselect  Esc:cancel")]
+                     f" [reply: {preview}]  Enter:send  Shift+Enter:newline  Tab:deselect  C-o:open  Esc:cancel")]
         return [("class:header",
-                 " [new]  Enter:send  Shift+Enter:newline  Tab:select  Esc:cancel")]
+                 " [new]  Enter:send  Shift+Enter:newline  Tab:select  C-o:open  Esc:cancel")]
 
     header = Window(
         content=FormattedTextControl(get_header),

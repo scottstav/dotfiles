@@ -17,6 +17,8 @@ from pathlib import Path
 
 import anthropic
 
+from format import archive_path, format_conversation
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -253,7 +255,7 @@ class Daemon:
         except (ConnectionRefusedError, FileNotFoundError):
             log.warning("claude-voice not running, cannot trigger mic")
 
-    def _final_notify(self, tag, text, conv_id):
+    def _final_notify(self, tag, text, conv_id, archive_file=None):
         """Show final notification with Reply and Open actions.
 
         Runs in a background thread because --wait blocks until the user
@@ -284,22 +286,12 @@ class Daemon:
                 elif action == "mic":
                     self._trigger_voice_listen(conv_id)
                 elif action == "open":
-                    # Escape for elisp string: backslashes, then double quotes, then newlines
-                    escaped = text.replace("\\", "\\\\")
-                    escaped = escaped.replace('"', '\\"')
-                    escaped = escaped.replace("\n", "\\n")
-                    elisp = (
-                        f'(let ((buf (generate-new-buffer "*Claude Response*")))'
-                        f'  (switch-to-buffer buf)'
-                        f'  (insert "{escaped}")'
-                        f'  (goto-char (point-min))'
-                        f'  (markdown-mode))'
-                    )
-                    subprocess.Popen(
-                        ["emacsclient", "-c", "--eval", elisp],
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL,
-                    )
+                    if archive_file and archive_file.exists():
+                        subprocess.Popen(
+                            ["emacsclient", "-c", str(archive_file)],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                        )
             except Exception:
                 log.exception("Error in final notification handler")
 
@@ -491,10 +483,19 @@ class Daemon:
 
         self.store.save(conv)
         self._save_last_state(conv["id"])
+
+        # Archive formatted conversation to ~/Dropbox/LLM/Chats/
+        arch = archive_path(conv)
+        try:
+            arch.write_text(format_conversation(conv))
+            log.info("Archived conversation to %s", arch)
+        except OSError:
+            log.exception("Failed to write archive %s", arch)
+
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
         # Show final notification with actions
-        self._final_notify(tag, final_text, conv["id"])
+        self._final_notify(tag, final_text, conv["id"], arch)
 
     async def run(self):
         """Start the asyncio Unix socket server."""

@@ -28,6 +28,15 @@ def notify(text: str, title: str = "Claude Voice") -> None:
     )
 
 
+def notify_ack() -> None:
+    """Play a short chime immediately so the user knows the wake word was heard."""
+    subprocess.Popen(
+        ["paplay", "/usr/share/sounds/freedesktop/stereo/message-new-instant.oga"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def notify_listening() -> None:
     """Show a 'Listening...' notification."""
     notify("Listening...")

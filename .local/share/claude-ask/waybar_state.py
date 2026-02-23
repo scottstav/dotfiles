@@ -23,11 +23,12 @@ class WaybarState:
 
     def __init__(self):
         self._lock = threading.Lock()
+        month_cost = self._month_cost()
         self._state = {
             "status": "idle",
             "speak_enabled": False,
             "usage": {
-                "month_cost": "$0.00",
+                "month_cost": f"${month_cost:.2f}",
                 "last_query_cost": "$0.00",
                 "total_tokens": 0,
             },
@@ -75,13 +76,16 @@ class WaybarState:
             with open(USAGE_LOG) as f:
                 for line in f:
                     line = line.strip()
-                    if not line:
+                    if not line or line[0] != "{":
                         continue
-                    entry = json.loads(line)
+                    try:
+                        entry = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
                     if entry.get("ts", "").startswith(prefix):
                         total += entry.get("cost_usd", 0.0)
             return total
-        except (OSError, json.JSONDecodeError):
+        except OSError:
             return 0.0
 
     def reload_speak_enabled(self):

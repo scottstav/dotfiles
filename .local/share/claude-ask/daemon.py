@@ -38,7 +38,13 @@ with limited space.
 
 Be extremely concise. Default to 1-3 sentences. Use bullet points over paragraphs. \
 Skip preamble, hedging, and sign-offs. Only give longer responses when the user \
-explicitly asks for detail or the question genuinely requires it.\
+explicitly asks for detail or the question genuinely requires it.
+
+You have tools. Use them proactively:
+- shell: run commands to answer questions about the system, files, processes, etc.
+- web_search + fetch_url: search the web, then read articles for current info/news.
+- clipboard: copy useful output to the user's clipboard without being asked.
+- screenshot: capture the screen when the user asks about something visible.\
 """
 
 
@@ -181,7 +187,10 @@ class Daemon:
         return tools
 
     def _run_tool(self, name, input_data):
-        """Execute a loaded tool by name and return its result string."""
+        """Execute a loaded tool by name.
+
+        Returns either a string or a dict with type/data/media_type for images.
+        """
         for path in TOOLS_DIR.glob("*.py"):
             try:
                 spec = importlib.util.spec_from_file_location(path.stem, path)
@@ -189,6 +198,9 @@ class Daemon:
                 spec.loader.exec_module(mod)
                 if mod.name == name:
                     result = mod.run(input_data)
+                    # Tools can return a dict for image results
+                    if isinstance(result, dict) and result.get("type") == "image":
+                        return result
                     return str(result)
             except Exception:
                 log.exception("Error running tool %s", name)
@@ -307,20 +319,28 @@ class Daemon:
     async def handle_client(self, reader, writer):
         """Read a single JSON message from a client connection."""
         try:
-            data = await reader.read(65536)
+            # Read all data (up to 10MB for image payloads)
+            chunks = []
+            while True:
+                chunk = await reader.read(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+            data = b"".join(chunks)
             if not data:
                 return
 
             msg = json.loads(data.decode("utf-8"))
             text = msg.get("text", "").strip()
             conv_id = msg.get("conversation_id")
+            image = msg.get("image")  # base64 PNG or None
 
             if not text:
                 log.warning("Received empty message, ignoring")
                 return
 
-            log.info("Received query: %s", text[:80])
-            await self.handle_query(text, conv_id)
+            log.info("Received query: %s%s", text[:80], " (+image)" if image else "")
+            await self.handle_query(text, conv_id, image=image)
 
         except json.JSONDecodeError as e:
             log.error("Invalid JSON from client: %s", e)
@@ -330,10 +350,26 @@ class Daemon:
             writer.close()
             await writer.wait_closed()
 
-    async def handle_query(self, text, conv_id=None):
+    async def handle_query(self, text, conv_id=None, image=None):
         """Process a query: stream Claude API response with live notifications."""
         conv = self.store.get_or_create(conv_id)
-        conv["messages"].append({"role": "user", "content": text})
+
+        # Build user message content (text or text+image)
+        if image:
+            user_content = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/png",
+                        "data": image,
+                    },
+                },
+                {"type": "text", "text": text},
+            ]
+        else:
+            user_content = text
+        conv["messages"].append({"role": "user", "content": user_content})
         tag = f"claude-{conv['id'][:8]}"
 
         loop = asyncio.get_running_loop()
@@ -390,12 +426,27 @@ class Daemon:
             for tool_block in tool_use_blocks:
                 log.info("Executing tool: %s", tool_block.name)
                 self._notify(tag, f"Running tool: {tool_block.name}...")
-                result_text = self._run_tool(tool_block.name, tool_block.input)
-                log.info("Tool %s result: %s", tool_block.name, result_text[:100])
+                result = self._run_tool(tool_block.name, tool_block.input)
+
+                # Image results get wrapped as image content blocks
+                if isinstance(result, dict) and result.get("type") == "image":
+                    log.info("Tool %s returned image (%d bytes)", tool_block.name, len(result["data"]))
+                    content = [{
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": result["media_type"],
+                            "data": result["data"],
+                        },
+                    }]
+                else:
+                    log.info("Tool %s result: %s", tool_block.name, str(result)[:100])
+                    content = str(result)
+
                 tool_results.append({
                     "type": "tool_result",
                     "tool_use_id": tool_block.id,
-                    "content": result_text,
+                    "content": content,
                 })
 
             conv["messages"].append({"role": "user", "content": tool_results})

@@ -1,2 +1,4 @@
 anthropic
 prompt_toolkit
+duckduckgo-search
+trafilatura

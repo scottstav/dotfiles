@@ -2,9 +2,11 @@
 """Minimal TUI for typing a Claude query. Runs inside a floating Foot terminal."""
 
 import argparse
+import base64
 import json
 import os
 import socket
+import subprocess
 import sys
 
 from prompt_toolkit import Application
@@ -26,10 +28,33 @@ def get_socket_path():
     return os.path.join(runtime_dir, "claude-ask.sock")
 
 
-def send_message(text, conversation_id):
+def get_clipboard_image():
+    """Check if clipboard has an image and return base64-encoded PNG, or None."""
+    try:
+        types = subprocess.run(
+            ["wl-paste", "--list-types"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if "image/png" not in types.stdout:
+            return None
+        img = subprocess.run(
+            ["wl-paste", "--type", "image/png"],
+            capture_output=True, timeout=5,
+        )
+        if img.returncode != 0 or not img.stdout:
+            return None
+        return base64.b64encode(img.stdout).decode("ascii")
+    except Exception:
+        return None
+
+
+def send_message(text, conversation_id, image=None):
     """Send the query as JSON over the Unix socket."""
     sock_path = get_socket_path()
-    msg = json.dumps({"text": text, "conversation_id": conversation_id})
+    payload = {"text": text, "conversation_id": conversation_id}
+    if image:
+        payload["image"] = image
+    msg = json.dumps(payload)
 
     try:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -95,7 +120,8 @@ def main():
     app.run()
 
     if result["submitted"]:
-        send_message(result["text"], args.reply)
+        image = get_clipboard_image()
+        send_message(result["text"], args.reply, image=image)
 
 
 if __name__ == "__main__":

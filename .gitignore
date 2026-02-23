@@ -3,6 +3,7 @@
 .aider*
 .agent-shell/
 .venv/
+__pycache__/
 /.rest-mode
 /.env.dev
 /.env.test

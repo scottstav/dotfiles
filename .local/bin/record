@@ -44,11 +44,16 @@ if [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE" 2>/dev/null)" 2>/dev/null; t
             # Cleanup handled by the webcam foot instance
             ;;
         combined)
-            # Kill both recording processes
+            # Kill both recording processes and wait for them to actually exit
+            # (large recordings need time to flush buffers and write mp4 headers)
             for pf in /tmp/record-screen.pid /tmp/record-webcam.pid; do
-                [[ -f "$pf" ]] && kill -INT "$(cat "$pf" 2>/dev/null)" 2>/dev/null
+                pid=$(cat "$pf" 2>/dev/null)
+                [[ -n "$pid" ]] && kill -INT "$pid" 2>/dev/null
             done
-            sleep 1
+            for pf in /tmp/record-screen.pid /tmp/record-webcam.pid; do
+                pid=$(cat "$pf" 2>/dev/null)
+                while [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; do sleep 0.2; done
+            done
 
             SCREEN_FILE=$(cat /tmp/record-screen-path 2>/dev/null)
             WEBCAM_FILE=$(cat /tmp/record-webcam-path 2>/dev/null)
@@ -81,10 +86,12 @@ green=$'\e[32m'
 FZF_OPTS=(--ansi --height=100% --layout=reverse --no-info --pointer=">" --no-scrollbar --bind 'left-click:accept')
 
 mode=$(printf '%s\n' \
-    "${bold}Screen${reset}        ${dim}Screen region + desktop audio${reset}" \
-    "${bold}Webcam${reset}        ${dim}Webcam + microphone with preview${reset}" \
-    "${bold}Screen + Webcam${reset} ${dim}Combined with circular overlay${reset}" \
-    | fzf "${FZF_OPTS[@]}" --header="${bold}Select recording mode${reset}")
+    "screen	${bold}Screen${reset}          ${dim}Screen region + desktop audio${reset}" \
+    "webcam	${bold}Webcam${reset}          ${dim}Webcam + microphone with preview${reset}" \
+    "combined	${bold}Screen + Webcam${reset}  ${dim}Combined with circular overlay${reset}" \
+    | fzf "${FZF_OPTS[@]}" --header="${bold}Select recording mode${reset}" \
+        --delimiter='\t' --with-nth=2 \
+    | cut -f1)
 
 [[ -z "$mode" ]] && exit 0
 
@@ -139,11 +146,21 @@ get_desktop_audio() {
     echo "$(pactl get-default-sink).monitor"
 }
 
+# slurp wrapper that returns OUTPUT and GEOM separately.
+# wf-recorder needs -o OUTPUT to handle fractional scaling correctly.
+pick_region() {
+    local raw
+    raw=$(slurp -f '%o %x,%y %wx%h') || return 1
+    SLURP_OUTPUT="${raw%% *}"
+    SLURP_GEOM="${raw#* }"
+}
+
 # --- Mode: Screen ---
+# setsid detaches wf-recorder into its own session so it survives foot closing.
+# -o OUTPUT is required for fractional-scaled monitors (DP-3 at 1.6x).
 
 start_screen() {
-    local GEOM
-    GEOM=$(slurp) || exit 1
+    pick_region || exit 1
     sleep 0.3
 
     mkdir -p "$OUTDIR"
@@ -154,14 +171,16 @@ start_screen() {
     echo "screen" > "$MODEFILE"
     echo "$FILE" > "$PATHFILE"
 
-    setsid wf-recorder -g "$GEOM" -f "$FILE" -c libx264 -p crf=23 \
-        --audio="$DESKTOP_AUDIO" -C aac &
+    setsid wf-recorder -o "$SLURP_OUTPUT" -g "$SLURP_GEOM" -f "$FILE" \
+        -c libx264 -p crf=23 --audio="$DESKTOP_AUDIO" -C aac \
+        &>/dev/null &
     echo $! > "$PIDFILE"
 
     signal_waybar
 }
 
 # --- Mode: Webcam ---
+# foot stays open for mpv preview, so no setsid needed.
 
 start_webcam() {
     local WEBCAM MIC
@@ -170,7 +189,6 @@ start_webcam() {
 
     mkdir -p "$OUTDIR"
     local FILE="$OUTDIR/cam-$(date +%Y%m%d-%H%M%S).mp4"
-    local WC_PIDFILE="/tmp/record-webcam.pid"
 
     echo "webcam" > "$MODEFILE"
     echo "$FILE" > "$PATHFILE"
@@ -195,10 +213,10 @@ start_webcam() {
 
 start_combined() {
     # Interactive pickers FIRST (while foot is still visible)
-    local WEBCAM MIC GEOM
+    local WEBCAM MIC
     WEBCAM=$(pick_webcam) || exit 0
     MIC=$(pick_mic) || exit 0
-    GEOM=$(slurp) || exit 1
+    pick_region || exit 1
     sleep 0.3
 
     mkdir -p "$OUTDIR"
@@ -211,13 +229,13 @@ start_combined() {
     echo "$SCREEN_FILE" > /tmp/record-screen-path
     echo "$WEBCAM_FILE" > /tmp/record-webcam-path
 
-    # Screen recording (wf-recorder in new session so foot can't kill it)
-    setsid wf-recorder -g "$GEOM" -f "$SCREEN_FILE" -c libx264 -p crf=23 \
-        --audio="$DESKTOP_AUDIO" -C aac &
+    # setsid detaches both recorders from foot's terminal session
+    setsid wf-recorder -o "$SLURP_OUTPUT" -g "$SLURP_GEOM" -f "$SCREEN_FILE" \
+        -c libx264 -p crf=23 --audio="$DESKTOP_AUDIO" -C aac \
+        &>/dev/null &
     echo $! > /tmp/record-screen.pid
-    echo $! > "$PIDFILE"  # primary PID for toggle detection
+    echo $! > "$PIDFILE"
 
-    # Webcam recording (ffmpeg headless, no mpv preview)
     setsid ffmpeg -f v4l2 -input_format mjpeg -framerate 30 -i "$WEBCAM" \
         -f pulse -thread_queue_size 1024 -i "$MIC" \
         -c:v libx264 -crf 23 -tune zerolatency -preset ultrafast \
@@ -230,7 +248,7 @@ start_combined() {
 # --- Dispatch ---
 
 case "$mode" in
-    *Screen\ +\ Webcam*) start_combined ;;
-    *Screen*)            start_screen ;;
-    *Webcam*)            start_webcam ;;
+    screen)   start_screen ;;
+    webcam)   start_webcam ;;
+    combined) start_combined ;;
 esac

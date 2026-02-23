@@ -102,6 +102,7 @@ class Daemon:
 
         # External listen requests (set by control socket)
         self._listen_request = None  # dict or None
+        self._muted = False  # When True, wake word detections are ignored
         self._lock = threading.Lock()
 
     # ------------------------------------------------------------------
@@ -113,6 +114,12 @@ class Daemon:
         with self._lock:
             self._listen_request = {"conversation_id": conversation_id}
         log.info("Listen request queued (conv=%s)", conversation_id or "new")
+
+    def set_muted(self, muted: bool):
+        """Mute or unmute wake word detection."""
+        with self._lock:
+            self._muted = muted
+        log.info("Wake word %s", "muted" if muted else "unmuted")
 
     def _check_listen_request(self):
         """Check and consume a pending listen request. Returns dict or None."""
@@ -140,6 +147,8 @@ class Daemon:
 
                 # Read audio and check for wake word
                 chunk = self.audio.read_oww_chunk()
+                if self._muted:
+                    continue
                 if self.wake_word.detect(chunk):
                     notify_ack()
                     self._capture_and_send()
@@ -241,6 +250,28 @@ async def handle_control_client(daemon, reader, writer):
         if action == "listen":
             daemon.request_listen(conversation_id=msg.get("conversation_id"))
             log.info("Control socket: listen (conv=%s)", msg.get("conversation_id") or "new")
+        elif action == "mute":
+            daemon.set_muted(True)
+        elif action == "unmute":
+            daemon.set_muted(False)
+        elif action == "toggle-mute":
+            with daemon._lock:
+                new_state = not daemon._muted
+            daemon.set_muted(new_state)
+            # Send back the new state
+            try:
+                writer.write(json.dumps({"muted": new_state}).encode("utf-8"))
+                await writer.drain()
+            except Exception:
+                pass
+        elif action == "get-mute":
+            with daemon._lock:
+                muted = daemon._muted
+            try:
+                writer.write(json.dumps({"muted": muted}).encode("utf-8"))
+                await writer.drain()
+            except Exception:
+                pass
         else:
             log.warning("Control socket: unknown action %r", action)
 

@@ -192,6 +192,7 @@
         "return-type": "json",
         "interval": 2,
         "on-click": "claude-ask-toggle-speak",
+        "on-click-middle": "claude-ask-toggle-wake",
         "signal": 12,
         "tooltip": true
     },

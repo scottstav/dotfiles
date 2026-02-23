@@ -9,11 +9,11 @@
  (position . 1)
  (last-modified 27032 48560 807689 617000))
 ("org-capture-last-stored"
- (filename . "~/Dropbox/org/denote/quicknote.org")
- (front-context-string . "** face lotion\n*")
- (rear-context-string . "ve\nprot powder\n\n")
- (position . 346)
- (last-modified 27032 47493 796082 178000))
+ (filename . "~/Dropbox/org/denote/work/journal/20260223T013350--monday-23-february-2026-0133__journal.org")
+ (front-context-string . "** TODO do prod ")
+ (rear-context-string . "2-23 Mon 01:33]\n")
+ (position . 219)
+ (last-modified 27036 36097 480843 998000))
 ("wantana-android"
  (filename . "/ssh:u0_a427@10.0.0.208#8022:~/")
  (front-context-string . "  /ssh:u0_a427@1")

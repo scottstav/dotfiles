@@ -14,6 +14,7 @@ import json
 d = json.load(open('$STATE_FILE'))
 status = d.get('status', 'idle')
 speak = d.get('speak_enabled', False)
+wake_muted = d.get('wake_muted', False)
 usage = d.get('usage', {})
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
@@ -30,6 +31,8 @@ else:
         icon += ' \U000f057e'  # + nf-md-volume_high
     else:
         icon += ' \U000f0581'  # + nf-md-volume_off
+    if wake_muted:
+        icon += ' \U000f036d'  # + nf-md-microphone_off
 
 css = status
 if status == 'idle' and speak:
@@ -39,6 +42,7 @@ from datetime import datetime
 month_name = datetime.now().strftime('%b')
 tip = f'{month_name}: {month} | Last: {last}'
 tip += ' | Voice: ON' if speak else ' | Voice: OFF'
+tip += ' | Wake: OFF' if wake_muted else ' | Wake: ON'
 
 print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
 "

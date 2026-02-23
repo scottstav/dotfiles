@@ -77,3 +77,21 @@ def test_clear_resets():
     buf.add("Partial text")
     buf.clear()
     assert buf.flush() == []
+
+
+def test_abbreviation_not_split():
+    buf = SentenceBuffer()
+    sentences = buf.add("Dr. Smith is here. He is great. ")
+    assert sentences == ["Dr. Smith is here.", "He is great."]
+
+
+def test_multiple_abbreviations():
+    buf = SentenceBuffer()
+    sentences = buf.add("Mr. and Mrs. Smith went to St. Louis. ")
+    assert sentences == ["Mr. and Mrs. Smith went to St. Louis."]
+
+
+def test_eg_abbreviation():
+    buf = SentenceBuffer()
+    sentences = buf.add("Use tools e.g. shell and web. ")
+    assert sentences == ["Use tools e.g. shell and web."]

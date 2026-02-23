@@ -11,6 +11,19 @@ import re
 # the punctuation attached to the sentence.
 _SENTENCE_RE = re.compile(r'(?<=[.!?])\s+|(?<=\n)')
 
+# Common abbreviations that should NOT be treated as sentence endings.
+# Matched case-insensitively against the last word before the period.
+_ABBREVIATIONS = frozenset({
+    'mr', 'mrs', 'ms', 'dr', 'prof', 'sr', 'jr',
+    'st', 'ave', 'blvd',
+    'vs', 'etc', 'approx', 'dept', 'est', 'govt', 'inc', 'ltd', 'univ',
+    # Latin abbreviations (e.g., i.e. are handled by the multi-dot pattern)
+    'e.g', 'i.e',
+})
+
+# Detect abbreviation ending: a known abbreviation followed by a period
+_ABBREV_TAIL = re.compile(r'(?:^|\s)(\S+)\.$')
+
 # Markdown patterns to strip
 _BOLD_ITALIC = re.compile(r'\*{1,3}(.*?)\*{1,3}')
 _INLINE_CODE = re.compile(r'`([^`]+)`')
@@ -19,9 +32,21 @@ _MD_LINK = re.compile(r'\[([^\]]+)\]\([^\)]+\)')
 _BARE_URL = re.compile(r'https?://\S+')
 _HEADING = re.compile(r'^#{1,6}\s+', re.MULTILINE)
 
+# Multiple consecutive spaces collapsed to one
+_MULTIPLE_SPACES = re.compile(r'  +')
+
 # Fenced code block detection
 _CODE_FENCE = re.compile(r'^```', re.MULTILINE)
 
+
+
+def _ends_with_abbreviation(text: str) -> bool:
+    """Return True if *text* ends with a known abbreviation followed by a period."""
+    m = _ABBREV_TAIL.search(text)
+    if not m:
+        return False
+    word = m.group(1).lower()
+    return word in _ABBREVIATIONS
 
 
 class SentenceBuffer:
@@ -79,13 +104,18 @@ class SentenceBuffer:
 
         # Split on sentence boundaries
         parts = _SENTENCE_RE.split(text)
-        if not parts:
-            self._buffer = ""
-            return []
 
-        # Last part might be incomplete — keep it buffered
-        self._buffer = parts[-1] if parts else ""
-        complete = parts[:-1]
+        # Rejoin parts that were incorrectly split on abbreviation periods
+        merged: list[str] = [parts[0]]
+        for part in parts[1:]:
+            if _ends_with_abbreviation(merged[-1]):
+                merged[-1] = merged[-1] + " " + part
+            else:
+                merged.append(part)
+
+        # Last part might be incomplete -- keep it buffered
+        self._buffer = merged[-1]
+        complete = merged[:-1]
 
         for part in complete:
             cleaned = self._clean(part.strip())
@@ -102,5 +132,5 @@ class SentenceBuffer:
         text = _BOLD_ITALIC.sub(r'\1', text)
         text = _INLINE_CODE.sub(r'\1', text)
         text = _HEADING.sub('', text)
-        text = re.sub(r'  +', ' ', text)
+        text = _MULTIPLE_SPACES.sub(' ', text)
         return text.strip()

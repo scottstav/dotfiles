@@ -963,17 +963,13 @@ class VoiceTyping:
             self._update_ambient(raw_rms)
             self._maybe_update_vad_mode()
 
-        audio_chunk = raw_chunk
-        if self.agc_enabled:
-            audio_chunk, _ = self._apply_agc(raw_chunk, raw_rms)
-
         with self.buffer_lock:
             if is_speech:
                 if not self.is_recording:
                     self.recording_buffer = list(self.pre_buffer)
                     self.is_recording = True
 
-                self.recording_buffer.append(audio_chunk.copy())
+                self.recording_buffer.append(raw_chunk.copy())
                 self.silence_chunks = 0
                 if len(self.recording_buffer) >= self.max_recording_chunks:
                     audio_to_process = self.recording_buffer.copy()
@@ -984,7 +980,7 @@ class VoiceTyping:
                     self.recording_buffer = []
 
             elif self.is_recording:
-                self.recording_buffer.append(audio_chunk.copy())
+                self.recording_buffer.append(raw_chunk.copy())
                 self.silence_chunks += 1
 
                 if len(self.recording_buffer) >= self.max_recording_chunks:
@@ -1002,7 +998,7 @@ class VoiceTyping:
                     self.silence_chunks = 0
                     self.recording_buffer = []
 
-            self.pre_buffer.append(audio_chunk.copy())
+            self.pre_buffer.append(raw_chunk.copy())
 
         return (None, pyaudio.paContinue)
 
@@ -1090,21 +1086,12 @@ class VoiceTyping:
             print("⚡ Transcribing...")
             start_time = time.time()
 
-            prompt = self.previous_text[-200:] if self.previous_text else "Clear speech dictation."
-
             segments, info = self.model.transcribe(
                 audio_float,
                 language=self.language or "en",
-                initial_prompt=prompt,
-                temperature=0.0,
                 beam_size=5,
-                condition_on_previous_text=True,
                 without_timestamps=True,
                 vad_filter=True,
-                vad_parameters=dict(
-                    min_silence_duration_ms=1000,
-                    speech_pad_ms=400,
-                ),
             )
 
             text = ""

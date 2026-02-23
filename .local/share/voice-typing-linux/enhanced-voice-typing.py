@@ -933,7 +933,7 @@ class VoiceTyping:
         raw_chunk = np.frombuffer(in_data, dtype=np.int16)
         raw_rms = self._rms(raw_chunk)
 
-        if self.noise_gate_enabled and raw_rms < self._noise_gate_threshold():
+        if self.noise_gate_enabled and not self.is_recording and raw_rms < self._noise_gate_threshold():
             is_speech = False
         else:
             is_speech = self.vad.is_speech(in_data, self.sample_rate)

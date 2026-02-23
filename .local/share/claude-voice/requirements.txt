@@ -1,6 +1,7 @@
 openwakeword
 faster-whisper
 pyaudio
+setuptools<81
 webrtcvad
 numpy
 pyyaml

@@ -80,8 +80,7 @@
   (winner-mode 1)
 
   ;; Inline dired previews and subtree expansion
-  (use-package dired-preview
-    :hook (dired-mode . dired-preview-mode))
+  (use-package dired-preview)
 
   (use-package dired-subtree
     :bind (:map dired-mode-map
@@ -511,9 +510,12 @@
 * git
 #+begin_src emacs-lisp
   (use-package magit
-    :bind ("C-x g" . magit-status)
     :custom
     (magit-display-buffer-function #'magit-display-buffer-same-window-except-diff-v1))
+
+  (define-prefix-command 'my/git-map)
+  (global-set-key (kbd "C-c g") 'my/git-map)
+  (define-key my/git-map (kbd "g") #'magit-status)
 
   (use-package browse-at-remote)
 
@@ -571,7 +573,10 @@
           org-confirm-babel-evaluate 'my-org-confirm-babel-evaluate))
 
   (org-clock-persistence-insinuate)
-  (global-set-key (kbd "C-c c") #'org-capture)
+  (define-prefix-command 'my/org-capture-map)
+  (global-set-key (kbd "C-c c") 'my/org-capture-map)
+  (define-key my/org-capture-map (kbd "c") #'org-capture)
+  (define-key my/org-capture-map (kbd "a") #'org-agenda)
 
   ;; Org babel
   (use-package ob-http)
@@ -651,14 +656,15 @@
           ("wn" "Work note" entry (file my/work-journal-file)
            "* %?\n%U\n")))
 
-  ;; Clock and agenda keybinds under C-c o
+  ;; Clock and timer keybinds under C-c o
   (define-prefix-command 'my/org-command-map)
   (global-set-key (kbd "C-c o") 'my/org-command-map)
   (define-key my/org-command-map (kbd "c") #'org-clock-in)
   (define-key my/org-command-map (kbd "o") #'org-clock-out)
   (define-key my/org-command-map (kbd "r") #'org-clock-report)
-  (define-key my/org-command-map (kbd "t") (lambda () (interactive) (org-agenda nil "p")))
-  (define-key my/org-command-map (kbd "w") (lambda () (interactive) (org-agenda nil "w")))
+  (define-key my/org-command-map (kbd "s") #'tmr)
+  (define-key my/org-command-map (kbd "l") #'tmr-tabulated-view)
+  (define-key my/org-command-map (kbd "x") #'tmr-cancel)
 
   ;; Custom agenda views
   (setq org-agenda-custom-commands
@@ -842,7 +848,7 @@ Shows clean service names for completion (e.g., 'user-service')."
       (browse-url (concat "file://" html-file))))
 
   (defun my/toggle-document-preview ()
-    "Toggle a rendered/styled preview for org and markdown buffers."
+    "Toggle a rendered/styled preview for org, markdown, and dired buffers."
     (interactive)
     (cond
      ((derived-mode-p 'org-mode)
@@ -862,17 +868,16 @@ Shows clean service names for completion (e.g., 'user-service')."
      ((derived-mode-p 'markdown-mode)
       (my/markdown-preview-browser)
       (message "Markdown preview opened in browser"))
-     (t (message "Not an org or markdown buffer"))))
+     ((derived-mode-p 'dired-mode)
+      (dired-preview-mode (if (bound-and-true-p dired-preview-mode) -1 1)))
+     (t (message "Not an org, markdown, or dired buffer"))))
 
   (global-set-key (kbd "C-c t p") #'my/toggle-document-preview)
 #+end_src
 
 * tmr
 #+begin_src emacs-lisp
-  (use-package tmr
-    :bind (("C-c k t" . tmr)
-           ("C-c k l" . tmr-tabulated-view)
-           ("C-c k c" . tmr-cancel)))
+  (use-package tmr)
 #+end_src
 
 * terminal

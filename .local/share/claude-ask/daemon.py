@@ -365,13 +365,16 @@ class Daemon:
             text = msg.get("text", "").strip()
             conv_id = msg.get("conversation_id")
             image = msg.get("image")  # base64 PNG or None
+            file = msg.get("file")    # file path or None
 
             if not text:
                 log.warning("Received empty message, ignoring")
                 return
 
-            log.info("Received query: %s%s", text[:80], " (+image)" if image else "")
-            await self.handle_query(text, conv_id, image=image)
+            log.info("Received query: %s%s%s", text[:80],
+                     " (+image)" if image else "",
+                     f" (+file: {file})" if file else "")
+            await self.handle_query(text, conv_id, image=image, file=file)
 
         except json.JSONDecodeError as e:
             log.error("Invalid JSON from client: %s", e)
@@ -381,9 +384,13 @@ class Daemon:
             writer.close()
             await writer.wait_closed()
 
-    async def handle_query(self, text, conv_id=None, image=None):
+    async def handle_query(self, text, conv_id=None, image=None, file=None):
         """Process a query: stream Claude API response with live notifications."""
         conv = self.store.get_or_create(conv_id)
+
+        # Inject attached file context into the text
+        if file:
+            text = f"[Attached file: {file}]\nWhen you produce an output file, copy it to the clipboard using the clipboard tool's file parameter.\n\n{text}"
 
         # Build user message content (text or text+image)
         if image:

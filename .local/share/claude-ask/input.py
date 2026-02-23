@@ -62,12 +62,41 @@ def get_clipboard_image():
         return None
 
 
-def send_message(text, conversation_id, image=None):
+def get_clipboard_file():
+    """Check if clipboard has a file URI and return the path, or None."""
+    try:
+        types = subprocess.run(
+            ["wl-paste", "--list-types"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if "text/uri-list" not in types.stdout:
+            return None
+        uri = subprocess.run(
+            ["wl-paste", "--type", "text/uri-list"],
+            capture_output=True, text=True, timeout=2,
+        )
+        if uri.returncode != 0 or not uri.stdout.strip():
+            return None
+        # Extract first file:// URI
+        for line in uri.stdout.strip().splitlines():
+            line = line.strip()
+            if line.startswith("file://"):
+                path = line[7:]  # strip file:// prefix
+                if os.path.isfile(path):
+                    return path
+        return None
+    except Exception:
+        return None
+
+
+def send_message(text, conversation_id, image=None, file=None):
     """Send the query as JSON over the Unix socket."""
     sock_path = get_socket_path()
     payload = {"text": text, "conversation_id": conversation_id}
     if image:
         payload["image"] = image
+    if file:
+        payload["file"] = file
     msg = json.dumps(payload)
 
     try:
@@ -208,7 +237,8 @@ def main():
     # Mutable state for the app
     state = {
         "selected_conv_id": selected_conv_id,
-        "image": None,  # base64 PNG data, set by explicit Ctrl+V paste
+        "image": None,  # base64 PNG data, set by explicit Ctrl+G
+        "file": None,   # file path from clipboard URI, set by Ctrl+G
     }
 
     result = {"submitted": False, "text": ""}
@@ -236,12 +266,16 @@ def main():
         event.app.exit()
 
     @kb.add("c-g")
-    def attach_image(event):
-        """Ctrl+G: attach clipboard image."""
+    def attach_clipboard(event):
+        """Ctrl+G: attach clipboard image or file."""
         def fetch():
             image = get_clipboard_image()
             if image:
                 state["image"] = image
+            else:
+                filepath = get_clipboard_file()
+                if filepath:
+                    state["file"] = filepath
             event.app.invalidate()
         threading.Thread(target=fetch, daemon=True).start()
 
@@ -301,7 +335,12 @@ def main():
     # -- Header -------------------------------------------------------------
 
     def get_header():
-        img = " [image] " if state["image"] else " "
+        if state["image"]:
+            attachment = " [image] "
+        elif state["file"]:
+            attachment = f" [{os.path.basename(state['file'])}] "
+        else:
+            attachment = " "
         if state["selected_conv_id"]:
             # Find the preview for the selected conversation
             preview = ""
@@ -310,9 +349,9 @@ def main():
                     preview = truncate(c["user_preview"], 40)
                     break
             return [("class:header",
-                     f" [reply: {preview}]{img}Enter:send  S-Enter:newline  C-g:image  Tab:deselect  Esc:cancel")]
+                     f" [reply: {preview}]{attachment}Enter:send  S-Enter:newline  C-g:attach  Tab:deselect  Esc:cancel")]
         return [("class:header",
-                 f" [new]{img}Enter:send  S-Enter:newline  C-g:image  Tab:select  Esc:cancel")]
+                 f" [new]{attachment}Enter:send  S-Enter:newline  C-g:attach  Tab:select  Esc:cancel")]
 
     header = Window(
         content=FormattedTextControl(get_header),
@@ -400,7 +439,7 @@ def main():
 
     if result["submitted"]:
         conv_id = state["selected_conv_id"]
-        send_message(result["text"], conv_id, image=state["image"])
+        send_message(result["text"], conv_id, image=state["image"], file=state["file"])
 
 
 if __name__ == "__main__":

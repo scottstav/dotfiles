@@ -15,12 +15,13 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     FILE=$(cat /tmp/screen-record-path)
     rm /tmp/screen-record-path
 
-    # Copy to clipboard
-    wl-copy -t video/mp4 < "$FILE"
+    # Copy file to clipboard (for pasting into Slack/Discord)
+    wl-copy -t text/uri-list "file://$FILE"
     notify-send "Recording saved" "$(basename "$FILE")" -i camera-video
 else
     # Start recording
     GEOM=$(slurp) || exit 1
+    sleep 0.3
     mkdir -p "$OUTDIR"
     FILE="$OUTDIR/rec-$(date +%Y%m%d-%H%M%S).mp4"
     echo "$FILE" > /tmp/screen-record-path

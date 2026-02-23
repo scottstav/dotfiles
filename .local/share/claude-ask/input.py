@@ -186,25 +186,25 @@ def main():
     selected_conv_id = None  # The conversation selected for reply (via Tab)
     picker_index = [0]       # Which conversation is highlighted in the picker (mutable)
 
+    # Determine which conversation to pre-select (if any)
+    pre_select_id = None
     if args.reply:
-        # --reply flag: go straight to reply mode for that conv
-        selected_conv_id = args.reply
+        pre_select_id = args.reply
     else:
-        # Check auto-reply threshold
         last_conv_id, last_ts = read_last_state()
         if last_conv_id and (time.time() - last_ts) < AUTO_REPLY_THRESHOLD_SECS:
-            # Auto-select the most recent conversation
-            selected_conv_id = last_conv_id
-            # Set picker_index to match that conversation
-            for i, c in enumerate(conversations):
-                if c["id"] == last_conv_id:
-                    picker_index[0] = i
-                    break
+            pre_select_id = last_conv_id
+
+    if pre_select_id:
+        selected_conv_id = pre_select_id
+        for i, c in enumerate(conversations):
+            if c["id"] == pre_select_id:
+                picker_index[0] = i
+                break
 
     # Mutable state for the app
     state = {
         "selected_conv_id": selected_conv_id,
-        "skip_reply": args.reply,  # truthy if --reply was used (skip picker entirely)
     }
 
     result = {"submitted": False, "text": ""}
@@ -233,8 +233,6 @@ def main():
 
     @kb.add("tab")
     def toggle_reply(event):
-        if state["skip_reply"]:
-            return  # --reply mode, don't allow toggling
         if not conversations:
             return
 
@@ -252,7 +250,7 @@ def main():
 
     @kb.add("c-n")
     def next_conv(event):
-        if state["skip_reply"] or not conversations:
+        if not conversations:
             return
         if picker_index[0] < len(conversations) - 1:
             picker_index[0] += 1
@@ -260,7 +258,7 @@ def main():
 
     @kb.add("c-p")
     def prev_conv(event):
-        if state["skip_reply"] or not conversations:
+        if not conversations:
             return
         if picker_index[0] > 0:
             picker_index[0] -= 1
@@ -269,8 +267,6 @@ def main():
     # -- Header -------------------------------------------------------------
 
     def get_header():
-        if state["skip_reply"]:
-            return [("class:header", " [reply]  Enter:send  Shift+Enter:newline  Esc:cancel")]
         if state["selected_conv_id"]:
             # Find the preview for the selected conversation
             preview = ""
@@ -294,7 +290,7 @@ def main():
     PREVIEW_WIDTH = 60
 
     def get_conv_list():
-        if state["skip_reply"] or not conversations:
+        if not conversations:
             return []
 
         fragments = []
@@ -346,11 +342,7 @@ def main():
 
     # -- Layout -------------------------------------------------------------
 
-    if state["skip_reply"]:
-        # Simple layout without picker (--reply mode)
-        layout = Layout(HSplit([header, body]))
-    else:
-        layout = Layout(HSplit([header, body, separator, conv_list_window]))
+    layout = Layout(HSplit([header, body, separator, conv_list_window]))
 
     style_defs = {
         "conv-user": "#888888",

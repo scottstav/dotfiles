@@ -264,7 +264,7 @@ class Daemon:
                 )
                 action = result.stdout.strip()
                 if action == "reply":
-                    subprocess.Popen(["claude-ask"])
+                    subprocess.Popen(["claude-ask", "--reply", conv_id])
                 elif action == "open":
                     # Escape for elisp string: backslashes, then double quotes, then newlines
                     escaped = text.replace("\\", "\\\\")

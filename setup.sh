@@ -20,69 +20,7 @@ warn()  { echo -e "  ${YELLOW}! $1${NC}"; }
 fail()  { echo -e "  ${RED}✗ $1${NC}"; }
 
 # ------------------------------------------------------------------
-# 1. Packages
-# ------------------------------------------------------------------
-step "System packages"
-
-read -rp "  Install system packages? (y/n) " answer
-if [[ "$answer" =~ ^[Yy]$ ]] && command -v pacman &>/dev/null; then
-    PKG_FILE="$DOTFILES/packages-01-27-2026.txt"
-    if [ -f "$PKG_FILE" ]; then
-        # Extract just the package names (first column) from the PACMAN section
-        mapfile -t PACKAGES < <(
-            sed -n '/^=== PACMAN/,/^===/p' "$PKG_FILE" \
-            | grep -v '^===' \
-            | awk '{print $1}' \
-            | grep -v '^$'
-        )
-
-        # Filter to packages not already installed
-        MISSING=()
-        for pkg in "${PACKAGES[@]}"; do
-            if ! pacman -Qi "$pkg" &>/dev/null; then
-                MISSING+=("$pkg")
-            fi
-        done
-
-        if [ ${#MISSING[@]} -gt 0 ]; then
-            echo "  ${#MISSING[@]} packages to install"
-            # Use yay if available (handles AUR), otherwise pacman
-            if command -v yay &>/dev/null; then
-                yay -S --needed --noconfirm "${MISSING[@]}" || warn "Some packages failed — review output above"
-            else
-                sudo pacman -S --needed --noconfirm "${MISSING[@]}" || warn "Some packages failed (AUR packages need yay)"
-            fi
-            ok "Packages installed"
-        else
-            ok "All packages already installed"
-        fi
-
-        # Flatpaks
-        if command -v flatpak &>/dev/null; then
-            mapfile -t FLATPAKS < <(
-                sed -n '/^=== FLATPAK/,/^===/p' "$PKG_FILE" \
-                | grep -v '^===' \
-                | awk -F'\t' '{print $2}' \
-                | grep -v '^$'
-            )
-            for fp in "${FLATPAKS[@]}"; do
-                if ! flatpak info "$fp" &>/dev/null 2>&1; then
-                    flatpak install -y flathub "$fp" || warn "Failed to install flatpak: $fp"
-                fi
-            done
-            ok "Flatpaks checked"
-        fi
-    else
-        warn "Package list not found at $PKG_FILE"
-    fi
-elif [[ ! "$answer" =~ ^[Yy]$ ]]; then
-    skip "Package installation"
-else
-    skip "Not an Arch system — install packages manually"
-fi
-
-# ------------------------------------------------------------------
-# 2. Stow dotfiles
+# 1. Stow dotfiles
 # ------------------------------------------------------------------
 step "Stow dotfiles"
 
@@ -121,7 +59,7 @@ if [ -d "$DOTFILES/root" ]; then
 fi
 
 # ------------------------------------------------------------------
-# 3. User groups
+# 2. User groups
 # ------------------------------------------------------------------
 step "User groups"
 
@@ -133,7 +71,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 4. KDE Wallet — Bitwarden credentials
+# 3. KDE Wallet — Bitwarden credentials
 # ------------------------------------------------------------------
 step "KDE Wallet (Bitwarden credentials)"
 
@@ -186,7 +124,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 5. Bitwarden session (for fetching secrets during setup)
+# 4. Bitwarden session (for fetching secrets during setup)
 # ------------------------------------------------------------------
 step "Bitwarden session"
 
@@ -220,7 +158,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 6. Systemd user services
+# 5. Systemd user services
 # ------------------------------------------------------------------
 step "Systemd user services"
 
@@ -263,6 +201,48 @@ else
 fi
 
 # ------------------------------------------------------------------
+# 6. Claude Ask + Claude Voice
+# ------------------------------------------------------------------
+step "Claude Ask / Claude Voice"
+
+CA_DIR="$HOME/.local/share/claude-ask"
+CV_DIR="$HOME/.local/share/claude-voice"
+
+# claude-ask venv + deps
+if [ ! -d "$CA_DIR/.venv" ]; then
+    python3 -m venv "$CA_DIR/.venv"
+    ok "claude-ask venv created"
+else
+    ok "claude-ask venv already exists"
+fi
+"$CA_DIR/.venv/bin/pip" install -q -r "$CA_DIR/requirements.txt"
+ok "claude-ask dependencies installed"
+
+# claude-voice venv + deps
+if [ ! -d "$CV_DIR/.venv" ]; then
+    python3 -m venv "$CV_DIR/.venv"
+    ok "claude-voice venv created"
+else
+    ok "claude-voice venv already exists"
+fi
+"$CV_DIR/.venv/bin/pip" install -q -r "$CV_DIR/requirements.txt"
+ok "claude-voice dependencies installed"
+
+# Archive directory for conversation transcripts
+mkdir -p "$HOME/Dropbox/LLM/Chats"
+ok "Conversation archive directory ready"
+
+# Enable services
+for svc in claude-ask.service claude-voice.service; do
+    if systemctl --user is-enabled "$svc" &>/dev/null; then
+        ok "$svc already enabled"
+    else
+        systemctl --user enable "$svc"
+        ok "$svc enabled"
+    fi
+done
+
+# ------------------------------------------------------------------
 # 7. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"
@@ -303,6 +283,13 @@ if [ -d "$VT_DIR" ]; then
         fi
     else
         ok "Vosk model already present"
+    fi
+    # Enable service
+    if systemctl --user is-enabled voice-typing.service &>/dev/null; then
+        ok "voice-typing.service already enabled"
+    else
+        systemctl --user enable voice-typing.service
+        ok "voice-typing.service enabled"
     fi
 else
     warn "voice-typing-linux not found at $VT_DIR"

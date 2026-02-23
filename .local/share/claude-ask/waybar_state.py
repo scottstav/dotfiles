@@ -8,11 +8,13 @@ import json
 import logging
 import subprocess
 import threading
+from datetime import datetime, timezone
 from pathlib import Path
 
 log = logging.getLogger("claude-ask")
 
 STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "waybar.json"
+USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
 WAYBAR_SIGNAL = 12  # SIGRTMIN+12
 
 
@@ -25,7 +27,7 @@ class WaybarState:
             "status": "idle",
             "speak_enabled": False,
             "usage": {
-                "session_cost": "$0.00",
+                "month_cost": "$0.00",
                 "last_query_cost": "$0.00",
                 "total_tokens": 0,
             },
@@ -54,14 +56,33 @@ class WaybarState:
             self._write()
 
     def update_usage(self, query_cost: float, total_tokens: int):
-        """Update usage after an API call. Accumulates session cost."""
+        """Update usage after an API call. Reads monthly total from usage log."""
         with self._lock:
-            current = float(self._state["usage"]["session_cost"].replace("$", ""))
-            current += query_cost
-            self._state["usage"]["session_cost"] = f"${current:.2f}"
+            month_cost = self._month_cost()
+            self._state["usage"]["month_cost"] = f"${month_cost:.2f}"
             self._state["usage"]["last_query_cost"] = f"${query_cost:.4f}"
             self._state["usage"]["total_tokens"] = total_tokens
             self._write()
+
+    @staticmethod
+    def _month_cost() -> float:
+        """Sum cost_usd from usage.jsonl for the current month."""
+        try:
+            if not USAGE_LOG.exists():
+                return 0.0
+            prefix = datetime.now(timezone.utc).strftime("%Y-%m")
+            total = 0.0
+            with open(USAGE_LOG) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    entry = json.loads(line)
+                    if entry.get("ts", "").startswith(prefix):
+                        total += entry.get("cost_usd", 0.0)
+            return total
+        except (OSError, json.JSONDecodeError):
+            return 0.0
 
     def reload_speak_enabled(self):
         """Re-read the state file to pick up toggle changes from external scripts."""

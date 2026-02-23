@@ -473,6 +473,25 @@
   (global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
 #+end_src
 
+** efrit-rewrite-region
+#+begin_src emacs-lisp
+  (defun efrit-rewrite-region (instruction)
+    "Rewrite the selected region using efrit with INSTRUCTION."
+    (interactive "sRewrite instruction: ")
+    (unless (use-region-p)
+      (user-error "No region selected"))
+    (let* ((code (buffer-substring-no-properties (region-beginning) (region-end)))
+           (buf-name (buffer-name))
+           (start (region-beginning))
+           (end (region-end))
+           (command (format "In buffer \"%s\", replace the text from position %d to %d. Current text:\n```\n%s\n```\nInstruction: %s\nUse edit_buffer with from-pos %d and to-pos %d. Only replace that range, nothing else."
+                            buf-name start end code instruction start end)))
+      (deactivate-mark)
+      (efrit-do command)))
+
+  (global-set-key (kbd "C-c a r") 'efrit-rewrite-region)
+#+end_src
+
 ** copilot
 #+begin_src emacs-lisp
   (use-package copilot

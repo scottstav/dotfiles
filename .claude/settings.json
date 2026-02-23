@@ -1,55 +1,56 @@
 {
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "superpowers@superpowers-marketplace": true,
+    "typescript-lsp@claude-plugins-official": true
+  },
   "hooks": {
     "Notification": [
       {
-        "matcher": "permission_prompt",
         "hooks": [
           {
-            "type": "command",
-            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Needs permission - check terminal'"
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Needs permission - check terminal'",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "permission_prompt"
       },
       {
-        "matcher": "idle_prompt",
         "hooks": [
           {
-            "type": "command",
-            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Waiting for input'"
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Waiting for input'",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": "idle_prompt"
       }
     ],
     "PreCompact": [
       {
-        "matcher": "",
         "hooks": [
           {
-            "type": "command",
-            "command": "bd prime"
+            "command": "bd prime",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": ""
       }
     ],
     "SessionStart": [
       {
-        "matcher": "",
         "hooks": [
           {
-            "type": "command",
-            "command": "bd prime"
+            "command": "bd prime",
+            "type": "command"
           }
-        ]
+        ],
+        "matcher": ""
       }
     ]
   },
+  "skipDangerousModePermissionPrompt": true,
   "statusLine": {
-    "type": "command",
-    "command": "~/.claude/statusline.sh"
-  },
-  "enabledPlugins": {
-    "typescript-lsp@claude-plugins-official": true,
-    "superpowers@claude-plugins-official": true,
-    "superpowers@superpowers-marketplace": true
+    "command": "~/.claude/statusline.sh",
+    "type": "command"
   }
 }

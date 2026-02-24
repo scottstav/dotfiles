@@ -1,0 +1,22 @@
+#!/bin/bash
+# Show pending worker notification and handle action
+# Usage: claude-worker-notify-pending <id>
+
+id="$1"
+STATE_DIR="$HOME/.local/state/claude-worker"
+state_file="$STATE_DIR/$id.json"
+
+[[ ! -f "$state_file" ]] && exit 1
+
+task=$(jq -r '.task' "$state_file" | head -c 200)
+dir=$(jq -r '.directory' "$state_file" | sed "s|$HOME|~|")
+
+action=$(notify-send -t 0 -a "Claude Worker" \
+    -A "approve=Start" -A "deny=Decline" \
+    --wait \
+    "Pending Worker ($dir)" "$task" 2>/dev/null)
+
+case "$action" in
+    approve) claude-worker-manage "$id" ;;
+    deny) claude-worker-manage --deny "$id" ;;
+esac

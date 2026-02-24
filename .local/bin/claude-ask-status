@@ -96,7 +96,7 @@ if status == 'tool_use' and tool_name:
 elif status == 'thinking':
     tip = 'Thinking...'
 elif status == 'speaking':
-    tip = 'Speaking... (click to stop)'
+    tip = 'Speaking... (mid-click to stop)'
 elif status == 'listening':
     tip = 'Listening...'
 else:

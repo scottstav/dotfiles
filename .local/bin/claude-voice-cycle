@@ -11,27 +11,14 @@ if [[ ! -f "$STATE_FILE" ]]; then
     exit 1
 fi
 
-# If currently speaking, stop TTS and exit
-status=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('status',''))")
-if [[ "$status" == "speaking" ]]; then
-    python3 -c "
-import socket, json
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-sock.connect('$ASK_SOCK')
-sock.sendall(json.dumps({'action': 'stop_tts'}).encode())
-sock.close()
-"
-    pkill -SIGRTMIN+12 waybar 2>/dev/null
-    exit 0
-fi
-
 # Read current state
-read -r speak_on wake_muted < <(python3 -c "
+read -r speak_on wake_muted status < <(python3 -c "
 import json
 d = json.load(open('$STATE_FILE'))
 speak = d.get('speak_enabled', False)
 muted = d.get('wake_muted', True)
-print(f'{speak} {muted}')
+status = d.get('status', 'idle')
+print(f'{speak} {muted} {status}')
 ")
 
 # Determine current mode and cycle to next
@@ -98,6 +85,17 @@ sock.recv(4096)
 sock.close()
 " 2>/dev/null
     fi
+fi
+
+# If we just turned speak off while Claude was speaking, stop TTS immediately
+if ! $new_speak && [[ "$status" == "speaking" ]]; then
+    python3 -c "
+import socket, json
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect('$ASK_SOCK')
+sock.sendall(json.dumps({'action': 'stop_tts'}).encode())
+sock.close()
+" 2>/dev/null
 fi
 
 pkill -SIGRTMIN+12 waybar 2>/dev/null

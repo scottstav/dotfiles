@@ -1,12 +1,16 @@
 #!/bin/bash
 # Check health of all custom user services and processes after login
 
-# Systemd user services to check
+# Long-running systemd user services (should stay active)
 SERVICES=(
     claude-ask
     claude-voice
     voice-typing
     dropbox
+)
+
+# Timer-triggered oneshot services (healthy if timer is active and service hasn't failed)
+TIMER_SERVICES=(
     system-freshness
     gcal-refresh
     mbsync
@@ -19,16 +23,24 @@ PROCESSES=(
     hyprpaper
     hypridle
     kdeconnectd
-    rquickshare
     emacs
 )
 
 failed_services=()
 failed_processes=()
 
-# Check systemd services
+# Check long-running services
 for svc in "${SERVICES[@]}"; do
     if ! systemctl --user is-active --quiet "$svc.service" 2>/dev/null; then
+        failed_services+=("$svc")
+    fi
+done
+
+# Check timer-triggered oneshot services
+for svc in "${TIMER_SERVICES[@]}"; do
+    if ! systemctl --user is-active --quiet "$svc.timer" 2>/dev/null; then
+        failed_services+=("$svc.timer")
+    elif systemctl --user is-failed --quiet "$svc.service" 2>/dev/null; then
         failed_services+=("$svc")
     fi
 done
@@ -40,7 +52,7 @@ for proc in "${PROCESSES[@]}"; do
     fi
 done
 
-total=$(( ${#SERVICES[@]} + ${#PROCESSES[@]} ))
+total=$(( ${#SERVICES[@]} + ${#TIMER_SERVICES[@]} + ${#PROCESSES[@]} ))
 failed=$(( ${#failed_services[@]} + ${#failed_processes[@]} ))
 running=$(( total - failed ))
 
@@ -67,7 +79,6 @@ action=$(notify-send -a "System" \
     "$running/$total running — failed: $names")
 
 if [ "$action" = "fix" ]; then
-    prompt="The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
     hyprctl dispatch exec -- \
-        "foot --app-id=startup-fix -- claude --dangerously-skip-permissions -p '${prompt}' --cwd $HOME/dotfiles"
+        "foot --app-id=startup-fix -- bash -c 'cd $HOME/dotfiles && claude --dangerously-skip-permissions \"The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again.\"'"
 fi

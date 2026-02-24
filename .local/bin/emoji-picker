@@ -1,0 +1,39 @@
+#!/bin/bash
+# Emoji picker — foot + fzf with aliases and history
+
+DB="$HOME/.local/share/emoji-picker/emojis.txt"
+HISTORY="$HOME/.local/state/emoji-history.txt"
+
+# Build list: history (deduped) first, then remaining emojis
+build_list() {
+    if [[ -f "$HISTORY" ]]; then
+        # History entries first (deduped, preserving order)
+        awk '!seen[$0]++' "$HISTORY"
+        # Then remaining emojis not in history
+        grep -Fxvf "$HISTORY" "$DB"
+    else
+        cat "$DB"
+    fi
+}
+
+SELECTION=$(build_list | fzf \
+    --exact \
+    --height=100% \
+    --layout=reverse \
+    --no-sort \
+    --prompt='emoji> ')
+
+[[ -z "$SELECTION" ]] && exit 0
+
+# Extract just the emoji character (first field before space)
+EMOJI=$(echo "$SELECTION" | cut -d' ' -f1)
+
+# Update history — prepend selection, keep max 500 lines
+mkdir -p "$(dirname "$HISTORY")"
+{ echo "$SELECTION"; cat "$HISTORY" 2>/dev/null; } | awk '!seen[$0]++' | head -500 > "$HISTORY.tmp"
+mv "$HISTORY.tmp" "$HISTORY"
+
+# Copy to clipboard and auto-paste
+printf '%s' "$EMOJI" | wl-copy
+sleep 0.05
+wtype -M ctrl v -m ctrl

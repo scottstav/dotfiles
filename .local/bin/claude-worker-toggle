@@ -1,0 +1,34 @@
+#!/bin/bash
+# Toggle Claude Worker terminal
+# - No window: clean stale state, launch new session in foot
+# - One window: toggle visibility via special workspace
+# - Multiple windows: toggle most recent
+
+STATE_DIR="$HOME/.local/state/claude-worker"
+
+# Find all claude-worker windows
+window_json=$(hyprctl clients -j | jq '[.[] | select(.class | startswith("claude-worker-"))]')
+window_count=$(echo "$window_json" | jq 'length')
+
+if [[ "$window_count" -eq 0 ]]; then
+    # No windows — clean up any stale state files
+    rm -f "$STATE_DIR"/*.json 2>/dev/null
+    pkill -SIGRTMIN+12 waybar
+
+    # Generate unique ID and launch
+    id=$(date +%s)
+    hyprctl dispatch exec -- \
+        "foot --app-id=claude-worker-$id -- claude-worker-session $id"
+else
+    # Pick the most recent window (last in list)
+    window_addr=$(echo "$window_json" | jq -r '.[-1].address')
+    ws_name=$(echo "$window_json" | jq -r '.[-1].workspace.name')
+
+    if [[ "$ws_name" == special:* ]]; then
+        # Hidden — bring to current workspace
+        hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+    else
+        # Visible — hide in special workspace
+        hyprctl dispatch movetoworkspacesilent special:claude-worker,address:"$window_addr"
+    fi
+fi

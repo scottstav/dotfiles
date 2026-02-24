@@ -1,0 +1,45 @@
+#!/bin/bash
+# Claude Worker session — runs inside foot terminal
+# Usage: claude-worker-session <id>
+
+ID="$1"
+if [[ -z "$ID" ]]; then
+    echo "Usage: claude-worker-session <id>"
+    exit 1
+fi
+
+STATE_DIR="$HOME/.local/state/claude-worker"
+STATE_FILE="$STATE_DIR/$ID.json"
+mkdir -p "$STATE_DIR"
+
+# EXIT trap: clean up state and signal waybar on any exit
+cleanup() {
+    rm -f "$STATE_FILE"
+    pkill -SIGRTMIN+12 waybar
+}
+trap cleanup EXIT
+
+# Pick directory with fzf
+dir=$(fd -t d -d 3 . ~ | fzf --prompt="  Directory: " --height=100% --layout=reverse)
+[[ -z "$dir" ]] && exit 0
+
+# Get task description
+read -r -p "  Task: " task
+[[ -z "$task" ]] && exit 0
+
+# Write working state
+jq -n --arg dir "$dir" --arg task "$task" \
+    '{"status": "working", "directory": $dir, "task": $task}' > "$STATE_FILE"
+pkill -SIGRTMIN+12 waybar
+
+# Run claude in print mode (autonomous, streams output to terminal)
+cd "$dir" && claude -p --dangerously-skip-permissions "$task"
+
+# Update state to done
+jq -n --arg dir "$dir" --arg task "$task" \
+    '{"status": "done", "directory": $dir, "task": $task}' > "$STATE_FILE"
+pkill -SIGRTMIN+12 waybar
+
+echo
+echo "Worker done. Press enter to close."
+read -r

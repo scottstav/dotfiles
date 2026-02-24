@@ -322,3 +322,31 @@ window#waybar {
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
+
+@keyframes glow-yellow {
+    0% { color: #f9e2af; opacity: 1; }
+    50% { color: #7c6f3e; opacity: 0.5; }
+    100% { color: #f9e2af; opacity: 1; }
+}
+
+#custom-claude-ask.worker-working {
+    animation-name: glow-yellow;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes arrive-green {
+    0% { color: #ffffff; }
+    30% { color: #a6e3a1; }
+    60% { color: #ffffff; }
+    100% { color: #a6e3a1; }
+}
+
+#custom-claude-ask.worker-done {
+    color: #a6e3a1;
+    animation-name: arrive-green;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: 1;
+}

@@ -199,6 +199,7 @@
         "interval": 2,
         "on-click": "claude-ask-toggle-speak",
         "on-click-middle": "claude-ask-toggle-wake",
+        "on-click-right": "claude-worker-toggle",
         "signal": 12,
         "tooltip": true
     },

@@ -7,9 +7,9 @@
 STATE_DIR="$HOME/.local/state/claude-worker"
 
 usage() {
-    echo "Usage:"
-    echo "  claude-worker-manage <id>          # approve pending worker"
-    echo "  claude-worker-manage --deny <id>   # deny pending worker"
+    echo "Usage:" >&2
+    echo "  claude-worker-manage <id>          # approve pending worker" >&2
+    echo "  claude-worker-manage --deny <id>   # deny pending worker" >&2
     exit 1
 }
 
@@ -26,14 +26,14 @@ ID="$1"
 STATE_FILE="$STATE_DIR/$ID.json"
 
 if [[ ! -f "$STATE_FILE" ]]; then
-    echo "Error: no state file found for worker $ID"
+    echo "Error: no state file found for worker $ID" >&2
     exit 1
 fi
 
 # Read and validate state
 status=$(jq -r '.status' "$STATE_FILE")
 if [[ "$status" != "pending" ]]; then
-    echo "Error: worker $ID is not pending (status: $status)"
+    echo "Error: worker $ID is not pending (status: $status)" >&2
     exit 1
 fi
 

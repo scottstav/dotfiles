@@ -49,20 +49,25 @@ if [ "$failed" -eq 0 ]; then
         -t 8000 \
         "Startup Health" \
         "All $total services healthy"
-elif [ "$failed" -le 3 ]; then
-    all_failed=("${failed_services[@]}" "${failed_processes[@]}")
-    IFS=', '; names="${all_failed[*]}"; unset IFS
-    notify-send -a "System" \
-        --urgency=normal \
-        -t 0 \
-        "Startup Health" \
-        "$running/$total running — failed: $names"
-else
-    all_failed=("${failed_services[@]}" "${failed_processes[@]}")
-    IFS=', '; names="${all_failed[*]}"; unset IFS
-    notify-send -a "System" \
-        --urgency=critical \
-        -t 0 \
-        "Startup Health" \
-        "$running/$total running — failed: $names"
+    exit 0
+fi
+
+all_failed=("${failed_services[@]}" "${failed_processes[@]}")
+IFS=', '; names="${all_failed[*]}"; unset IFS
+
+urgency="normal"
+[ "$failed" -gt 3 ] && urgency="critical"
+
+# Show notification with Fix button; notify-send -A waits for action
+action=$(notify-send -a "System" \
+    --urgency="$urgency" \
+    -t 0 \
+    -A "fix=Fix with Claude" \
+    "Startup Health" \
+    "$running/$total running — failed: $names")
+
+if [ "$action" = "fix" ]; then
+    prompt="The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
+    hyprctl dispatch exec -- \
+        "foot --app-id=startup-fix -- claude --dangerously-skip-permissions -p '${prompt}' --cwd $HOME/dotfiles"
 fi

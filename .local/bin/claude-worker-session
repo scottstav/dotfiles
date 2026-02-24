@@ -1,15 +1,18 @@
 #!/bin/bash
 # Claude Worker session — runs inside foot terminal
-# Usage: claude-worker-session <id>
+# Usage: claude-worker-session <id> [dir] [task]
+#   Interactive: just pass <id>, picks dir via fzf and prompts for task
+#   Programmatic: pass all three to skip interactive steps
 
 ID="$1"
 if [[ -z "$ID" ]]; then
-    echo "Usage: claude-worker-session <id>"
+    echo "Usage: claude-worker-session <id> [dir] [task]"
     exit 1
 fi
 
 STATE_DIR="$HOME/.local/state/claude-worker"
 STATE_FILE="$STATE_DIR/$ID.json"
+HISTORY_FILE="$STATE_DIR/dir-history"
 mkdir -p "$STATE_DIR"
 
 # EXIT trap: clean up state and signal waybar on any exit
@@ -19,21 +22,37 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Pick directory with fzf
-dir=$(fd -t d -d 3 . ~ | fzf --prompt="  Directory: " --height=100% --layout=reverse)
-[[ -z "$dir" ]] && exit 0
+dir="$2"
+task="$3"
 
-# Get task description
-read -r -p "  Task: " task
-[[ -z "$task" ]] && exit 0
+if [[ -z "$dir" ]]; then
+    # Interactive: pick directory with fzf (recent selections first)
+    dir=$(
+        {
+            [[ -f "$HISTORY_FILE" ]] && tac "$HISTORY_FILE" | awk '!seen[$0]++'
+            fd -t d -H '^\.git$' -d 4 ~ --prune | sed 's/\.git\/$//' | sort
+        } | awk '!seen[$0]++' | fzf --prompt="  Directory: " --height=100% --layout=reverse
+    )
+    [[ -z "$dir" ]] && exit 0
+    echo "$dir" >> "$HISTORY_FILE"
+fi
+
+if [[ -z "$task" ]]; then
+    # Interactive: prompt for task
+    read -r -p "  Task: " task
+    [[ -z "$task" ]] && exit 0
+fi
 
 # Write working state
 jq -n --arg dir "$dir" --arg task "$task" \
     '{"status": "working", "directory": $dir, "task": $task}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
+# Generate a session ID so we can resume this exact session later
+SESSION_ID=$(uuidgen)
+
 # Run claude in print mode (autonomous, streams output to terminal)
-cd "$dir" && claude -p --dangerously-skip-permissions "$task"
+cd "$dir" && claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task"
 
 # Update state to done
 jq -n --arg dir "$dir" --arg task "$task" \
@@ -41,5 +60,14 @@ jq -n --arg dir "$dir" --arg task "$task" \
 pkill -SIGRTMIN+12 waybar
 
 echo
-echo "Worker done. Press enter to close."
-read -r
+echo "Worker done."
+echo "  [Enter] Close window"
+echo "  [r]     Resume session interactively"
+read -r -n 1 choice
+echo
+
+if [[ "$choice" == "r" || "$choice" == "R" ]]; then
+    # Launch interactive resume in alacritty, then close this terminal
+    alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" --dangerously-skip-permissions &
+    disown
+fi

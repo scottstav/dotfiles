@@ -39,9 +39,3 @@ with open(path, 'w') as f:
 
 # Signal Waybar to refresh
 pkill -SIGRTMIN+12 waybar 2>/dev/null
-
-if [[ "$muted" == "True" ]]; then
-    notify-send "Claude Voice" "Wake word disabled" -i microphone-sensitivity-muted -t 2000
-else
-    notify-send "Claude Voice" "Wake word enabled" -i microphone-sensitivity-high -t 2000
-fi

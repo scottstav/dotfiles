@@ -453,6 +453,7 @@
     (claude-code-ide-window-side 'right)
     (claude-code-ide-window-width 90)
     (claude-code-ide-use-ide-diff t)
+    (claude-code-ide-cli-extra-flags "--dangerously-skip-permissions")
     :config
     (claude-code-ide-emacs-tools-setup))
 #+end_src

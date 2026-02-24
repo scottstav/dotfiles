@@ -26,6 +26,7 @@ class WaybarState:
         month_cost = self._month_cost()
         self._state = {
             "status": "idle",
+            "tool_name": "",
             "speak_enabled": False,
             "usage": {
                 "month_cost": f"${month_cost:.2f}",
@@ -50,10 +51,11 @@ class WaybarState:
     def status(self) -> str:
         return self._state["status"]
 
-    def set_status(self, status: str):
-        """Set status to idle, thinking, or speaking. Writes + signals."""
+    def set_status(self, status: str, tool_name: str = ""):
+        """Set status to idle, thinking, speaking, or tool_use. Writes + signals."""
         with self._lock:
             self._state["status"] = status
+            self._state["tool_name"] = tool_name
             self._write()
 
     def update_usage(self, query_cost: float, total_tokens: int):

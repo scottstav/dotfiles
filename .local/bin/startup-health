@@ -1,0 +1,68 @@
+#!/bin/bash
+# Check health of all custom user services and processes after login
+
+# Systemd user services to check
+SERVICES=(
+    claude-ask
+    claude-voice
+    voice-typing
+    dropbox
+    system-freshness
+    gcal-refresh
+    mbsync
+)
+
+# Processes that should be running (from exec-once)
+PROCESSES=(
+    waybar
+    swaync
+    hyprpaper
+    hypridle
+    kdeconnectd
+    rquickshare
+    emacs
+)
+
+failed_services=()
+failed_processes=()
+
+# Check systemd services
+for svc in "${SERVICES[@]}"; do
+    if ! systemctl --user is-active --quiet "$svc.service" 2>/dev/null; then
+        failed_services+=("$svc")
+    fi
+done
+
+# Check processes
+for proc in "${PROCESSES[@]}"; do
+    if ! pgrep -x "$proc" >/dev/null 2>&1; then
+        failed_processes+=("$proc")
+    fi
+done
+
+total=$(( ${#SERVICES[@]} + ${#PROCESSES[@]} ))
+failed=$(( ${#failed_services[@]} + ${#failed_processes[@]} ))
+running=$(( total - failed ))
+
+if [ "$failed" -eq 0 ]; then
+    notify-send -a "System" \
+        -t 8000 \
+        "Startup Health" \
+        "All $total services healthy"
+elif [ "$failed" -le 3 ]; then
+    all_failed=("${failed_services[@]}" "${failed_processes[@]}")
+    IFS=', '; names="${all_failed[*]}"; unset IFS
+    notify-send -a "System" \
+        --urgency=normal \
+        -t 0 \
+        "Startup Health" \
+        "$running/$total running — failed: $names"
+else
+    all_failed=("${failed_services[@]}" "${failed_processes[@]}")
+    IFS=', '; names="${all_failed[*]}"; unset IFS
+    notify-send -a "System" \
+        --urgency=critical \
+        -t 0 \
+        "Startup Health" \
+        "$running/$total running — failed: $names"
+fi

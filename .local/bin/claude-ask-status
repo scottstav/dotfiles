@@ -10,39 +10,58 @@ fi
 
 python3 -c "
 import json
+from datetime import datetime
 
 d = json.load(open('$STATE_FILE'))
 status = d.get('status', 'idle')
 speak = d.get('speak_enabled', False)
 wake_muted = d.get('wake_muted', False)
+tool_name = d.get('tool_name', '')
 usage = d.get('usage', {})
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
-tokens = usage.get('total_tokens', 0)
 
-# Icons (Nerd Font: nf-md-*)
-if status == 'speaking':
-    icon = '\U000f042a'  # nf-md-volume_high
-elif status == 'thinking':
-    icon = '\U000f0369'  # nf-md-message_text_outline
-else:
-    icon = '\U000f0369'
+# Icons per state (Nerd Font: nf-md-*)
+icons = {
+    'idle':     '\U000f0369',  # nf-md-message_text_outline (chat bubble)
+    'thinking': '\U000f0674',  # nf-md-creation (sparkle)
+    'tool_use': '\U000f0493',  # nf-md-cog
+    'speaking': '\U000f057e',  # nf-md-volume_high (speaker)
+    'listening':'\U000f036c',  # nf-md-microphone
+}
+
+icon = icons.get(status, icons['idle'])
+
+# Tool use: show tool name next to cog
+if status == 'tool_use' and tool_name:
+    icon += f' {tool_name}'
+
+# Idle: append voice/wake indicators
+if status == 'idle':
     if speak:
-        icon += ' \U000f057e'  # + nf-md-volume_high
+        icon += ' \U000f057e'  # + nf-md-volume_high (small)
     else:
         icon += ' \U000f0581'  # + nf-md-volume_off
     if wake_muted:
         icon += ' \U000f036d'  # + nf-md-microphone_off
 
+# CSS class
 css = status
-if status == 'idle' and speak:
-    css = 'idle speak-on'
 
-from datetime import datetime
+# Tooltip
 month_name = datetime.now().strftime('%b')
-tip = f'{month_name}: {month} | Last: {last}'
-tip += ' | Voice: ON' if speak else ' | Voice: OFF'
-tip += ' | Wake: OFF' if wake_muted else ' | Wake: ON'
+if status == 'tool_use' and tool_name:
+    tip = f'Running: {tool_name}'
+elif status == 'thinking':
+    tip = 'Thinking...'
+elif status == 'speaking':
+    tip = 'Speaking... (click to stop)'
+elif status == 'listening':
+    tip = 'Listening...'
+else:
+    tip = f'{month_name}: {month} | Last: {last}'
+    tip += ' | Voice: ON' if speak else ' | Voice: OFF'
+    tip += ' | Wake: OFF' if wake_muted else ' | Wake: ON'
 
 print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
 "

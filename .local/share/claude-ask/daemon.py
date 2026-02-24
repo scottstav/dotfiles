@@ -288,45 +288,6 @@ class Daemon:
             stderr=subprocess.DEVNULL,
         )
 
-    def _notify_speaking(self, tag):
-        """Show a persistent notification while speaking with a Stop action."""
-        def _run():
-            try:
-                result = subprocess.run(
-                    [
-                        "notify-send", "-t", "0",
-                        "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
-                        "-a", "Claude",
-                        "-A", "stop=Stop",
-                        "--wait",
-                        "Claude", "Speaking...",
-                    ],
-                    capture_output=True,
-                    text=True,
-                )
-                if result.stdout.strip() == "stop":
-                    self.tts.stop()
-                    self.waybar.set_status("idle")
-                    subprocess.Popen(
-                        ["notify-send", "-t", "1",
-                         "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
-                         "-a", "Claude", "Claude", "Stopped"],
-                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    )
-            except Exception:
-                log.exception("Error in speaking notification")
-        thread = threading.Thread(target=_run, daemon=True)
-        thread.start()
-
-    def _dismiss_speaking_notify(self, tag):
-        """Dismiss the speaking notification."""
-        subprocess.Popen(
-            ["notify-send", "-t", "1",
-             "-h", f"string:x-canonical-private-synchronous:{tag}-speaking",
-             "-a", "Claude", "Claude", ""],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-
     def _trigger_voice_listen(self, conv_id):
         """Send a listen command to the claude-voice daemon."""
         runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -371,42 +332,6 @@ class Daemon:
         except OSError:
             log.exception("Failed to write usage log")
 
-    def _notify_usage(self, tag):
-        """Show a brief notification with today's and month-to-date spend."""
-        try:
-            if not USAGE_LOG.exists():
-                return
-            now = datetime.now(timezone.utc)
-            today_prefix = now.strftime("%Y-%m-%d")
-            month_prefix = now.strftime("%Y-%m")
-            today_cost = 0.0
-            month_cost = 0.0
-            with open(USAGE_LOG) as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    entry = json.loads(line)
-                    ts = entry.get("ts", "")
-                    cost = entry.get("cost_usd", 0.0)
-                    if ts.startswith(today_prefix):
-                        today_cost += cost
-                    if ts.startswith(month_prefix):
-                        month_cost += cost
-            month_name = now.strftime("%b")
-            subprocess.Popen(
-                [
-                    "notify-send", "-t", "5000",
-                    "-h", f"string:x-canonical-private-synchronous:{tag}-usage",
-                    "-a", "Claude",
-                    "Claude", f"Today: ${today_cost:.2f} | {month_name}: ${month_cost:.2f}",
-                ],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-        except Exception:
-            log.exception("Failed to send usage notification")
-
     def _final_notify(self, tag, text, conv_id, archive_file=None):
         """Show final notification with Reply and Open actions.
 
@@ -423,9 +348,9 @@ class Daemon:
                         "notify-send", "-t", "0",
                         "-h", f"string:x-canonical-private-synchronous:{tag}",
                         "-a", "Claude",
-                        "-A", "reply=Reply",
-                        "-A", "mic=Mic",
-                        "-A", "open=Open in Emacs",
+                        "-A", "reply=\U000f0369",
+                        "-A", "mic=\U000f036c",
+                        "-A", "open=\U000f0219",
                         "--wait",
                         "Claude", truncated,
                     ],
@@ -468,8 +393,6 @@ class Daemon:
         sentence_buf = SentenceBuffer()
 
         speak_on = self.waybar.speak_enabled
-
-        self._notify(tag, "Thinking...")
 
         with self.client.messages.stream(**api_kwargs) as stream:
             for event in stream:
@@ -514,6 +437,15 @@ class Daemon:
                 return
 
             msg = json.loads(data.decode("utf-8"))
+
+            # Handle control actions
+            action = msg.get("action")
+            if action == "stop_tts":
+                log.info("Stop TTS requested via socket")
+                self.tts.stop()
+                self.waybar.set_status("idle")
+                return
+
             text = msg.get("text", "").strip()
             conv_id = msg.get("conversation_id")
             image = msg.get("image")  # base64 PNG or None
@@ -570,7 +502,6 @@ class Daemon:
             log.error("API error: %s", e)
             self._notify(tag, f"API error: {e}")
             self.tts.stop()
-            self._dismiss_speaking_notify(tag)
             self.waybar.set_status("idle")
             self.store.save(conv)
             return
@@ -578,7 +509,6 @@ class Daemon:
             log.exception("Unexpected error during API call")
             self._notify(tag, "Unexpected error (check logs)")
             self.tts.stop()
-            self._dismiss_speaking_notify(tag)
             self.waybar.set_status("idle")
             self.store.save(conv)
             return
@@ -590,7 +520,6 @@ class Daemon:
         if self.waybar.speak_enabled:
             self.tts.start()
             self.waybar.set_status("speaking")
-            self._notify_speaking(tag)
         else:
             self.waybar.set_status("thinking")
 
@@ -637,7 +566,7 @@ class Daemon:
             tool_results = []
             for tool_block in tool_use_blocks:
                 log.info("Executing tool: %s", tool_block.name)
-                self._notify(tag, f"Running tool: {tool_block.name}...")
+                self.waybar.set_status("tool_use", tool_name=tool_block.name)
                 result = self._run_tool(tool_block.name, tool_block.input)
 
                 # Image results get wrapped as image content blocks
@@ -662,6 +591,10 @@ class Daemon:
                 })
 
             conv["messages"].append({"role": "user", "content": tool_results})
+            if self.waybar.speak_enabled:
+                self.waybar.set_status("speaking")
+            else:
+                self.waybar.set_status("thinking")
             # Loop continues -- next iteration will call the API again
 
         # Extract final text for the notification
@@ -678,7 +611,6 @@ class Daemon:
             self.tts.finish()
             self.tts.wait_done(timeout=120)
             self.tts.stop()
-            self._dismiss_speaking_notify(tag)
 
         self.waybar.set_status("idle")
 

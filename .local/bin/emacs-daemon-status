@@ -1,0 +1,8 @@
+#!/bin/bash
+# Waybar module: shows warning until emacs daemon is ready, then hides
+
+if emacsclient -e t >/dev/null 2>&1; then
+    echo '{"text": "", "class": "ready"}'
+else
+    echo '{"text": "⚠️ emacs", "class": "waiting", "tooltip": "Emacs daemon not running"}'
+fi

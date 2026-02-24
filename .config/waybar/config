@@ -4,7 +4,7 @@
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
     "modules-center": ["custom/recording", "custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
-    "modules-right": ["custom/claude-ask", "custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
+    "modules-right": ["custom/emacs-daemon", "custom/claude-ask", "custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
         "capslock": true,
@@ -186,6 +186,12 @@
         "return-type": "json",
         "interval": 1,
         "on-click": "voice-typing"
+    },
+    "custom/emacs-daemon": {
+        "exec": "emacs-daemon-status",
+        "return-type": "json",
+        "interval": 5,
+        "tooltip": true
     },
     "custom/claude-ask": {
         "exec": "claude-ask-status",

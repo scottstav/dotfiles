@@ -79,6 +79,8 @@ action=$(notify-send -a "System" \
     "$running/$total running — failed: $names")
 
 if [ "$action" = "fix" ]; then
+    id=$(date +%s)
+    task="The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
     hyprctl dispatch exec -- \
-        "foot --app-id=startup-fix -- bash -c 'cd $HOME/dotfiles && claude --dangerously-skip-permissions \"The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again.\"'"
+        "foot --app-id=claude-worker-$id -- claude-worker-session $id $HOME/dotfiles '$task'"
 fi

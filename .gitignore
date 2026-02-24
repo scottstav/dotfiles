@@ -1,3 +1,4 @@
+.local/state/claude-worker/dir-history
 .DS_Store
 .projectile
 .aider*

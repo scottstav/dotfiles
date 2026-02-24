@@ -461,6 +461,7 @@ class Daemon:
             if action == "stop_tts":
                 log.info("Stop TTS requested via socket")
                 self.tts.stop()
+                self.waybar.speak_enabled = False
                 self.waybar.set_status("idle")
                 return
 

@@ -623,10 +623,11 @@ class Daemon:
         self.store.save(conv)
         self._save_last_state(conv["id"])
 
-        # Wait for TTS to finish speaking if active
+        # Wait for TTS to finish speaking if active (in executor so event
+        # loop stays responsive to stop_tts socket messages)
         if self.waybar.status == "speaking":
             self.tts.finish()
-            self.tts.wait_done(timeout=120)
+            await loop.run_in_executor(None, self.tts.wait_done, 120)
             self.tts.stop()
 
         self.waybar.set_status("idle")

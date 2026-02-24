@@ -59,6 +59,28 @@ jq -n --arg dir "$dir" --arg task "$task" \
     '{"status": "done", "directory": $dir, "task": $task}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
+# Notify completion in background so terminal prompt appears immediately
+(
+    task_preview=$(echo "$task" | head -c 200)
+    action=$(notify-send -t 0 -a "Claude Worker" \
+        -A "focus=Focus" -A "dismiss=OK" \
+        --wait \
+        "Worker Done" "$task_preview" 2>/dev/null)
+
+    if [[ "$action" == "focus" ]]; then
+        window_addr=$(hyprctl clients -j | jq -r \
+            ".[] | select(.class == \"claude-worker-$ID\") | .address")
+        if [[ -n "$window_addr" ]]; then
+            ws=$(hyprctl clients -j | jq -r \
+                ".[] | select(.class == \"claude-worker-$ID\") | .workspace.name")
+            if [[ "$ws" == special:* ]]; then
+                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+            fi
+            hyprctl dispatch focuswindow address:"$window_addr"
+        fi
+    fi
+) &
+
 echo
 echo "Worker done."
 echo "  [Enter] Close window"
@@ -67,7 +89,6 @@ read -r -n 1 choice
 echo
 
 if [[ "$choice" == "r" || "$choice" == "R" ]]; then
-    # Launch interactive resume in alacritty, then close this terminal
-    alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" --dangerously-skip-permissions &
-    disown
+    # setsid detaches alacritty into its own session so it survives foot closing.
+    setsid alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" --dangerously-skip-permissions &>/dev/null &
 fi

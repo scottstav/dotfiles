@@ -60,7 +60,7 @@ import json
 path = '$STATE_FILE'
 with open(path) as f:
     d = json.load(f)
-d['speak_enabled'] = $new_speak
+d['speak_enabled'] = $($new_speak && echo "True" || echo "False")
 d['wake_muted'] = $([[ "$new_wake_muted" == "True" ]] && echo "True" || echo "False")
 with open(path, 'w') as f:
     json.dump(d, f, indent=2)

@@ -1,10 +1,10 @@
 #!/bin/bash
-# Waybar module for claude-ask status
+# Waybar module for claude-ask status — two-zone display
 
 STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
 
 if [ ! -f "$STATE_FILE" ]; then
-    echo '{"text": "󰍩", "class": "idle", "tooltip": "Claude Ask (not running)"}'
+    echo '{"text": "󰌌", "class": "idle", "tooltip": "Claude Ask (not running)"}'
     exit 0
 fi
 
@@ -21,29 +21,31 @@ usage = d.get('usage', {})
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
 
-# Icons per state (Nerd Font: nf-md-*)
-icons = {
-    'idle':     '\U000f0369',  # nf-md-message_text_outline (chat bubble)
-    'thinking': '\U000f0674',  # nf-md-creation (sparkle)
-    'tool_use': '\U000f0493',  # nf-md-cog
-    'speaking': '\U000f057e',  # nf-md-volume_high (speaker)
-    'listening':'\U000f036c',  # nf-md-microphone
+# Persistent mode icon: reflects speak/wake toggles
+if speak and not wake_muted:
+    mode_icon = '\U000f06a9'   # 󰚩 robot (both on)
+elif speak and wake_muted:
+    mode_icon = '\U000f05ca'   # 󰗊 message_text (speak only)
+elif not speak and not wake_muted:
+    mode_icon = '\U000f02ce'   # 󰋎 ear_hearing (wake only)
+else:
+    mode_icon = '\U000f030c'   # 󰌌 keyboard (both off)
+
+# Activity indicator: only when not idle
+activity_icons = {
+    'thinking':  '\U000f0674',  # 󰙴 creation (sparkle)
+    'tool_use':  '\U000f0493',  # 󰒓 cog
+    'speaking':  '\U000f057e',  # 󰕾 volume_high
+    'listening': '\U000f036c',  # 󰍬 microphone
 }
 
-icon = icons.get(status, icons['idle'])
-
-# Tool use: show tool name next to cog
-if status == 'tool_use' and tool_name:
-    icon += f' {tool_name}'
-
-# Idle: append voice/wake indicators
-if status == 'idle':
-    if speak:
-        icon += ' \U000f057e'  # + nf-md-volume_high (small)
-    else:
-        icon += ' \U000f0581'  # + nf-md-volume_off
-    if wake_muted:
-        icon += ' \U000f036d'  # + nf-md-microphone_off
+if status != 'idle' and status in activity_icons:
+    activity = activity_icons[status]
+    if status == 'tool_use' and tool_name:
+        activity += f' {tool_name}'
+    icon = f'{mode_icon} \ue0b0 {activity}'
+else:
+    icon = mode_icon
 
 # CSS class
 css = status

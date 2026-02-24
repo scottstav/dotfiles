@@ -408,8 +408,7 @@ class Daemon:
         accumulated_text = ""
         last_notify_time = 0.0
         sentence_buf = SentenceBuffer()
-
-        speak_on = self.waybar.speak_enabled
+        started_speaking = self.waybar.speak_enabled
 
         with self.client.messages.stream(**api_kwargs) as stream:
             for event in stream:
@@ -417,12 +416,14 @@ class Daemon:
                     if event.delta.type == "text_delta":
                         accumulated_text += event.delta.text
 
-                        if speak_on:
+                        # Check live state each iteration so toggling
+                        # speak off mid-stream stops feeding TTS
+                        if self.waybar.speak_enabled:
                             sentences = sentence_buf.add(event.delta.text)
                             for sentence in sentences:
                                 self.tts.speak(sentence)
 
-                        if not speak_on:
+                        if not started_speaking or not self.waybar.speak_enabled:
                             now = time.monotonic()
                             if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
                                 self._notify(tag, accumulated_text)
@@ -431,7 +432,7 @@ class Daemon:
             response = stream.get_final_message()
 
         # Flush remaining text in sentence buffer
-        if speak_on:
+        if self.waybar.speak_enabled:
             for sentence in sentence_buf.flush():
                 self.tts.speak(sentence)
 

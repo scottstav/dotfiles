@@ -1,0 +1,103 @@
+#!/bin/bash
+# Cycle voice modes: wake only -> speak only -> both on -> both off
+# Middle-click waybar action.
+
+STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
+CONFIG_FILE="$HOME/.config/claude-ask/config.toml"
+VOICE_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-voice.sock"
+ASK_SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-ask.sock"
+
+if [[ ! -f "$STATE_FILE" ]]; then
+    exit 1
+fi
+
+# If currently speaking, stop TTS and exit
+status=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('status',''))")
+if [[ "$status" == "speaking" ]]; then
+    python3 -c "
+import socket, json
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect('$ASK_SOCK')
+sock.sendall(json.dumps({'action': 'stop_tts'}).encode())
+sock.close()
+"
+    pkill -SIGRTMIN+12 waybar 2>/dev/null
+    exit 0
+fi
+
+# Read current state
+read -r speak_on wake_muted < <(python3 -c "
+import json
+d = json.load(open('$STATE_FILE'))
+speak = d.get('speak_enabled', False)
+muted = d.get('wake_muted', True)
+print(f'{speak} {muted}')
+")
+
+# Determine current mode and cycle to next
+# wake ON = wake_muted=False, wake OFF = wake_muted=True
+if [[ "$wake_muted" == "False" && "$speak_on" == "False" ]]; then
+    # wake only -> speak only
+    new_wake_muted=True
+    new_speak=true
+elif [[ "$wake_muted" == "True" && "$speak_on" == "True" ]]; then
+    # speak only -> both
+    new_wake_muted=False
+    new_speak=true
+elif [[ "$wake_muted" == "False" && "$speak_on" == "True" ]]; then
+    # both -> neither
+    new_wake_muted=True
+    new_speak=false
+else
+    # neither -> wake only
+    new_wake_muted=False
+    new_speak=false
+fi
+
+# Update state file
+python3 -c "
+import json
+path = '$STATE_FILE'
+with open(path) as f:
+    d = json.load(f)
+d['speak_enabled'] = $new_speak
+d['wake_muted'] = $([[ "$new_wake_muted" == "True" ]] && echo "True" || echo "False")
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+"
+
+# Persist speak to config.toml
+if $new_speak; then
+    sed -i 's/enabled = false/enabled = true/' "$CONFIG_FILE" 2>/dev/null
+else
+    sed -i 's/enabled = true/enabled = false/' "$CONFIG_FILE" 2>/dev/null
+fi
+
+# Toggle wake mute via claude-voice daemon if socket exists
+if [[ -S "$VOICE_SOCK" ]]; then
+    current_muted=$(python3 -c "
+import socket, json
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect('$VOICE_SOCK')
+sock.sendall(json.dumps({'action': 'toggle-mute'}).encode())
+sock.shutdown(socket.SHUT_WR)
+data = sock.recv(4096)
+sock.close()
+resp = json.loads(data.decode())
+print(resp.get('muted', False))
+" 2>/dev/null)
+    # If the toggle put us in the wrong state, toggle again
+    if [[ "$current_muted" != "$new_wake_muted" ]]; then
+        python3 -c "
+import socket, json
+sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+sock.connect('$VOICE_SOCK')
+sock.sendall(json.dumps({'action': 'toggle-mute'}).encode())
+sock.shutdown(socket.SHUT_WR)
+sock.recv(4096)
+sock.close()
+" 2>/dev/null
+    fi
+fi
+
+pkill -SIGRTMIN+12 waybar 2>/dev/null

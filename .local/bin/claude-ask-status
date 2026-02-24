@@ -4,7 +4,7 @@
 STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
 
 if [ ! -f "$STATE_FILE" ]; then
-    echo '{"text": "󰌌", "class": "idle", "tooltip": "Claude Ask (not running)"}'
+    echo '{"text": "\uee0d", "class": "idle", "tooltip": "Claude Ask (not running)"}'
     exit 0
 fi
 
@@ -21,15 +21,8 @@ usage = d.get('usage', {})
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
 
-# Persistent mode icon: reflects speak/wake toggles
-if speak and not wake_muted:
-    mode_icon = '\U000f06a9'   # 󰚩 robot (both on)
-elif speak and wake_muted:
-    mode_icon = '\U000f05ca'   # 󰗊 message_text (speak only)
-elif not speak and not wake_muted:
-    mode_icon = '\U000f02ce'   # 󰋎 ear_hearing (wake only)
-else:
-    mode_icon = '\U000f030c'   # 󰌌 keyboard (both off)
+# Persistent icon
+mode_icon = '\uee0d'  #  claude
 
 # Activity indicator: only when not idle
 activity_icons = {
@@ -39,11 +32,14 @@ activity_icons = {
     'listening': '\U000f036c',  # 󰍬 microphone
 }
 
+LAVENDER = '#b4befe'
+
 if status != 'idle' and status in activity_icons:
     activity = activity_icons[status]
     if status == 'tool_use' and tool_name:
         activity += f' {tool_name}'
-    icon = f'{mode_icon} \ue0b0 {activity}'
+    # Pango: pin permanent icon + arrow to lavender, activity inherits CSS animation color
+    icon = f'<span foreground=\"{LAVENDER}\">{mode_icon} \ue0b0</span> {activity}'
 else:
     icon = mode_icon
 

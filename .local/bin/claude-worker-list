@@ -1,0 +1,58 @@
+#!/bin/bash
+# Show fuzzel menu of workers. Left-click waybar action.
+
+STATE_DIR="$HOME/.local/state/claude-worker"
+
+# Build list of workers
+entries=()
+ids=()
+for f in "$STATE_DIR"/*.json; do
+    [[ -f "$f" ]] || continue
+    id=$(basename "$f" .json)
+    status=$(jq -r '.status' "$f")
+    dir=$(jq -r '.directory' "$f" | sed "s|$HOME|~|")
+    task=$(jq -r '.task' "$f" | head -c 60)
+
+    case "$status" in
+        pending) icon="⏳" ;;
+        working) icon="⚒️" ;;
+        done)    icon="✅" ;;
+        *)       icon="?" ;;
+    esac
+    entries+=("$icon $status | $dir | $task")
+    ids+=("$id:$status")
+done
+
+if [[ ${#entries[@]} -eq 0 ]]; then
+    exit 0
+fi
+
+# Show fuzzel picker
+selected=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu --prompt="Workers: " --width=60)
+[[ -z "$selected" ]] && exit 0
+
+# Find which entry was selected
+for i in "${!entries[@]}"; do
+    if [[ "${entries[$i]}" == "$selected" ]]; then
+        IFS=: read -r sel_id sel_status <<< "${ids[$i]}"
+        break
+    fi
+done
+
+case "$sel_status" in
+    pending)
+        claude-worker-manage "$sel_id"
+        ;;
+    working|done)
+        window_addr=$(hyprctl clients -j | jq -r \
+            ".[] | select(.class == \"claude-worker-$sel_id\") | .address")
+        if [[ -n "$window_addr" ]]; then
+            ws=$(hyprctl clients -j | jq -r \
+                ".[] | select(.class == \"claude-worker-$sel_id\") | .workspace.name")
+            if [[ "$ws" == special:* ]]; then
+                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+            fi
+            hyprctl dispatch focuswindow address:"$window_addr"
+        fi
+        ;;
+esac

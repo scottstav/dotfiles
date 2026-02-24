@@ -27,22 +27,18 @@ if [[ "$wake_muted" == "False" && "$speak_on" == "False" ]]; then
     # wake only -> speak only
     new_wake_muted=True
     new_speak=true
-    mode="Speak only"
 elif [[ "$wake_muted" == "True" && "$speak_on" == "True" ]]; then
     # speak only -> both
     new_wake_muted=False
     new_speak=true
-    mode="Wake + Speak"
 elif [[ "$wake_muted" == "False" && "$speak_on" == "True" ]]; then
     # both -> neither
     new_wake_muted=True
     new_speak=false
-    mode="Voice off"
 else
     # neither -> wake only
     new_wake_muted=False
     new_speak=false
-    mode="Wake only"
 fi
 
 # Update state file
@@ -101,10 +97,5 @@ sock.sendall(json.dumps({'action': 'stop_tts'}).encode())
 sock.close()
 " 2>/dev/null
 fi
-
-# Brief notification showing new mode
-notify-send -t 2000 -a "Claude" \
-    -h "string:x-canonical-private-synchronous:claude-voice" \
-    "Voice: $mode" 2>/dev/null
 
 pkill -SIGRTMIN+12 waybar 2>/dev/null

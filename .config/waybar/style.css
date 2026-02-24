@@ -350,3 +350,7 @@ window#waybar {
     animation-timing-function: ease-in-out;
     animation-iteration-count: 1;
 }
+
+#custom-claude-ask.worker-pending {
+    color: #585b70;
+}

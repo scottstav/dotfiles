@@ -30,10 +30,11 @@ for f in glob.glob(os.path.join(worker_dir, '*.json')):
     except (json.JSONDecodeError, IOError):
         pass
 
+worker_pending = sum(1 for w in workers if w.get('status') == 'pending')
 worker_working = sum(1 for w in workers if w.get('status') == 'working')
 worker_done = sum(1 for w in workers if w.get('status') == 'done')
-worker_total = worker_working + worker_done
-worker_state = 'working' if worker_working > 0 else ('done' if worker_done > 0 else None)
+worker_total = worker_pending + worker_working + worker_done
+worker_state = 'working' if worker_working > 0 else ('done' if worker_done > 0 else ('pending' if worker_pending > 0 else None))
 
 # Persistent icon
 mode_icon = '\uee0d'  #  claude
@@ -41,6 +42,7 @@ SHOVEL = '\U000f0710'  # 󰜐
 LAVENDER = '#b4befe'
 YELLOW = '#f9e2af'
 GREEN = '#a6e3a1'
+DIM = '#585b70'
 
 # Activity indicator: only when not idle
 activity_icons = {
@@ -58,7 +60,7 @@ if worker_state:
     count_str = f' {worker_total}' if worker_total > 1 else ''
     if is_active:
         # Static Pango color — CSS drives the activity indicator
-        shovel_color = YELLOW if worker_state == 'working' else GREEN
+        shovel_color = YELLOW if worker_state == 'working' else (GREEN if worker_state == 'done' else DIM)
         shovel_suffix = f' <span foreground=\"{shovel_color}\">{SHOVEL}{count_str}</span>'
     else:
         # Inherits CSS animation color
@@ -82,6 +84,8 @@ elif worker_state == 'working':
     css = 'worker-working'
 elif worker_state == 'done':
     css = 'worker-done'
+elif worker_state == 'pending':
+    css = 'worker-pending'
 else:
     css = status
 
@@ -101,11 +105,11 @@ else:
     tip += ' | Wake: OFF' if wake_muted else ' | Wake: ON'
 
 if worker_state:
-    if worker_total == 1:
-        task_preview = workers[0].get('task', '')[:40]
-        tip += f' | Worker: {worker_state} ({task_preview})'
-    else:
-        tip += f' | Workers: {worker_total} active'
+    parts = []
+    if worker_pending: parts.append(f'{worker_pending} pending')
+    if worker_working: parts.append(f'{worker_working} working')
+    if worker_done: parts.append(f'{worker_done} done')
+    tip += ' | Workers: ' + ', '.join(parts)
 
 print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
 "

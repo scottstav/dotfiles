@@ -12,7 +12,7 @@ between "I asked Claude a question" and "this needs a full Claude Code session."
 Add a `spawn_worker` tool to claude-ask's tool system so Claude can queue
 pending worker sessions. Workers are approved asynchronously — via notification
 buttons, natural conversation replies, or the waybar worker list. Approval and
-denial flow through a single `claude-worker-approve` script.
+denial flow through a single `claude-worker-manage` script.
 
 ## Architecture
 
@@ -45,8 +45,8 @@ session. The tool:
 4. Signals waybar to refresh
 5. Returns immediately: `"Worker queued as pending (id: <id>). User will approve when ready."`
 
-The notification action handlers call `claude-worker-approve <id>` or
-`claude-worker-approve --deny <id>`.
+The notification action handlers call `claude-worker-manage <id>` or
+`claude-worker-manage --deny <id>`.
 
 **When Claude should use this tool** (system prompt guidance):
 - Changes across multiple files
@@ -82,15 +82,15 @@ input_schema = {
 }
 ```
 
-Internally calls `claude-worker-approve` for approve/cancel actions.
+Internally calls `claude-worker-manage` for approve/cancel actions.
 
-#### `claude-worker-approve` script (`~/.local/bin/claude-worker-approve`)
+#### `claude-worker-manage` script (`~/.local/bin/claude-worker-manage`)
 
 Single entry point for approving or denying pending workers:
 
 ```
-claude-worker-approve <id>          # approve: launch worker session
-claude-worker-approve --deny <id>   # deny: remove pending state file
+claude-worker-manage <id>          # approve: launch worker session
+claude-worker-manage --deny <id>   # deny: remove pending state file
 ```
 
 On approval:
@@ -182,12 +182,12 @@ spawn_worker.py:
 Claude: "I've queued a worker for that. Approve it when ready."
     ↓
 Approval (any path):
-    a) Notification [Start] → claude-worker-approve <id>
+    a) Notification [Start] → claude-worker-manage <id>
     b) User replies "go ahead" → Claude calls manage_workers(approve)
     c) Waybar left-click → fuzzel → select pending worker
     d) Hours later: "start that worker" → Claude lists + approves
     ↓
-claude-worker-approve <id>:
+claude-worker-manage <id>:
     → reads pending state
     → launches foot + claude-worker-session
     → state: pending → working
@@ -207,7 +207,7 @@ Worker completes:
 |------|---------|
 | `.local/share/claude-ask/tools/spawn_worker.py` | Tool: create pending workers |
 | `.local/share/claude-ask/tools/manage_workers.py` | Tool: list/approve/cancel workers |
-| `.local/bin/claude-worker-approve` | Script: approve or deny pending workers |
+| `.local/bin/claude-worker-manage` | Script: approve or deny pending workers |
 
 ### Modified
 | File | Change |

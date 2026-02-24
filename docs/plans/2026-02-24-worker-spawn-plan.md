@@ -4,25 +4,25 @@
 
 **Goal:** Let claude-ask queue pending Claude Code worker sessions that users approve asynchronously via notifications, conversation replies, or waybar.
 
-**Architecture:** Two new tool plugins (`spawn_worker`, `manage_workers`) create/manage pending worker state files in `~/.local/state/claude-worker/`. A new `claude-worker-approve` script handles approval/denial from any source. Waybar clicks are remapped (left=workers, middle=voice cycle, right=new worker). Worker sessions get completion notifications.
+**Architecture:** Two new tool plugins (`spawn_worker`, `manage_workers`) create/manage pending worker state files in `~/.local/state/claude-worker/`. A new `claude-worker-manage` script handles approval/denial from any source. Waybar clicks are remapped (left=workers, middle=voice cycle, right=new worker). Worker sessions get completion notifications.
 
 **Tech Stack:** Python 3 (tool plugins), Bash (scripts), JSON state files, notify-send, fuzzel, waybar, foot terminal
 
 ---
 
-### Task 1: `claude-worker-approve` Script
+### Task 1: `claude-worker-manage` Script
 
 The foundation. Everything else calls this script to approve or deny pending workers.
 
 **Files:**
-- Create: `.local/bin/claude-worker-approve`
+- Create: `.local/bin/claude-worker-manage`
 
 **Step 1: Write the script**
 
 ```bash
 #!/bin/bash
 # Approve or deny a pending Claude worker
-# Usage: claude-worker-approve [--deny] <id>
+# Usage: claude-worker-manage [--deny] <id>
 
 STATE_DIR="$HOME/.local/state/claude-worker"
 
@@ -34,7 +34,7 @@ fi
 
 id="$1"
 if [[ -z "$id" ]]; then
-    echo "Usage: claude-worker-approve [--deny] <id>" >&2
+    echo "Usage: claude-worker-manage [--deny] <id>" >&2
     exit 1
 fi
 
@@ -76,15 +76,15 @@ echo "Worker $id approved and launching."
 
 **Step 2: Make it executable and test**
 
-Run: `chmod +x .local/bin/claude-worker-approve`
+Run: `chmod +x .local/bin/claude-worker-manage`
 
 Manual test: Create a fake pending state file, run the script with `--deny`, verify it's removed. Then create another, run without `--deny`, verify foot launches.
 
 **Step 3: Commit**
 
 ```bash
-git add .local/bin/claude-worker-approve
-git commit -m "feat: add claude-worker-approve script for pending worker management"
+git add .local/bin/claude-worker-manage
+git commit -m "feat: add claude-worker-manage script for pending worker management"
 ```
 
 ---
@@ -203,9 +203,9 @@ result = subprocess.run(
 )
 action = result.stdout.strip()
 if action == "approve":
-    subprocess.run(["claude-worker-approve", "{worker_id}"])
+    subprocess.run(["claude-worker-manage", "{worker_id}"])
 elif action == "deny":
-    subprocess.run(["claude-worker-approve", "--deny", "{worker_id}"])
+    subprocess.run(["claude-worker-manage", "--deny", "{worker_id}"])
 """
     # Actually, the simpler approach: use a shell one-liner as background process
     # that reads the first notification's action
@@ -214,8 +214,8 @@ elif action == "deny":
         f'-A "approve=Start" -A "deny=Decline" --wait '
         f'"Pending Worker" "$(python3 -c \'import json; d=json.load(open("{STATE_DIR}/{worker_id}.json")); '
         f'print(d[\"task\"][:200])\')" 2>/dev/null); '
-        f'[ "$action" = "approve" ] && claude-worker-approve {worker_id}; '
-        f'[ "$action" = "deny" ] && claude-worker-approve --deny {worker_id}'
+        f'[ "$action" = "approve" ] && claude-worker-manage {worker_id}; '
+        f'[ "$action" = "deny" ] && claude-worker-manage --deny {worker_id}'
     )
     subprocess.Popen(
         ["bash", "-c", cmd],
@@ -252,8 +252,8 @@ action=$(notify-send -t 0 -a "Claude Worker" \
     "Pending Worker ($dir)" "$task" 2>/dev/null)
 
 case "$action" in
-    approve) claude-worker-approve "$id" ;;
-    deny) claude-worker-approve --deny "$id" ;;
+    approve) claude-worker-manage "$id" ;;
+    deny) claude-worker-manage --deny "$id" ;;
 esac
 ```
 
@@ -460,7 +460,7 @@ def run(input_data):
         if worker["status"] != "pending":
             return f"Worker {worker['id']} is {worker['status']}, not pending."
         result = subprocess.run(
-            ["claude-worker-approve", worker["id"]],
+            ["claude-worker-manage", worker["id"]],
             capture_output=True, text=True,
         )
         return result.stdout.strip() or f"Worker {worker['id']} approved."
@@ -469,7 +469,7 @@ def run(input_data):
         if worker["status"] != "pending":
             return f"Worker {worker['id']} is {worker['status']}, not pending."
         result = subprocess.run(
-            ["claude-worker-approve", "--deny", worker["id"]],
+            ["claude-worker-manage", "--deny", worker["id"]],
             capture_output=True, text=True,
         )
         return result.stdout.strip() or f"Worker {worker['id']} cancelled."
@@ -723,7 +723,7 @@ done
 
 case "$sel_status" in
     pending)
-        claude-worker-approve "$sel_id"
+        claude-worker-manage "$sel_id"
         ;;
     working|done)
         # Focus the worker's foot window

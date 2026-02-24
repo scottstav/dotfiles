@@ -23,7 +23,7 @@ SELECTION=$(build_list | fzf \
     --no-sort \
     --prompt='emoji> ')
 
-[[ -z "$SELECTION" ]] && exit 0
+[[ -z "$SELECTION" ]] && exit 1
 
 # Extract just the emoji character (first field before space)
 EMOJI=$(echo "$SELECTION" | cut -d' ' -f1)
@@ -33,7 +33,5 @@ mkdir -p "$(dirname "$HISTORY")"
 { echo "$SELECTION"; cat "$HISTORY" 2>/dev/null; } | awk '!seen[$0]++' | head -500 > "$HISTORY.tmp"
 mv "$HISTORY.tmp" "$HISTORY"
 
-# Copy to clipboard and auto-paste
+# Copy to clipboard — paste is handled by the caller after terminal closes
 printf '%s' "$EMOJI" | wl-copy
-sleep 0.05
-wtype -M ctrl v -m ctrl

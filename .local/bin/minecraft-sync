@@ -1,0 +1,93 @@
+#!/bin/bash
+# Syncs Prism Launcher instances via Dropbox so you can play on any machine.
+# Symlinks entire instances (worlds, mods, configs, everything).
+#
+# First run on a machine with instances: moves them to Dropbox, symlinks back.
+# First run on a new machine: pulls instances from Dropbox via symlinks.
+#
+# Usage:
+#   minecraft-sync          — sync all instances (local + Dropbox)
+#   minecraft-sync <name>   — sync a specific instance
+
+set -euo pipefail
+
+DROPBOX_INSTANCES="$HOME/Dropbox/minecraft/instances"
+INSTANCES_DIR="$HOME/.local/share/PrismLauncher/instances"
+
+fix_permissions() {
+    local dir="$1"
+    # Ensure all files are group-readable/writable so both users can access
+    # via the shared dropbox group. Minecraft creates some files as 600.
+    chmod -R g+rw "$dir"
+    find "$dir" -type d -exec chmod g+s {} +
+}
+
+sync_instance() {
+    local name="$1"
+    local local_dir="$INSTANCES_DIR/$name"
+    local dropbox_dir="$DROPBOX_INSTANCES/$name"
+
+    # Already symlinked — nothing to do
+    if [[ -L "$local_dir" ]]; then
+        echo "ok:   $name — already linked → $(readlink "$local_dir")"
+        return
+    fi
+
+    mkdir -p "$DROPBOX_INSTANCES"
+
+    if [[ -d "$local_dir" ]] && [[ -d "$dropbox_dir" ]]; then
+        # Both exist — merge local into Dropbox (don't overwrite existing)
+        echo "merge: $name — merging local into Dropbox"
+        cp -rn "$local_dir"/* "$dropbox_dir/" 2>/dev/null || true
+        rm -rf "$local_dir"
+        ln -s "$dropbox_dir" "$local_dir"
+        fix_permissions "$dropbox_dir"
+        echo "done: $name — merged and linked"
+
+    elif [[ -d "$local_dir" ]]; then
+        # Only local — move to Dropbox
+        echo "move: $name → Dropbox"
+        mv "$local_dir" "$dropbox_dir"
+        ln -s "$dropbox_dir" "$local_dir"
+        fix_permissions "$dropbox_dir"
+        echo "done: $name — moved and linked"
+
+    elif [[ -d "$dropbox_dir" ]]; then
+        # Only in Dropbox — pull to this machine
+        echo "pull: $name ← Dropbox"
+        ln -s "$dropbox_dir" "$local_dir"
+        echo "done: $name — linked from Dropbox"
+
+    else
+        echo "skip: $name — not found locally or in Dropbox"
+    fi
+}
+
+# Ensure instances dir exists (fresh PrismLauncher install)
+mkdir -p "$INSTANCES_DIR"
+
+if [[ $# -gt 0 ]]; then
+    for name in "$@"; do
+        sync_instance "$name"
+    done
+else
+    # Collect all instance names from both local and Dropbox
+    declare -A all_instances
+    shopt -s nullglob
+
+    for dir in "$INSTANCES_DIR"/*/; do
+        [[ -e "$dir" ]] && all_instances[$(basename "$dir")]=1
+    done
+    for dir in "$DROPBOX_INSTANCES"/*/; do
+        [[ -e "$dir" ]] && all_instances[$(basename "$dir")]=1
+    done
+
+    if [[ ${#all_instances[@]} -eq 0 ]]; then
+        echo "No instances found locally or in Dropbox"
+        exit 0
+    fi
+
+    for name in "${!all_instances[@]}"; do
+        sync_instance "$name"
+    done
+fi

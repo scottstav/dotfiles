@@ -5,9 +5,12 @@ detect a wake word (e.g. "ok computer") from streaming audio chunks.
 """
 
 import logging
+import os
 from pathlib import Path
 
+import openwakeword
 from openwakeword.model import Model
+from openwakeword.utils import download_models
 
 log = logging.getLogger("claude-voice")
 
@@ -35,10 +38,23 @@ class WakeWordListener:
         """
         model_path = str(Path(model_path).expanduser())
         log.info("Loading wake word model: %s (threshold=%.2f)", model_path, threshold)
-        self.model = Model(wakeword_model_paths=[model_path])
+        self._ensure_preprocessor_models()
+        self.model = Model(wakeword_models=[model_path], inference_framework="onnx")
         self.threshold = threshold
         self._model_names = list(self.model.models.keys())
         log.info("Wake word model loaded — watching for: %s", self._model_names)
+
+    @staticmethod
+    def _ensure_preprocessor_models():
+        """Download openwakeword's preprocessor models if missing."""
+        resources_dir = os.path.join(
+            os.path.dirname(openwakeword.__file__), "resources", "models"
+        )
+        needed = ("melspectrogram.onnx", "embedding_model.onnx")
+        if all(os.path.exists(os.path.join(resources_dir, f)) for f in needed):
+            return
+        log.info("Downloading missing openwakeword preprocessor models...")
+        download_models(model_names=[])
 
     def detect(self, audio_chunk) -> bool:
         """Feed an int16 numpy array and check for a wake word.

@@ -1,0 +1,35 @@
+[meta]
+name = "Forest"
+style = "dark"
+
+[palette]
+background    = "#1a1c1e"
+surface       = "#2a2e2a"
+foreground    = "#d4d4d4"
+dim           = "#6a7a6a"
+border        = "#3a4a3a"
+
+[hues]
+red           = "#e06060"
+orange        = "#d4944a"
+yellow        = "#c4b060"
+green         = "#50c878"
+cyan          = "#60b0a0"
+blue          = "#6090c0"
+magenta       = "#a070b0"
+
+[roles]
+accent        = "green"
+accent_bright = "cyan"
+error         = "red"
+warning       = "orange"
+success       = "green"
+
+[emacs]
+theme = "wheatgrass"
+
+[emacs.faces]
+mode-line-active-bg   = "#2a3a2a"
+mode-line-active-fg   = "#b0c0b0"
+mode-line-inactive-bg = "#1e2e1e"
+mode-line-inactive-fg = "#6a7a6a"

@@ -1,0 +1,356 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Iosevka";
+    font-size: 11px;
+    min-height: 0;
+}
+
+window#waybar {
+    min-height: 24px;
+}
+window#waybar {
+    color: ${foreground};
+    background-color: transparent;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+#window {
+    font-family: "Iosevka";
+    color: ${terminal_white};
+}
+
+#workspaces button {
+    color: ${foreground};
+    /* round the edges */
+    border-radius: 100px;
+}
+
+#workspaces button:hover {
+}
+
+#workspaces button.active {
+    background-color: rgba(100, 100, 100, 0.5);
+    color: ${terminal_bright_white};
+}
+
+#workspaces button.urgent {
+    background-color: rgb(110, 00, 00);
+    color: ${terminal_bright_white};
+}
+
+#mode {
+    background: rgba(80, 80, 80, 0.5);
+    border-bottom: 3px solid #a0a0a0;
+}
+
+#custom-waybarstatus {
+    margin-left: 150px;
+}
+
+.modules-center {
+    border-radius: 100px;
+    background-color: rgba(80, 80, 80, 0.5);
+}
+
+.modules-center * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+.modules-right * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+#custom-waybarstatus {
+    padding: 2px 4px;
+    color: ${terminal_white};
+    background-color: rgba(50, 50, 50, 0.7);
+}
+
+#battery icon {
+    color: ${error};
+}
+
+#battery.charging {
+    color: ${success};
+}
+
+@keyframes blink {
+    to {
+	background-color: ${accent_bright};
+	color: #003366;
+    }
+}
+
+#battery.warning:not(.charging) {
+    color: ${error};
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#network.disconnected {
+    background: ${error};
+}
+
+#pulseaudio.muted {
+    color: ${error};
+}
+
+#pulseaudio.source-muted {
+    color: ${error};
+}
+
+#custom-spotify {
+    color: ${accent_bright};
+}
+
+#tray {
+    color: ${accent_bright};
+}
+
+#custom-sysinfo {
+    color: ${accent_bright};
+}
+
+#custom-sysinfo.warning {
+    color: ${warning};
+}
+
+#custom-sysinfo.critical {
+    color: ${error};
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-external-drive {
+    color: ${accent_bright};
+}
+
+#custom-external-drive.mounted {
+    color: ${success};
+}
+
+/* Notification module */
+#custom-notification {
+    color: ${foreground};
+}
+
+#custom-notification.notification {
+    color: ${accent_bright};
+}
+
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none {
+    color: ${dim};
+}
+
+#custom-notification.inhibited-notification,
+#custom-notification.inhibited-none {
+    color: ${warning};
+}
+
+/* Recording module */
+#custom-recording {
+    color: #404040;
+}
+
+#custom-recording.recording {
+    color: ${error};
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-recording.idle {
+    color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+/* Voice typing module */
+#custom-voice-typing {
+    color: #606060;
+}
+
+#custom-voice-typing.listening {
+    color: ${success};
+    animation-name: pulse;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-voice-typing.paused {
+    color: ${dim};
+}
+
+#custom-voice-typing.off {
+    color: #404040;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* System freshness module */
+#custom-system-freshness.fresh {
+    color: ${success};
+}
+
+#custom-system-freshness.healthy {
+    color: ${accent_bright};
+}
+
+#custom-system-freshness.aging {
+    color: ${warning};
+}
+
+#custom-system-freshness.wilting {
+    color: ${error};
+}
+
+#custom-system-freshness.dead {
+    color: ${error};
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+/* Google Calendar module */
+#custom-gcal.active {
+    color: ${success};
+}
+
+#custom-gcal.urgent {
+    color: ${error};
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-gcal.soon {
+    color: ${warning};
+}
+
+#custom-gcal.upcoming {
+    color: ${accent_bright};
+}
+
+#custom-gcal.later {
+    color: ${foreground};
+}
+
+#custom-gcal.idle {
+    color: ${dim};
+}
+
+#custom-gcal.none {
+    color: #404040;
+}
+
+/* Smooth color glow animations for claude-ask states */
+@keyframes glow-blue {
+    0% { color: ${accent_bright}; }
+    50% { color: ${accent_bright_light}; }
+    100% { color: ${accent_bright}; }
+}
+
+@keyframes glow-green {
+    0% { color: ${success}; }
+    50% { color: ${success_light}; }
+    100% { color: ${success}; }
+}
+
+@keyframes glow-amber {
+    0% { color: ${warning}; }
+    50% { color: ${warning_light}; }
+    100% { color: ${warning}; }
+}
+
+/* Claude Ask module */
+#custom-claude-ask {
+    color: ${accent_bright};
+}
+
+#custom-claude-ask.thinking {
+    animation-name: glow-blue;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-claude-ask.tool_use {
+    animation-name: glow-amber;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-claude-ask.speaking {
+    animation-name: glow-green;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-claude-ask.listening {
+    color: ${warning};
+    animation-name: pulse;
+    animation-duration: 0.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes glow-yellow {
+    0% { color: ${terminal_yellow}; opacity: 1; }
+    50% { color: #7c6f3e; opacity: 0.5; }
+    100% { color: ${terminal_yellow}; opacity: 1; }
+}
+
+#custom-claude-ask.worker-working {
+    animation-name: glow-yellow;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes arrive-green {
+    0% { color: #ffffff; }
+    30% { color: ${success}; }
+    60% { color: #ffffff; }
+    100% { color: ${success}; }
+}
+
+#custom-claude-ask.worker-done {
+    color: ${success};
+    animation-name: arrive-green;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: 1;
+}
+
+#custom-claude-ask.worker-pending {
+    color: ${dim};
+}

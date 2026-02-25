@@ -1,6 +1,7 @@
 [meta]
 name = "Forest"
 style = "dark"
+wallpaper = "~/Dropbox/Images/wallpapers/pixel-balcony.png"
 
 [palette]
 background    = "#1a1c1e"

@@ -14,6 +14,7 @@ import os
 import string
 import subprocess
 import sys
+import time
 
 try:
     import tomllib
@@ -35,6 +36,7 @@ TEMPLATE_MAP = {
     "swaync-style.css.tmpl":      "~/.config/swaync/style.css",
     "fzf-theme.sh.tmpl":          "~/.local/share/fzf-picker/theme.sh",
     "fuzzel.ini.tmpl":            "~/.config/fuzzel/fuzzel.ini",
+    "hyprpaper.conf.tmpl":        "~/.config/hypr/hyprpaper.conf",
 }
 
 RELOAD_COMMANDS = [
@@ -44,6 +46,9 @@ RELOAD_COMMANDS = [
     ["emacsclient", "--eval", '(load "~/.emacs.d/theme.el" nil t)'],
     ["systemctl", "--user", "restart", "claude-ask"],
 ]
+
+HYPRPAPER_RELOAD = ["killall", "hyprpaper"]
+HYPRPAPER_START = ["hyprctl", "dispatch", "exec", "hyprpaper"]
 
 # The six chromatic terminal color names and their hue counterparts.
 TERMINAL_HUES = {
@@ -181,6 +186,11 @@ def build_namespace(theme: dict) -> dict:
     for key, value in terminal.items():
         _add_color_variants(ns, f"terminal_{key}", value)
 
+    # Non-color values from [meta]
+    meta = theme.get("meta", {})
+    if "wallpaper" in meta:
+        ns["wallpaper"] = meta["wallpaper"]
+
     return ns
 
 
@@ -296,6 +306,14 @@ def reload_services() -> None:
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except FileNotFoundError:
             pass
+
+    # Hyprpaper needs kill + restart (no reload signal)
+    try:
+        subprocess.run(HYPRPAPER_RELOAD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.5)
+        subprocess.run(HYPRPAPER_START, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        pass
 
 
 # ---------------------------------------------------------------------------

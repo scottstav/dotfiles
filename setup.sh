@@ -90,9 +90,12 @@ fi
 # ------------------------------------------------------------------
 step "Shared Dropbox directory"
 
-# /shared/ holds Dropbox data, metadata, and binary so both ifit and
-# scottstav can access them via symlinks.  Setgid ensures new files
-# inherit the dropbox group; default ACLs ensure group read/write.
+# /shared/ holds Dropbox data and binary shared between users.
+# - .dropbox-dist (binary): symlinked from each user's home
+# - Dropbox (sync data): bind-mounted into each user's ~/Dropbox
+#   (Dropbox rejects symlinks at account linking time)
+# - .dropbox (runtime metadata): local per-user, NOT shared
+# ACLs grant the dropbox group read/write across all shared files.
 
 if [ ! -d /shared ]; then
     sudo mkdir -p /shared
@@ -103,24 +106,56 @@ else
     ok "/shared/ already exists"
 fi
 
-for target in Dropbox .dropbox .dropbox-dist; do
-    src="/shared/$target"
-    dest="$HOME/$target"
-    if [ -L "$dest" ]; then
-        ok "$target → $src (symlink exists)"
-    elif [ -e "$dest" ]; then
-        warn "$dest exists as a real file/directory — migrate it to $src manually, then re-run"
-    else
-        mkdir -p "$src"
-        ln -s "$src" "$dest"
-        ok "$target → $src (created)"
+# .dropbox-dist (binary) — symlink to shared copy
+if [ -L "$HOME/.dropbox-dist" ]; then
+    ok ".dropbox-dist → /shared/.dropbox-dist (symlink exists)"
+elif [ -e "$HOME/.dropbox-dist" ]; then
+    warn "$HOME/.dropbox-dist exists as a real file/directory — migrate it to /shared/.dropbox-dist manually, then re-run"
+else
+    mkdir -p /shared/.dropbox-dist
+    ln -s /shared/.dropbox-dist "$HOME/.dropbox-dist"
+    ok ".dropbox-dist → /shared/.dropbox-dist (created)"
+fi
+
+# .dropbox (runtime metadata) — each user needs their own.
+# Contains per-instance state (PID files, sockets, account link)
+# that is user-specific and can't be shared.
+if [ -L "$HOME/.dropbox" ] && [ "$(readlink "$HOME/.dropbox")" = "/shared/.dropbox" ]; then
+    rm "$HOME/.dropbox"
+    ok "Removed stale .dropbox → /shared/.dropbox symlink"
+fi
+if [ ! -d "$HOME/.dropbox" ]; then
+    mkdir -p "$HOME/.dropbox"
+    ok "Created local ~/.dropbox directory"
+else
+    ok "~/.dropbox already exists (local)"
+fi
+
+# Dropbox sync folder — bind mount from /shared/Dropbox.
+# Dropbox rejects symlinks ("filesystem not supported") but accepts
+# bind mounts, which look like a real ext4 directory.
+FSTAB_ENTRY="/shared/Dropbox $HOME/Dropbox none bind 0 0"
+if [ -L "$HOME/Dropbox" ]; then
+    rm "$HOME/Dropbox"
+    ok "Removed stale Dropbox symlink"
+fi
+mkdir -p /shared/Dropbox "$HOME/Dropbox"
+if mountpoint -q "$HOME/Dropbox" 2>/dev/null; then
+    ok "~/Dropbox already bind-mounted"
+else
+    if ! grep -qF "$HOME/Dropbox" /etc/fstab 2>/dev/null; then
+        echo "$FSTAB_ENTRY" | sudo tee -a /etc/fstab >/dev/null
+        sudo systemctl daemon-reload
+        ok "Added bind mount to /etc/fstab"
     fi
-done
+    sudo mount "$HOME/Dropbox"
+    ok "~/Dropbox bind-mounted from /shared/Dropbox"
+fi
 
 # Default ACLs so both users get group read/write on all new files.
 # Requires sudo because another user may own some files.
 if command -v setfacl &>/dev/null; then
-    for target in Dropbox .dropbox .dropbox-dist; do
+    for target in Dropbox .dropbox-dist; do
         if [ -d "/shared/$target" ]; then
             sudo setfacl -R -m g:dropbox:rwX "/shared/$target" 2>/dev/null
             sudo setfacl -R -d -m g:dropbox:rwx "/shared/$target" 2>/dev/null
@@ -268,7 +303,67 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 7. Claude Ask + Claude Voice
+# 7. Google Calendar (gcal-refresh)
+# ------------------------------------------------------------------
+step "Google Calendar setup"
+
+GCAL_CONFIG="$HOME/.config/gcal"
+GCAL_CLIENT_SECRET="$GCAL_CONFIG/client_secret.json"
+GCAL_TOKENS="$GCAL_CONFIG/tokens"
+GCAL_BW_ITEM="2dd796a5-0786-42bf-b33a-b3fc0075b3c6"
+
+# Ensure Python deps are installed
+for pkg in python-google-auth python-google-api-python-client python-google-auth-oauthlib; do
+    if ! pacman -Q "$pkg" &>/dev/null; then
+        yay -S --needed --noconfirm "$pkg"
+        ok "$pkg installed"
+    fi
+done
+ok "Python dependencies present"
+
+# Fetch client_secret.json from Bitwarden
+if [ -s "$GCAL_CLIENT_SECRET" ]; then
+    ok "client_secret.json already exists"
+elif [ -n "$BW_SESSION" ]; then
+    mkdir -p "$GCAL_CONFIG"
+    bw get notes "$GCAL_BW_ITEM" > "$GCAL_CLIENT_SECRET"
+    chmod 600 "$GCAL_CLIENT_SECRET"
+    if [ -s "$GCAL_CLIENT_SECRET" ]; then
+        ok "client_secret.json fetched from Bitwarden"
+    else
+        rm -f "$GCAL_CLIENT_SECRET"
+        fail "Failed to fetch client_secret.json from Bitwarden"
+    fi
+else
+    warn "Bitwarden not available — cannot fetch client_secret.json"
+    echo "  Manual fix: bw get notes $GCAL_BW_ITEM > $GCAL_CLIENT_SECRET"
+fi
+
+# Run OAuth flow if no tokens exist
+if [ -s "$GCAL_CLIENT_SECRET" ]; then
+    mkdir -p "$GCAL_TOKENS"
+    if ls "$GCAL_TOKENS"/*.json &>/dev/null; then
+        ok "OAuth tokens already configured"
+    else
+        echo "  No Google Calendar accounts configured."
+        echo "  This will open a browser to authorize your Google account."
+        read -rp "  Run OAuth flow now? (y/n) " answer
+        if [[ "$answer" =~ ^[Yy]$ ]]; then
+            read -rp "  Account name (e.g. personal, work): " acct_name
+            gcal-refresh --auth "$acct_name"
+            if [ -f "$GCAL_TOKENS/$acct_name.json" ]; then
+                ok "Authenticated as '$acct_name'"
+            else
+                fail "OAuth flow did not produce a token"
+            fi
+        else
+            warn "Skipped — run: gcal-refresh --auth <name>"
+        fi
+    fi
+fi
+
+# ------------------------------------------------------------------
+# 8. Claude Ask / Claude Voice
 # ------------------------------------------------------------------
 step "Claude Ask / Claude Voice"
 
@@ -316,7 +411,7 @@ for svc in claude-ask.service claude-voice.service; do
 done
 
 # ------------------------------------------------------------------
-# 8. Voice typing
+# 9. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"
 
@@ -369,7 +464,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 9. NVM / Node
+# 10. NVM / Node
 # ------------------------------------------------------------------
 step "NVM / Node.js"
 
@@ -388,7 +483,7 @@ fi
 
 
 # ------------------------------------------------------------------
-# 10. Email (mu4e + mbsync + msmtp)
+# 11. Email (mu4e + mbsync + msmtp)
 # ------------------------------------------------------------------
 step "Email setup (mu4e)"
 

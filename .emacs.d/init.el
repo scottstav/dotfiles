@@ -99,6 +99,9 @@
 ;; Run `theme set <name>` to change.
 (load (expand-file-name "~/.emacs.d/theme.el") t t)
 
+;; Frame transparency (wallpaper shows through)
+(push '(alpha-background . 0.92) default-frame-alist)
+
 (use-package which-key
   :custom
   (which-key-idle-delay 0.5)

@@ -128,6 +128,9 @@
   ;; Theme loaded from system theme engine (~/.config/themes/)
   ;; Run `theme set <name>` to change.
   (load (expand-file-name "~/.emacs.d/theme.el") t t)
+
+  ;; Frame transparency (wallpaper shows through)
+  (push '(alpha-background . 0.92) default-frame-alist)
 #+end_src
 
 #+RESULTS:

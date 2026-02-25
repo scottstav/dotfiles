@@ -9,7 +9,7 @@ VOICE_DIR="$HOME/.local/share/voice-typing-linux"
 VENV="$VOICE_DIR/.venv"
 
 # Don't start if already running
-if pgrep -f "enhanced-voice-typing.py" >/dev/null; then
+if pgrep -u "$(id -u)" -f "enhanced-voice-typing.py" >/dev/null; then
     echo "Already running"
     exit 0
 fi

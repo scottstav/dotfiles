@@ -81,6 +81,5 @@ action=$(notify-send -a "System" \
 if [ "$action" = "fix" ]; then
     id=$(date +%s)
     task="The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
-    hyprctl dispatch exec -- \
-        "foot --app-id=claude-worker-$id -- claude-worker-session $id $HOME/dotfiles '$task'"
+    setsid claude-worker-session "$id" "$HOME/dotfiles" "$task" </dev/null &>/dev/null &
 fi

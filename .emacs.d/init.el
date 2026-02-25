@@ -35,6 +35,7 @@
 ;; Start dired with details hidden and fit window to longest filename
 (add-hook 'dired-mode-hook #'dired-hide-details-mode)
 (setq delete-by-moving-to-trash t)
+(setq dired-kill-when-opening-new-dired-buffer t)
 
 (setq fit-window-to-buffer-horizontally t)
 

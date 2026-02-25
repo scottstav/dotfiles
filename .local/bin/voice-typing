@@ -1,7 +1,7 @@
 #!/bin/bash
 # Toggle voice typing pause/resume via signal (instant)
 
-PID=$(pgrep -f "enhanced-voice-typing.py")
+PID=$(pgrep -u "$(id -u)" -f "enhanced-voice-typing.py")
 
 if [ -z "$PID" ]; then
     notify-send -u critical -t 2000 "Voice Typing" "Not running"

@@ -14,6 +14,7 @@ TIMER_SERVICES=(
     system-freshness
     gcal-refresh
     mbsync
+    google-contacts-sync
 )
 
 # Processes that should be running (from exec-once)

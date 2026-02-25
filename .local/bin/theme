@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+THEME_DIR="$HOME/.config/themes"
+ENGINE="$HOME/.local/share/theme-engine/engine.py"
+
+case "${1:-}" in
+    list)
+        for f in "$THEME_DIR"/*.toml; do
+            [ -f "$f" ] || continue
+            name=$(basename "$f" .toml)
+            current=""
+            if [ -L "$THEME_DIR/current" ]; then
+                current_name=$(basename "$(readlink "$THEME_DIR/current")" .toml)
+                [ "$name" = "$current_name" ] && current=" *"
+            fi
+            echo "${name}${current}"
+        done
+        ;;
+    current)
+        if [ -L "$THEME_DIR/current" ]; then
+            basename "$(readlink "$THEME_DIR/current")" .toml
+        else
+            echo "No theme set" >&2
+            exit 1
+        fi
+        ;;
+    set)
+        [ -z "${2:-}" ] && echo "Usage: theme set <name>" >&2 && exit 1
+        [ ! -f "$THEME_DIR/${2}.toml" ] && echo "Theme '${2}' not found" >&2 && exit 1
+        python3 "$ENGINE" apply "$2"
+        ;;
+    edit)
+        [ -z "${2:-}" ] && echo "Usage: theme edit <name>" >&2 && exit 1
+        ${EDITOR:-vim} "$THEME_DIR/${2}.toml"
+        ;;
+    new)
+        [ -z "${2:-}" ] && echo "Usage: theme new <name>" >&2 && exit 1
+        if [ -L "$THEME_DIR/current" ]; then
+            cp "$(readlink "$THEME_DIR/current")" "$THEME_DIR/${2}.toml"
+        else
+            echo "No current theme to copy from" >&2
+            exit 1
+        fi
+        sed -i "s/^name *= *\".*\"/name = \"${2}\"/" "$THEME_DIR/${2}.toml"
+        ${EDITOR:-vim} "$THEME_DIR/${2}.toml"
+        ;;
+    *)
+        echo "Usage: theme {list|current|set|edit|new} [name]" >&2
+        exit 1
+        ;;
+esac

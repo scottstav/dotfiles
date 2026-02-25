@@ -73,24 +73,24 @@ state_file="$STATE_DIR/$sel_id.json"
 case "$sel_status" in
     pending)
         claude-worker-manage "$sel_id"
+        sleep 0.1  # let setsid detach before foot closes pty
         ;;
     working|done)
-        # Kill autonomous process if still running
-        if [[ "$sel_status" == "working" ]]; then
-            pid=$(jq -r '.pid // empty' "$state_file")
-            if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-                kill "$pid"
-            fi
-        fi
-
         session_id=$(jq -r '.session_id // empty' "$state_file")
         dir=$(jq -r '.directory' "$state_file")
+
+        # Kill session script + claude process if still running
+        for key in session_pid pid; do
+            p=$(jq -r ".$key // empty" "$state_file")
+            [[ -n "$p" ]] && kill "$p" 2>/dev/null
+        done
 
         rm -f "$state_file" "$STATE_DIR/$sel_id.log"
         pkill -SIGRTMIN+12 waybar
 
         if [[ -n "$session_id" ]]; then
             setsid env -u CLAUDECODE alacritty --working-directory "$dir" -e claude --resume "$session_id" </dev/null &>/dev/null &
+            sleep 0.1  # let setsid detach before foot closes pty
         else
             echo "No session to resume. Cleaned up."
             sleep 1

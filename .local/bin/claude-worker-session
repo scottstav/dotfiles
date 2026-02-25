@@ -38,9 +38,9 @@ claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task" \
     </dev/null >"$LOG_FILE" 2>&1 &
 CLAUDE_PID=$!
 
-# Write working state
-jq -n --arg dir "$dir" --arg task "$task" --arg pid "$CLAUDE_PID" --arg sid "$SESSION_ID" \
-    '{"status": "working", "directory": $dir, "task": $task, "pid": ($pid|tonumber), "session_id": $sid}' > "$STATE_FILE"
+# Write working state (include session PID so list can kill the whole thing)
+jq -n --arg dir "$dir" --arg task "$task" --arg pid "$CLAUDE_PID" --arg spid "$$" --arg sid "$SESSION_ID" \
+    '{"status": "working", "directory": $dir, "task": $task, "pid": ($pid|tonumber), "session_pid": ($spid|tonumber), "session_id": $sid}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
 wait $CLAUDE_PID

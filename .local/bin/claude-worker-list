@@ -1,5 +1,5 @@
 #!/bin/bash
-# Show fuzzel menu of workers. Left-click waybar action.
+# Show fzf picker of workers. Runs inside foot (launched by waybar).
 
 STATE_DIR="$HOME/.local/state/claude-worker"
 
@@ -27,8 +27,11 @@ if [[ ${#entries[@]} -eq 0 ]]; then
     exit 0
 fi
 
-# Show fuzzel picker
-selected=$(printf '%s\n' "${entries[@]}" | fuzzel --dmenu --prompt="Workers: " --width=60)
+# Show fzf picker
+selected=$(printf '%s\n' "${entries[@]}" | fzf \
+    --ansi --height=100% --layout=reverse \
+    --header="⏳ enter=approve  ⚒️ enter=interrupt  ✅ enter=focus" \
+    --no-info --pointer=">" --no-scrollbar)
 [[ -z "$selected" ]] && exit 0
 
 # Find which entry was selected
@@ -43,7 +46,26 @@ case "$sel_status" in
     pending)
         claude-worker-manage "$sel_id"
         ;;
-    working|done)
+    working)
+        # Interrupt: kill the claude -p process so the session resumes interactively
+        state_file="$STATE_DIR/$sel_id.json"
+        pid=$(jq -r '.pid // empty' "$state_file")
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+            kill "$pid"
+        fi
+        # Focus the worker terminal so the user sees the interactive resume
+        window_addr=$(hyprctl clients -j | jq -r \
+            ".[] | select(.class == \"claude-worker-$sel_id\") | .address")
+        if [[ -n "$window_addr" ]]; then
+            ws=$(hyprctl clients -j | jq -r \
+                ".[] | select(.class == \"claude-worker-$sel_id\") | .workspace.name")
+            if [[ "$ws" == special:* ]]; then
+                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+            fi
+            hyprctl dispatch focuswindow address:"$window_addr"
+        fi
+        ;;
+    done)
         window_addr=$(hyprctl clients -j | jq -r \
             ".[] | select(.class == \"claude-worker-$sel_id\") | .address")
         if [[ -n "$window_addr" ]]; then

@@ -197,7 +197,7 @@
         "exec": "claude-ask-status",
         "return-type": "json",
         "interval": 2,
-        "on-click": "claude-worker-list",
+        "on-click": "foot --app-id=fzf-picker -e claude-worker-list",
         "on-click-middle": "claude-voice-cycle",
         "on-click-right": "claude-worker-toggle",
         "signal": 12,

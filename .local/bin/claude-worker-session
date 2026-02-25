@@ -43,20 +43,33 @@ if [[ -z "$task" ]]; then
     [[ -z "$task" ]] && exit 0
 fi
 
-# Write working state
-jq -n --arg dir "$dir" --arg task "$task" \
-    '{"status": "working", "directory": $dir, "task": $task}' > "$STATE_FILE"
-pkill -SIGRTMIN+12 waybar
-
 # Generate a session ID so we can resume this exact session later
 SESSION_ID=$(uuidgen)
 
 # Run claude in print mode (autonomous, streams output to terminal)
-cd "$dir" && claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task"
+cd "$dir" || exit 1
+claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task" &
+CLAUDE_PID=$!
+
+# Write working state with PID and session ID so list can interrupt
+jq -n --arg dir "$dir" --arg task "$task" --arg pid "$CLAUDE_PID" --arg sid "$SESSION_ID" \
+    '{"status": "working", "directory": $dir, "task": $task, "pid": ($pid|tonumber), "session_id": $sid}' > "$STATE_FILE"
+pkill -SIGRTMIN+12 waybar
+
+wait $CLAUDE_PID
+claude_exit=$?
+
+# If interrupted (SIGTERM=143), resume interactively
+if [[ $claude_exit -eq 143 ]]; then
+    echo
+    echo "Worker interrupted — resuming interactively..."
+    echo
+    claude --resume "$SESSION_ID" --dangerously-skip-permissions
+fi
 
 # Update state to done
-jq -n --arg dir "$dir" --arg task "$task" \
-    '{"status": "done", "directory": $dir, "task": $task}' > "$STATE_FILE"
+jq -n --arg dir "$dir" --arg task "$task" --arg sid "$SESSION_ID" \
+    '{"status": "done", "directory": $dir, "task": $task, "session_id": $sid}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
 # Notify completion in background so terminal prompt appears immediately
@@ -89,6 +102,5 @@ read -r -n 1 choice
 echo
 
 if [[ "$choice" == "r" || "$choice" == "R" ]]; then
-    # setsid detaches alacritty into its own session so it survives foot closing.
-    setsid alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" --dangerously-skip-permissions &>/dev/null &
+    claude --resume "$SESSION_ID" --dangerously-skip-permissions
 fi

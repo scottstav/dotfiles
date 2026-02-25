@@ -1,6 +1,8 @@
 #!/bin/bash
 # Emoji picker — foot + fzf with aliases and history
 
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
 DB="$HOME/.local/share/emoji-picker/emojis.txt"
 HISTORY="$HOME/.local/state/emoji-history.txt"
 
@@ -16,12 +18,9 @@ build_list() {
     fi
 }
 
-SELECTION=$(build_list | fzf \
-    --exact \
-    --height=100% \
-    --layout=reverse \
-    --no-sort \
-    --prompt='emoji> ')
+SELECTION=$(build_list | fzf "${FZF_PICKER_OPTS[@]}" \
+    --border-label=' Emoji ' \
+    --prompt='  ')
 
 [[ -z "$SELECTION" ]] && exit 1
 

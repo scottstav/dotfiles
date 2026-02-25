@@ -1,10 +1,11 @@
 #!/bin/bash
 # Clipboard picker with fzf preview
 
-SELECTION=$(cliphist list | fzf \
-    --height=100% \
-    --layout=reverse \
-    --no-sort \
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
+SELECTION=$(cliphist list | fzf "${FZF_PICKER_OPTS[@]}" \
+    --border-label=' Clipboard ' \
+    --prompt='  ' \
     --preview='
       if cliphist decode <<< {} | file - | grep -qi image; then
         cliphist decode <<< {} | chafa --format=sixel -s ${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}

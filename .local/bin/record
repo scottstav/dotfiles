@@ -3,6 +3,8 @@
 # Modes: screen (with desktop audio), webcam (with preview), combined (screen + webcam overlay).
 # Press keybind again to stop. Combined mode composites a circular webcam overlay in post.
 
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
 PIDFILE="/tmp/record.pid"
 MODEFILE="/tmp/record-mode"
 PATHFILE="/tmp/record-path"
@@ -81,15 +83,16 @@ fi
 bold=$'\e[1m'
 dim=$'\e[2m'
 reset=$'\e[0m'
+cyan=$'\e[36m'
 green=$'\e[32m'
 
-FZF_OPTS=(--ansi --height=100% --layout=reverse --no-info --pointer=">" --no-scrollbar --bind 'left-click:accept')
-
 mode=$(printf '%s\n' \
-    "screen	${bold}Screen${reset}          ${dim}Screen region + desktop audio${reset}" \
-    "webcam	${bold}Webcam${reset}          ${dim}Webcam + microphone with preview${reset}" \
-    "combined	${bold}Screen + Webcam${reset}  ${dim}Combined with circular overlay${reset}" \
-    | fzf "${FZF_OPTS[@]}" --header="${bold}Select recording mode${reset}" \
+    "screen	${cyan}${bold}  Screen${reset}          ${dim}Screen region + desktop audio${reset}" \
+    "webcam	${cyan}${bold}  Webcam${reset}          ${dim}Webcam + microphone with preview${reset}" \
+    "combined	${green}${bold}  Screen + Webcam${reset}  ${dim}Combined with circular overlay${reset}" \
+    | fzf "${FZF_PICKER_OPTS[@]}" \
+        --border-label=' Record ' \
+        --prompt='  ' \
         --delimiter='\t' --with-nth=2 \
     | cut -f1)
 
@@ -126,8 +129,9 @@ get_mics() {
 
 pick_webcam() {
     local sel
-    sel=$(get_webcams | fzf "${FZF_OPTS[@]}" \
-        --header="${bold}Select webcam${reset}" \
+    sel=$(get_webcams | fzf "${FZF_PICKER_OPTS[@]}" \
+        --border-label=' Webcam ' \
+        --prompt='  ' \
         --delimiter='\t' --with-nth=1)
     [[ -z "$sel" ]] && return 1
     printf '%s' "$sel" | awk -F'\t' '{print $NF}'
@@ -135,8 +139,9 @@ pick_webcam() {
 
 pick_mic() {
     local sel
-    sel=$(get_mics | fzf "${FZF_OPTS[@]}" \
-        --header="${bold}Select microphone${reset}" \
+    sel=$(get_mics | fzf "${FZF_PICKER_OPTS[@]}" \
+        --border-label=' Microphone ' \
+        --prompt='  ' \
         --delimiter='\t' --with-nth=1)
     [[ -z "$sel" ]] && return 1
     printf '%s' "$sel" | awk -F'\t' '{print $NF}'

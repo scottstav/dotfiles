@@ -1,6 +1,8 @@
 #!/bin/bash
 # App launcher — foot + fzf replacement for fuzzel
 
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
 declare -A cmd_map
 
 for desktop in /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop; do
@@ -42,12 +44,9 @@ build_list() {
     fi
 }
 
-selection=$(build_list | fzf \
-    --exact \
-    --height=100% \
-    --layout=reverse \
-    --no-sort \
-    --prompt='launch> ')
+selection=$(build_list | fzf "${FZF_PICKER_OPTS[@]}" \
+    --border-label=' Apps ' \
+    --prompt='  ')
 
 [[ -z "$selection" ]] && exit 1
 

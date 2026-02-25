@@ -4,6 +4,13 @@
 HISTORY_FILE=~/.run-command-history
 touch "$HISTORY_FILE"
 
+# Colors matching fzf-picker theme
+blue=$'\e[38;2;30;144;255m'
+cyan=$'\e[38;2;0;191;255m'
+dim=$'\e[2m'
+bold=$'\e[1m'
+reset=$'\e[0m'
+
 # Source bash-completion for full TAB completion
 if [[ -f /usr/share/bash-completion/bash_completion ]]; then
     . /usr/share/bash-completion/bash_completion
@@ -16,18 +23,41 @@ history -r "$HISTORY_FILE"
 # State for checkbox
 SHOW_OUTPUT=1
 
+# Draw border top
+draw_border_top() {
+    local w
+    w=$(tput cols)
+    local label=" Run "
+    local label_len=${#label}
+    local left=3
+    local right=$((w - left - label_len - 2))
+    printf "${blue}╭"
+    printf '─%.0s' $(seq 1 $left)
+    printf "${cyan}${bold}%s${reset}${blue}" "$label"
+    printf '─%.0s' $(seq 1 $right)
+    printf "╮${reset}\n"
+}
+
+draw_border_bottom() {
+    local w
+    w=$(tput cols)
+    printf "${blue}╰"
+    printf '─%.0s' $(seq 1 $((w - 2)))
+    printf "╯${reset}\n"
+}
+
 draw_header() {
     local checkbox
     if ((SHOW_OUTPUT)); then
-        checkbox="[x]"
+        checkbox="${cyan}${bold}[x]${reset}"
     else
-        checkbox="[ ]"
+        checkbox="${dim}[ ]${reset}"
     fi
-    printf '\e[1;1H'  # go to line 1
+    printf '\e[2;1H'  # go to line 2 (inside border)
     printf '\e[K'     # clear line
-    printf "  %s Show output (Shift-Tab)\n" "$checkbox"
+    printf " %s ${dim}Show output${reset}  ${dim}(Shift-Tab)${reset}\n" "$checkbox"
     printf '\e[K'
-    printf "  Tab=complete | Up/Down=history | Ctrl-C=exit\n"
+    printf " ${dim}Tab=complete  Up/Down=history  Ctrl-C=exit${reset}\n"
     printf '\e[K\n'
 }
 
@@ -44,7 +74,8 @@ trap 'printf "\e[?25h\e[J"; exit 0' INT
 # Clear screen and hide cursor during setup
 printf '\e[2J\e[H'
 
-# Draw initial header
+# Draw border and header
+draw_border_top
 draw_header
 
 # Enable readline and bind SHIFT-TAB to toggle function
@@ -52,7 +83,7 @@ set -o emacs
 bind -x '"\e[Z": toggle_output'
 
 # Position cursor for prompt
-printf "  Run: "
+printf " ${blue}${bold}▸${reset} "
 
 # Use readline for input with TAB completion and history
 read -e CMD

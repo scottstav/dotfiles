@@ -10,11 +10,3 @@ __pycache__/
 /.env.test
 /.env.prod
 /.local/state/
-
-# Theme engine rendered outputs (generated from templates)
-.config/foot/foot.ini
-.config/fuzzel/fuzzel.ini
-.config/hypr/hyprpaper.conf
-.config/swaync/style.css
-.config/waybar/style.css
-.local/share/fzf-picker/theme.sh

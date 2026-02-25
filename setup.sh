@@ -19,6 +19,31 @@ skip()  { echo -e "  ${DIM}– $1 (skipped)${NC}"; }
 warn()  { echo -e "  ${YELLOW}! $1${NC}"; }
 fail()  { echo -e "  ${RED}✗ $1${NC}"; }
 
+# ensure_venv DIR PYTHON_BIN LABEL
+# Creates or recreates a venv if missing or wrong Python version.
+ensure_venv() {
+    local dir="$1" python_bin="$2" label="$3"
+    local venv="$dir/.venv"
+    local want_ver
+    want_ver=$("$python_bin" --version 2>&1 | awk '{print $2}')
+    local want_major_minor="${want_ver%.*}"
+
+    if [ -d "$venv" ]; then
+        local have_ver
+        have_ver=$("$venv/bin/python3" --version 2>&1 | awk '{print $2}')
+        local have_major_minor="${have_ver%.*}"
+        if [ "$have_major_minor" = "$want_major_minor" ]; then
+            ok "$label venv ok (Python $have_ver)"
+            return 0
+        fi
+        warn "$label venv has Python $have_ver, need $want_major_minor — recreating"
+        rm -rf "$venv"
+    fi
+
+    "$python_bin" -m venv "$venv"
+    ok "$label venv created (Python $want_ver)"
+}
+
 # ------------------------------------------------------------------
 # 0. Install packages
 # ------------------------------------------------------------------
@@ -462,22 +487,12 @@ if ! command -v python3.11 &>/dev/null; then
 fi
 
 # claude-ask venv + deps
-if [ ! -d "$CA_DIR/.venv" ]; then
-    python3.11 -m venv "$CA_DIR/.venv"
-    ok "claude-ask venv created"
-else
-    ok "claude-ask venv already exists"
-fi
+ensure_venv "$CA_DIR" python3.11 "claude-ask"
 "$CA_DIR/.venv/bin/pip" install -q -r "$CA_DIR/requirements.txt"
 ok "claude-ask dependencies installed"
 
 # claude-voice venv + deps
-if [ ! -d "$CV_DIR/.venv" ]; then
-    python3.11 -m venv "$CV_DIR/.venv"
-    ok "claude-voice venv created"
-else
-    ok "claude-voice venv already exists"
-fi
+ensure_venv "$CV_DIR" python3.11 "claude-voice"
 "$CV_DIR/.venv/bin/pip" install -q -r "$CV_DIR/requirements.txt"
 ok "claude-voice dependencies installed"
 
@@ -503,15 +518,10 @@ step "Voice typing setup"
 VT_DIR="$HOME/.local/share/voice-typing-linux"
 
 if [ -d "$VT_DIR" ]; then
-    if [ ! -d "$VT_DIR/.venv" ]; then
-        if command -v python3.11 &>/dev/null; then
-            python3.11 -m venv "$VT_DIR/.venv"
-            ok "Voice typing venv created"
-        else
-            warn "python3.11 not found — needed for onnxruntime compatibility"
-        fi
+    if command -v python3.11 &>/dev/null; then
+        ensure_venv "$VT_DIR" python3.11 "voice-typing"
     else
-        ok "Voice typing venv already exists"
+        warn "python3.11 not found — needed for onnxruntime compatibility"
     fi
 
     if [ -d "$VT_DIR/.venv" ]; then

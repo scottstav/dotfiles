@@ -9,3 +9,4 @@ __pycache__/
 /.env.dev
 /.env.test
 /.env.prod
+/.local/state/

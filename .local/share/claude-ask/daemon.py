@@ -40,7 +40,6 @@ TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
 NOTIFY_DEBOUNCE_SECS = 0.2
-NOTIFY_BODY_MAX_CHARS = 300
 
 TOKEN_PRICES = {  # USD per million tokens
     "claude-sonnet-4-6":  {"input": 3.0, "output": 15.0},
@@ -291,15 +290,12 @@ class Daemon:
 
     def _notify(self, tag, text):
         """Fire-and-forget in-place notification update."""
-        truncated = text[:NOTIFY_BODY_MAX_CHARS]
-        if len(text) > NOTIFY_BODY_MAX_CHARS:
-            truncated += "..."
         subprocess.Popen(
             [
                 "notify-send", "-t", "0",
                 "-h", f"string:x-canonical-private-synchronous:{tag}",
                 "-a", "Claude",
-                "Claude", truncated,
+                "Claude", text,
             ],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -356,11 +352,9 @@ class Daemon:
         clicks an action or dismisses the notification.
         """
         def _run():
-            truncated = text[:NOTIFY_BODY_MAX_CHARS]
-            if len(text) > NOTIFY_BODY_MAX_CHARS:
-                truncated += "..."
+            body = text
             if tools_used:
-                truncated += "\n\n<small>" + " → ".join(tools_used) + "</small>"
+                body += "\n\n<small>" + " → ".join(tools_used) + "</small>"
             try:
                 result = subprocess.run(
                     [
@@ -371,7 +365,7 @@ class Daemon:
                         "-A", "mic=\U000f036c",
                         "-A", "open=\U000f0219",
                         "--wait",
-                        "Claude", truncated,
+                        "Claude", body,
                     ],
                     capture_output=True,
                     text=True,
@@ -396,8 +390,12 @@ class Daemon:
 
     # -- Streaming API call -------------------------------------------------
 
-    def _stream_response(self, messages, tag):
-        """Call Claude API with streaming, update notifications, return response."""
+    def _stream_response(self, messages, tag, prior_text=""):
+        """Call Claude API with streaming, update notifications.
+
+        Returns (response, accumulated_text) where accumulated_text includes
+        prior_text plus all new text from this response.
+        """
         api_kwargs = {
             "model": MODEL,
             "max_tokens": MAX_TOKENS,
@@ -407,7 +405,7 @@ class Daemon:
         if self.tools:
             api_kwargs["tools"] = self.tools
 
-        accumulated_text = ""
+        accumulated_text = prior_text
         last_notify_time = 0.0
         sentence_buf = SentenceBuffer()
 
@@ -436,7 +434,7 @@ class Daemon:
             for sentence in sentence_buf.flush():
                 self.tts.speak(sentence)
 
-        return response
+        return response, accumulated_text
 
     # -- Query handling -----------------------------------------------------
 
@@ -542,10 +540,11 @@ class Daemon:
             self.waybar.set_status("thinking")
 
         tools_used = []
+        full_text = ""
 
         while True:
-            response = await loop.run_in_executor(
-                None, self._stream_response, conv["messages"], tag
+            response, full_text = await loop.run_in_executor(
+                None, self._stream_response, conv["messages"], tag, full_text
             )
             self._log_usage(response)
 
@@ -612,17 +611,14 @@ class Daemon:
                 })
 
             conv["messages"].append({"role": "user", "content": tool_results})
+            tool_names = " → ".join(b.name for b in tool_use_blocks)
+            full_text += f"\n\n<small>{tool_names}</small>\n\n"
+            self._notify(tag, full_text)
             if self.waybar.speak_enabled:
                 self.waybar.set_status("speaking")
             else:
                 self.waybar.set_status("thinking")
             # Loop continues -- next iteration will call the API again
-
-        # Extract final text for the notification
-        final_text = ""
-        for block in response.content:
-            if block.type == "text":
-                final_text += block.text
 
         self.store.save(conv)
         self._save_last_state(conv["id"])
@@ -644,7 +640,7 @@ class Daemon:
         loop.run_in_executor(None, self._archive_conversation, conv, arch)
 
         # Show final notification immediately without waiting for archiving
-        self._final_notify(tag, final_text, conv["id"], arch, tools_used=tools_used or None)
+        self._final_notify(tag, full_text, conv["id"], arch, tools_used=tools_used or None)
 
     async def run(self):
         """Start the asyncio Unix socket server."""

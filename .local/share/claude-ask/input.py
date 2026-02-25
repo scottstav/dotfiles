@@ -34,7 +34,7 @@ ANSI_SEQUENCES["\x1b[13;2u"] = (Keys.Escape, Keys.ControlJ)
 
 CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
 LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
-AUTO_REPLY_THRESHOLD_SECS = 30
+AUTO_REPLY_THRESHOLD_SECS = 60
 
 
 def get_socket_path():

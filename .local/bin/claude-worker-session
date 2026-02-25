@@ -34,7 +34,9 @@ SESSION_ID=$(uuidgen)
 cd "$dir" || exit 1
 
 # Run claude in print mode, log output for debugging
-claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task" \
+claude -p --dangerously-skip-permissions \
+    --append-system-prompt "Complete the entire task before stopping. Do not summarize remaining work or suggest the user finish manually. If you encounter issues, debug and fix them. Only stop when the task is fully done. When finished, end with a 1-2 sentence summary of what you did." \
+    --session-id "$SESSION_ID" "$task" \
     </dev/null >"$LOG_FILE" 2>&1 &
 CLAUDE_PID=$!
 
@@ -50,15 +52,18 @@ jq -n --arg dir "$dir" --arg task "$task" --arg sid "$SESSION_ID" \
     '{"status": "done", "directory": $dir, "task": $task, "session_id": $sid}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
-# Notify completion with actions
-task_preview=$(echo "$task" | head -c 200)
+# Notify completion with last output from the session
+result_preview="(no output)"
+if [[ -f "$LOG_FILE" ]]; then
+    result_preview=$(tail -c 500 "$LOG_FILE")
+fi
 action=$(notify-send -t 0 -a "Claude Worker" \
     -A "resume=Resume" -A "dismiss=OK" \
     --wait \
-    "Worker Done" "$task_preview" 2>/dev/null)
+    "Worker Done" "$result_preview" 2>/dev/null)
 
 if [[ "$action" == "resume" ]]; then
-    setsid alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" </dev/null &>/dev/null &
+    setsid alacritty --working-directory "$dir" -e claude --dangerously-skip-permissions --resume "$SESSION_ID" </dev/null &>/dev/null &
 fi
 
 # Clean up state and log

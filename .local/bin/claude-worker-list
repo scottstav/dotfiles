@@ -89,7 +89,7 @@ case "$sel_status" in
         pkill -SIGRTMIN+12 waybar
 
         if [[ -n "$session_id" ]]; then
-            setsid env -u CLAUDECODE alacritty --working-directory "$dir" -e claude --resume "$session_id" </dev/null &>/dev/null &
+            setsid env -u CLAUDECODE alacritty --working-directory "$dir" -e claude --dangerously-skip-permissions --resume "$session_id" </dev/null &>/dev/null &
             sleep 0.1  # let setsid detach before foot closes pty
         else
             echo "No session to resume. Cleaned up."

@@ -224,9 +224,11 @@ class Daemon:
             notify_dismiss()
             return
 
-        notify_sending()
         final_text = transcribe(final_audio, self.whisper_config)
         if final_text.strip():
+            notify_transcription(final_text.strip())
+            time.sleep(3)
+            notify_sending()
             send_to_claude_ask(final_text.strip(), conversation_id)
         else:
             log.info("Empty transcription, discarding")

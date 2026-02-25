@@ -219,6 +219,7 @@ class Daemon:
             lang=self._voice_config["lang"],
         )
         self._session_tokens = 0
+        self._cancelled = False
 
     # -- Tool loading -------------------------------------------------------
 
@@ -413,6 +414,9 @@ class Daemon:
 
         with self.client.messages.stream(**api_kwargs) as stream:
             for event in stream:
+                if self._cancelled:
+                    stream.close()
+                    break
                 if event.type == "content_block_delta":
                     if event.delta.type == "text_delta":
                         accumulated_text += event.delta.text
@@ -462,6 +466,13 @@ class Daemon:
                 self.waybar.set_status("idle")
                 return
 
+            if action == "cancel":
+                log.info("Cancel requested via socket")
+                self._cancelled = True
+                self.tts.stop()
+                self.waybar.set_status("idle")
+                return
+
             text = msg.get("text", "").strip()
             conv_id = msg.get("conversation_id")
             image = msg.get("image")  # base64 PNG or None
@@ -486,6 +497,7 @@ class Daemon:
 
     async def handle_query(self, text, conv_id=None, image=None, file=None):
         """Process a query: stream Claude API response with live notifications."""
+        self._cancelled = False
         conv = self.store.get_or_create(conv_id)
 
         # Inject attached file context into the text
@@ -577,13 +589,14 @@ class Daemon:
 
             conv["messages"].append({"role": "assistant", "content": assistant_content})
 
-            if not tool_use_blocks:
-                # No tool calls -- we're done
+            if not tool_use_blocks or self._cancelled:
                 break
 
             # Execute each tool and feed results back
             tool_results = []
             for tool_block in tool_use_blocks:
+                if self._cancelled:
+                    break
                 tools_used.append(tool_block.name)
                 log.info("Executing tool: %s", tool_block.name)
                 self.waybar.set_status("tool_use", tool_name=tool_block.name)
@@ -612,7 +625,9 @@ class Daemon:
 
             conv["messages"].append({"role": "user", "content": tool_results})
             tool_names = " → ".join(b.name for b in tool_use_blocks)
-            full_text += f"\n\n<small>{tool_names}</small>\n\n"
+            if full_text:
+                full_text += "\n\n"
+            full_text += f"<small>{tool_names}</small>\n\n"
             self._notify(tag, full_text)
             if self.waybar.speak_enabled:
                 self.waybar.set_status("speaking")

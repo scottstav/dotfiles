@@ -1,0 +1,522 @@
+#!/usr/bin/env python3
+"""
+Contact cleanup utilities - find duplicates, merge contacts, etc.
+"""
+
+import os
+import re
+import json
+import argparse
+import webbrowser
+import subprocess
+from pathlib import Path
+from collections import defaultdict
+from difflib import SequenceMatcher
+from datetime import datetime
+
+import phonenumbers
+from phonenumbers import geocoder, carrier
+
+CONTACTS_DIR = Path.home() / '.local/share/contacts'
+
+
+def get_phone_location(phone):
+    """Get location description for a phone number."""
+    try:
+        # Try parsing as US number first, then international
+        for region in ['US', None]:
+            try:
+                parsed = phonenumbers.parse(phone, region)
+                if phonenumbers.is_valid_number(parsed):
+                    location = geocoder.description_for_number(parsed, 'en')
+                    if location:
+                        return location
+            except:
+                continue
+        return None
+    except:
+        return None
+
+
+def get_google_metadata(resource_name):
+    """Fetch contact metadata from Google People API."""
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+
+        token_file = Path.home() / '.config/google-contacts/token.json'
+        if not token_file.exists():
+            return None
+
+        creds = Credentials.from_authorized_user_file(str(token_file))
+        service = build('people', 'v1', credentials=creds)
+
+        person = service.people().get(
+            resourceName=resource_name,
+            personFields='metadata'
+        ).execute()
+
+        metadata = person.get('metadata', {})
+        sources = metadata.get('sources', [])
+        for source in sources:
+            if source.get('type') == 'CONTACT':
+                update_time = source.get('updateTime', '')
+                if update_time:
+                    dt = datetime.fromisoformat(update_time.replace('Z', '+00:00'))
+                    return {'updated': dt.strftime('%Y-%m-%d %H:%M')}
+        return None
+    except Exception:
+        return None
+
+
+def open_messages_for_phone(phone):
+    """Open Google Messages web for a phone number."""
+    normalized = re.sub(r'[^\d+]', '', phone)
+    url = f"https://messages.google.com/web/conversations?phone={normalized}"
+    print(f"  Opening messages for {phone}...")
+    webbrowser.open(url)
+
+
+def parse_vcard(path):
+    """Parse a vCard file into a dict."""
+    contact = {'path': path, 'phones': [], 'emails': [], 'raw': path.read_text()}
+    for line in contact['raw'].split('\n'):
+        if line.startswith('FN:'):
+            contact['name'] = line[3:].strip()
+        elif line.startswith('UID:'):
+            contact['uid'] = line[4:].strip()
+        elif line.startswith('TEL'):
+            phone = line.split(':')[-1].strip()
+            contact['phones'].append(phone)
+        elif line.startswith('EMAIL'):
+            email = line.split(':')[-1].strip()
+            contact['emails'].append(email)
+        elif line.startswith('NOTE:'):
+            contact['note'] = line[5:].strip()
+        elif line.startswith('ORG:'):
+            contact['org'] = line[4:].strip()
+    return contact
+
+
+def normalize_phone(phone):
+    """Normalize phone number to just digits."""
+    return re.sub(r'[^\d]', '', phone)
+
+
+def similar(a, b, threshold=0.85):
+    """Check if two strings are similar."""
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio() >= threshold
+
+
+def load_all_contacts():
+    """Load all contacts from disk."""
+    contacts = []
+    for vcf in CONTACTS_DIR.glob('*.vcf'):
+        try:
+            contacts.append(parse_vcard(vcf))
+        except Exception as e:
+            print(f"Error parsing {vcf}: {e}")
+    return contacts
+
+
+def find_duplicates(contacts):
+    """Find duplicate contacts by name and phone."""
+    dupes = {'by_name': defaultdict(list), 'by_phone': defaultdict(list)}
+
+    for c in contacts:
+        name = c.get('name', '').strip()
+        if name:
+            dupes['by_name'][name.lower()].append(c)
+        for phone in c.get('phones', []):
+            normalized = normalize_phone(phone)
+            if len(normalized) >= 7:
+                dupes['by_phone'][normalized].append(c)
+
+    # Filter to only actual duplicates
+    dupes['by_name'] = {k: v for k, v in dupes['by_name'].items() if len(v) > 1}
+    dupes['by_phone'] = {k: v for k, v in dupes['by_phone'].items() if len(v) > 1}
+
+    return dupes
+
+
+def find_similar_names(contacts, threshold=0.85):
+    """Find contacts with similar names."""
+    similar_groups = []
+    seen = set()
+
+    for i, c1 in enumerate(contacts):
+        name1 = c1.get('name', '').strip()
+        if not name1 or i in seen:
+            continue
+
+        group = [c1]
+        for j, c2 in enumerate(contacts[i+1:], i+1):
+            name2 = c2.get('name', '').strip()
+            if name2 and j not in seen and similar(name1, name2, threshold):
+                group.append(c2)
+                seen.add(j)
+
+        if len(group) > 1:
+            similar_groups.append(group)
+            seen.add(i)
+
+    return similar_groups
+
+
+def find_empty_contacts(contacts):
+    """Find contacts with no useful info."""
+    empty = []
+    for c in contacts:
+        name = c.get('name', '').strip()
+        has_phone = bool(c.get('phones'))
+        has_email = bool(c.get('emails'))
+        if not name or name.lower() in ['unknown', '']:
+            if not has_phone and not has_email:
+                empty.append(c)
+    return empty
+
+
+def print_contact(c, indent=2, show_metadata=False):
+    """Pretty print a contact."""
+    pad = ' ' * indent
+    print(f"{pad}Name: {c.get('name', 'N/A')}")
+    if c.get('phones'):
+        phone_strs = []
+        for p in c['phones']:
+            loc = get_phone_location(p)
+            if loc:
+                phone_strs.append(f"{p} ({loc})")
+            else:
+                phone_strs.append(p)
+        print(f"{pad}Phones: {', '.join(phone_strs)}")
+    if c.get('emails'):
+        print(f"{pad}Emails: {', '.join(c['emails'])}")
+    if c.get('org'):
+        print(f"{pad}Org: {c['org']}")
+    if c.get('note'):
+        print(f"{pad}Note: {c['note']}")
+
+    if show_metadata and c.get('uid'):
+        meta = get_google_metadata(c['uid'])
+        if meta:
+            print(f"{pad}Last updated: {meta.get('updated', 'unknown')}")
+
+    print(f"{pad}File: {c['path'].name}")
+
+
+def merge_contacts(contacts_to_merge, keep_idx=0):
+    """Merge multiple contacts into one, keeping the first by default."""
+    if len(contacts_to_merge) < 2:
+        return
+
+    keep = contacts_to_merge[keep_idx]
+    delete = [c for i, c in enumerate(contacts_to_merge) if i != keep_idx]
+
+    # Collect all unique phones and emails
+    all_phones = set()
+    all_emails = set()
+    for c in contacts_to_merge:
+        for p in c.get('phones', []):
+            all_phones.add(p)
+        for e in c.get('emails', []):
+            all_emails.add(e)
+
+    # Read and update the kept contact
+    lines = keep['raw'].split('\n')
+    new_lines = []
+    seen_phones = set()
+    seen_emails = set()
+
+    for line in lines:
+        if line.startswith('TEL'):
+            phone = line.split(':')[-1].strip()
+            if normalize_phone(phone) not in seen_phones:
+                new_lines.append(line)
+                seen_phones.add(normalize_phone(phone))
+        elif line.startswith('EMAIL'):
+            email = line.split(':')[-1].strip().lower()
+            if email not in seen_emails:
+                new_lines.append(line)
+                seen_emails.add(email)
+        elif line == 'END:VCARD':
+            # Add any missing phones/emails before END
+            for p in all_phones:
+                if normalize_phone(p) not in seen_phones:
+                    new_lines.append(f'TEL;TYPE=OTHER:{p}')
+                    seen_phones.add(normalize_phone(p))
+            for e in all_emails:
+                if e.lower() not in seen_emails:
+                    new_lines.append(f'EMAIL;TYPE=OTHER:{e}')
+                    seen_emails.add(e.lower())
+            new_lines.append(line)
+        else:
+            new_lines.append(line)
+
+    keep['path'].write_text('\n'.join(new_lines))
+
+    # Delete the others
+    for c in delete:
+        c['path'].unlink()
+        print(f"  Deleted: {c['path'].name}")
+
+    print(f"  Kept and merged into: {keep['path'].name}")
+
+
+def cmd_scan(args):
+    """Scan for potential issues."""
+    contacts = load_all_contacts()
+    print(f"Loaded {len(contacts)} contacts\n")
+
+    dupes = find_duplicates(contacts)
+
+    if dupes['by_name']:
+        print(f"=== Exact Name Duplicates ({len(dupes['by_name'])}) ===")
+        for name, group in dupes['by_name'].items():
+            print(f"\n'{name}' appears {len(group)} times:")
+            for c in group:
+                print_contact(c)
+
+    if dupes['by_phone']:
+        print(f"\n=== Same Phone Number ({len(dupes['by_phone'])}) ===")
+        for phone, group in dupes['by_phone'].items():
+            print(f"\n'{phone}' shared by {len(group)} contacts:")
+            for c in group:
+                print_contact(c)
+
+    if args.similar:
+        similar_groups = find_similar_names(contacts, args.threshold)
+        if similar_groups:
+            print(f"\n=== Similar Names ({len(similar_groups)} groups) ===")
+            for group in similar_groups:
+                print(f"\nSimilar group:")
+                for c in group:
+                    print_contact(c)
+
+    empty = find_empty_contacts(contacts)
+    if empty:
+        print(f"\n=== Empty/Unknown Contacts ({len(empty)}) ===")
+        for c in empty:
+            print_contact(c)
+
+
+def rename_contact(contact, new_name):
+    """Rename a contact. Returns new path."""
+    lines = contact['raw'].split('\n')
+    new_lines = []
+    for line in lines:
+        if line.startswith('FN:'):
+            new_lines.append(f'FN:{new_name}')
+        elif line.startswith('N:'):
+            # Keep family;given structure but update
+            parts = line[2:].split(';')
+            name_parts = new_name.split(' ', 1)
+            if len(name_parts) == 2:
+                parts[0] = name_parts[1]  # family
+                parts[1] = name_parts[0]  # given
+            else:
+                parts[1] = new_name
+            new_lines.append('N:' + ';'.join(parts))
+        else:
+            new_lines.append(line)
+
+    contact['path'].write_text('\n'.join(new_lines))
+
+    # Rename file
+    google_id = contact['path'].stem.split('_')[-1]
+    safe_name = "".join(c if c.isalnum() or c in ' -_' else '_' for c in new_name)
+    new_path = contact['path'].parent / f"{safe_name}_{google_id}.vcf"
+    contact['path'].rename(new_path)
+    print(f"  Renamed to: {new_name}")
+    return new_path
+
+
+def add_note_to_contact(contact, note):
+    """Add or update note on a contact."""
+    lines = contact['raw'].split('\n')
+    new_lines = []
+    note_added = False
+
+    for line in lines:
+        if line.startswith('NOTE:'):
+            new_lines.append(f'NOTE:{note}')
+            note_added = True
+        elif line == 'END:VCARD' and not note_added:
+            new_lines.append(f'NOTE:{note}')
+            new_lines.append(line)
+            note_added = True
+        else:
+            new_lines.append(line)
+
+    contact['path'].write_text('\n'.join(new_lines))
+    print(f"  Added note: {note}")
+
+
+def cmd_merge_interactive(args):
+    """Interactive merge of duplicates."""
+    contacts = load_all_contacts()
+    dupes = find_duplicates(contacts)
+
+    all_groups = []
+    for name, group in dupes['by_name'].items():
+        all_groups.append(('name', name, group))
+    for phone, group in dupes['by_phone'].items():
+        # Skip if already covered by name duplicate
+        names = set(c.get('name', '').lower() for c in group)
+        if len(names) > 1:  # Different names, same phone
+            all_groups.append(('phone', phone, group))
+
+    if not all_groups:
+        print("No duplicates found!")
+        return
+
+    print(f"Found {len(all_groups)} duplicate groups\n")
+
+    for dtype, key, group in all_groups:
+        while True:
+            print(f"\n{'='*60}")
+            print(f"Duplicate by {dtype}: {key}")
+            print('='*60)
+            for i, c in enumerate(group):
+                print(f"\n[{i}]")
+                print_contact(c, show_metadata=True)
+
+            print(f"\nOptions:")
+            print(f"  0-{len(group)-1}  = merge into that contact (keeps all phones/emails)")
+            print(f"  m<N>    = open Messages for contact N (e.g. 'm0')")
+            print(f"  r<N>    = rename contact N to differentiate (e.g. 'r1')")
+            print(f"  n<N>    = add note to contact N (e.g. 'n0')")
+            print(f"  d<N>    = delete contact N (e.g. 'd1')")
+            print(f"  s       = skip (they're different people)")
+            print(f"  D       = delete ALL in this group")
+
+            choice = input(f"\nChoice: ").strip()
+
+            if choice == 's':
+                print("Skipped - marked as different people.")
+                break
+            elif choice == 'D':
+                for c in group:
+                    c['path'].unlink()
+                    print(f"  Deleted: {c['path'].name}")
+                break
+            elif choice.isdigit() and 0 <= int(choice) < len(group):
+                merge_contacts(group, int(choice))
+                break
+            elif choice.startswith('m') and choice[1:].isdigit():
+                idx = int(choice[1:])
+                if 0 <= idx < len(group) and group[idx].get('phones'):
+                    open_messages_for_phone(group[idx]['phones'][0])
+                else:
+                    print("Invalid index or no phone number.")
+            elif choice.startswith('r') and choice[1:].isdigit():
+                idx = int(choice[1:])
+                if 0 <= idx < len(group):
+                    new_name = input(f"  New name for [{idx}] {group[idx].get('name')}: ").strip()
+                    if new_name:
+                        new_path = rename_contact(group[idx], new_name)
+                        group[idx] = parse_vcard(new_path)
+                else:
+                    print("Invalid index.")
+            elif choice.startswith('n') and choice[1:].isdigit():
+                idx = int(choice[1:])
+                if 0 <= idx < len(group):
+                    note = input(f"  Note for [{idx}] {group[idx].get('name')}: ").strip()
+                    if note:
+                        add_note_to_contact(group[idx], note)
+                else:
+                    print("Invalid index.")
+            elif choice.startswith('d') and choice[1:].isdigit():
+                idx = int(choice[1:])
+                if 0 <= idx < len(group):
+                    group[idx]['path'].unlink()
+                    print(f"  Deleted: {group[idx]['path'].name}")
+                    group.pop(idx)
+                    if len(group) < 2:
+                        print("Only one left, moving on.")
+                        break
+                else:
+                    print("Invalid index.")
+            else:
+                print("Invalid choice, try again.")
+
+
+def cmd_delete_empty(args):
+    """Delete contacts with no useful information."""
+    contacts = load_all_contacts()
+    empty = find_empty_contacts(contacts)
+
+    if not empty:
+        print("No empty contacts found!")
+        return
+
+    print(f"Found {len(empty)} empty/unknown contacts:\n")
+    for c in empty:
+        print_contact(c)
+
+    if args.yes or input("\nDelete all? (y/N): ").strip().lower() == 'y':
+        for c in empty:
+            c['path'].unlink()
+            print(f"Deleted: {c['path'].name}")
+        print(f"\nDeleted {len(empty)} contacts.")
+    else:
+        print("Cancelled.")
+
+
+def cmd_search(args):
+    """Search contacts."""
+    contacts = load_all_contacts()
+    query = args.query.lower()
+
+    matches = []
+    for c in contacts:
+        name = c.get('name', '').lower()
+        phones = ' '.join(c.get('phones', []))
+        emails = ' '.join(c.get('emails', [])).lower()
+
+        if query in name or query in phones or query in emails:
+            matches.append(c)
+
+    if not matches:
+        print("No matches found.")
+        return
+
+    print(f"Found {len(matches)} matches:\n")
+    for c in matches:
+        print_contact(c, indent=0)
+        print()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Contact cleanup utilities')
+    subparsers = parser.add_subparsers(dest='command', help='Commands')
+
+    # Scan command
+    scan_p = subparsers.add_parser('scan', help='Scan for duplicates and issues')
+    scan_p.add_argument('--similar', '-s', action='store_true', help='Also check similar names')
+    scan_p.add_argument('--threshold', '-t', type=float, default=0.85, help='Similarity threshold (0-1)')
+    scan_p.set_defaults(func=cmd_scan)
+
+    # Merge command
+    merge_p = subparsers.add_parser('merge', help='Interactive merge of duplicates')
+    merge_p.set_defaults(func=cmd_merge_interactive)
+
+    # Delete empty command
+    empty_p = subparsers.add_parser('delete-empty', help='Delete empty/unknown contacts')
+    empty_p.add_argument('-y', '--yes', action='store_true', help='Skip confirmation')
+    empty_p.set_defaults(func=cmd_delete_empty)
+
+    # Search command
+    search_p = subparsers.add_parser('search', help='Search contacts')
+    search_p.add_argument('query', help='Search query')
+    search_p.set_defaults(func=cmd_search)
+
+    args = parser.parse_args()
+
+    if args.command:
+        args.func(args)
+    else:
+        parser.print_help()
+
+
+if __name__ == '__main__':
+    main()

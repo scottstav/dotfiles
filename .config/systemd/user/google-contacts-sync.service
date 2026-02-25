@@ -1,0 +1,6 @@
+[Unit]
+Description=Sync Google Contacts
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/google-contacts-sync

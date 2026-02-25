@@ -1,0 +1,326 @@
+#!/usr/bin/env python3
+"""
+Bidirectional sync between Google Contacts and local vCard files.
+Uses the Google People API.
+"""
+
+import os
+import json
+import hashlib
+import argparse
+from pathlib import Path
+from datetime import datetime
+
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+
+SCOPES = ['https://www.googleapis.com/auth/contacts']
+CONTACTS_DIR = Path.home() / '.local/share/contacts'
+STATE_FILE = Path.home() / '.local/share/contacts/.sync_state.json'
+TOKEN_FILE = Path.home() / '.config/google-contacts/token.json'
+CLIENT_SECRET_FILE = Path.home() / '.config/gcal/client_secret.json'
+
+
+def get_credentials():
+    """Get or refresh Google API credentials."""
+    creds = None
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    if TOKEN_FILE.exists():
+        creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRET_FILE), SCOPES)
+            creds = flow.run_local_server(port=0)
+        TOKEN_FILE.write_text(creds.to_json())
+
+    return creds
+
+
+def contact_to_vcard(person):
+    """Convert a Google People API person to vCard format."""
+    lines = ['BEGIN:VCARD', 'VERSION:3.0']
+
+    resource_name = person.get('resourceName', '')
+    etag = person.get('etag', '')
+    lines.append(f'UID:{resource_name}')
+    lines.append(f'X-GOOGLE-ETAG:{etag}')
+
+    names = person.get('names', [])
+    if names:
+        name = names[0]
+        fn = name.get('displayName', '')
+        family = name.get('familyName', '')
+        given = name.get('givenName', '')
+        middle = name.get('middleName', '')
+        prefix = name.get('honorificPrefix', '')
+        suffix = name.get('honorificSuffix', '')
+        lines.append(f'FN:{fn}')
+        lines.append(f'N:{family};{given};{middle};{prefix};{suffix}')
+
+    for email in person.get('emailAddresses', []):
+        email_type = email.get('type', 'other').upper()
+        lines.append(f'EMAIL;TYPE={email_type}:{email.get("value", "")}')
+
+    for phone in person.get('phoneNumbers', []):
+        phone_type = phone.get('type', 'other').upper()
+        lines.append(f'TEL;TYPE={phone_type}:{phone.get("value", "")}')
+
+    for addr in person.get('addresses', []):
+        addr_type = addr.get('type', 'other').upper()
+        street = addr.get('streetAddress', '').replace('\n', '\\n')
+        city = addr.get('city', '')
+        region = addr.get('region', '')
+        postal = addr.get('postalCode', '')
+        country = addr.get('country', '')
+        lines.append(f'ADR;TYPE={addr_type}:;;{street};{city};{region};{postal};{country}')
+
+    for org in person.get('organizations', []):
+        company = org.get('name', '')
+        title = org.get('title', '')
+        if company:
+            lines.append(f'ORG:{company}')
+        if title:
+            lines.append(f'TITLE:{title}')
+
+    for birthday in person.get('birthdays', []):
+        date = birthday.get('date', {})
+        if date:
+            y = date.get('year', '')
+            m = date.get('month', 1)
+            d = date.get('day', 1)
+            if y:
+                lines.append(f'BDAY:{y:04d}-{m:02d}-{d:02d}')
+            else:
+                lines.append(f'BDAY:--{m:02d}-{d:02d}')
+
+    for note in person.get('biographies', []):
+        value = note.get('value', '').replace('\n', '\\n')
+        if value:
+            lines.append(f'NOTE:{value}')
+
+    lines.append('END:VCARD')
+    return '\n'.join(lines)
+
+
+def vcard_to_person(vcard_text):
+    """Convert vCard text to Google People API person format."""
+    person = {}
+    lines = vcard_text.strip().split('\n')
+
+    for line in lines:
+        if ':' not in line:
+            continue
+
+        key_part, _, value = line.partition(':')
+        key_parts = key_part.split(';')
+        key = key_parts[0].upper()
+        params = {p.split('=')[0].upper(): p.split('=')[1] if '=' in p else ''
+                  for p in key_parts[1:]}
+
+        if key == 'UID' and value.startswith('people/'):
+            person['resourceName'] = value
+        elif key == 'X-GOOGLE-ETAG':
+            person['etag'] = value
+        elif key == 'FN':
+            person.setdefault('names', [{}])[0]['displayName'] = value
+        elif key == 'N':
+            parts = value.split(';')
+            name = person.setdefault('names', [{}])[0]
+            if len(parts) > 0: name['familyName'] = parts[0]
+            if len(parts) > 1: name['givenName'] = parts[1]
+            if len(parts) > 2: name['middleName'] = parts[2]
+            if len(parts) > 3: name['honorificPrefix'] = parts[3]
+            if len(parts) > 4: name['honorificSuffix'] = parts[4]
+        elif key == 'EMAIL':
+            email_type = params.get('TYPE', 'other').lower()
+            person.setdefault('emailAddresses', []).append({
+                'value': value, 'type': email_type
+            })
+        elif key == 'TEL':
+            phone_type = params.get('TYPE', 'other').lower()
+            person.setdefault('phoneNumbers', []).append({
+                'value': value, 'type': phone_type
+            })
+        elif key == 'ORG':
+            person.setdefault('organizations', [{}])[0]['name'] = value
+        elif key == 'TITLE':
+            person.setdefault('organizations', [{}])[0]['title'] = value
+        elif key == 'NOTE':
+            person.setdefault('biographies', []).append({
+                'value': value.replace('\\n', '\n'), 'contentType': 'TEXT_PLAIN'
+            })
+        elif key == 'BDAY':
+            date = {}
+            if value.startswith('--'):
+                parts = value[2:].split('-')
+                date['month'] = int(parts[0])
+                date['day'] = int(parts[1]) if len(parts) > 1 else 1
+            else:
+                parts = value.split('-')
+                if len(parts) >= 3:
+                    date['year'] = int(parts[0])
+                    date['month'] = int(parts[1])
+                    date['day'] = int(parts[2])
+            if date:
+                person.setdefault('birthdays', []).append({'date': date})
+
+    return person
+
+
+def file_hash(path):
+    """Get hash of file contents."""
+    return hashlib.md5(path.read_bytes()).hexdigest()
+
+
+def load_state():
+    """Load sync state from disk."""
+    if STATE_FILE.exists():
+        return json.loads(STATE_FILE.read_text())
+    return {'files': {}, 'last_sync': None}
+
+
+def save_state(state):
+    """Save sync state to disk."""
+    state['last_sync'] = datetime.now().isoformat()
+    STATE_FILE.write_text(json.dumps(state, indent=2))
+
+
+def sync_from_google(service, state, dry_run=False):
+    """Pull contacts from Google to local vCards."""
+    print("Fetching contacts from Google...")
+
+    results = service.people().connections().list(
+        resourceName='people/me',
+        pageSize=1000,
+        personFields='names,emailAddresses,phoneNumbers,addresses,organizations,birthdays,biographies'
+    ).execute()
+
+    connections = results.get('connections', [])
+    print(f"Found {len(connections)} contacts in Google")
+
+    CONTACTS_DIR.mkdir(parents=True, exist_ok=True)
+    google_ids = set()
+
+    for person in connections:
+        resource_name = person.get('resourceName', '')
+        if not resource_name:
+            continue
+
+        google_ids.add(resource_name)
+        names = person.get('names', [{}])
+        display_name = names[0].get('displayName', 'Unknown') if names else 'Unknown'
+        safe_name = "".join(c if c.isalnum() or c in ' -_' else '_' for c in display_name)
+        # Use Google's unique ID to prevent filename collisions
+        google_id = resource_name.split('/')[-1]
+        filename = f"{safe_name}_{google_id}.vcf"
+        filepath = CONTACTS_DIR / filename
+
+        vcard = contact_to_vcard(person)
+
+        if filepath.exists():
+            existing = filepath.read_text()
+            if existing.strip() == vcard.strip():
+                continue
+
+        print(f"  {'[DRY RUN] Would update' if dry_run else 'Updating'}: {filename}")
+        if not dry_run:
+            filepath.write_text(vcard)
+            state['files'][str(filepath)] = file_hash(filepath)
+
+    return google_ids
+
+
+def sync_to_google(service, state, dry_run=False):
+    """Push local vCard changes to Google."""
+    print("\nChecking for local changes to push to Google...")
+
+    for vcf_path in CONTACTS_DIR.glob('*.vcf'):
+        current_hash = file_hash(vcf_path)
+        stored_hash = state['files'].get(str(vcf_path))
+
+        if stored_hash == current_hash:
+            continue
+
+        vcard_text = vcf_path.read_text()
+        person = vcard_to_person(vcard_text)
+
+        resource_name = person.get('resourceName')
+
+        if resource_name:
+            print(f"  {'[DRY RUN] Would update' if dry_run else 'Updating'} in Google: {vcf_path.name}")
+            if not dry_run:
+                update_mask = 'names,emailAddresses,phoneNumbers,organizations,biographies,birthdays'
+                try:
+                    service.people().updateContact(
+                        resourceName=resource_name,
+                        updatePersonFields=update_mask,
+                        body=person
+                    ).execute()
+                    state['files'][str(vcf_path)] = current_hash
+                except Exception as e:
+                    print(f"    Error: {e}")
+        else:
+            print(f"  {'[DRY RUN] Would create' if dry_run else 'Creating'} in Google: {vcf_path.name}")
+            if not dry_run:
+                try:
+                    result = service.people().createContact(body=person).execute()
+                    new_vcard = contact_to_vcard(result)
+                    vcf_path.write_text(new_vcard)
+                    state['files'][str(vcf_path)] = file_hash(vcf_path)
+                except Exception as e:
+                    print(f"    Error: {e}")
+
+
+def delete_removed_contacts(google_ids, state, dry_run=False):
+    """Remove local contacts that were deleted from Google."""
+    deleted = []
+    for vcf_path in CONTACTS_DIR.glob('*.vcf'):
+        vcard_text = vcf_path.read_text()
+        for line in vcard_text.split('\n'):
+            if line.startswith('UID:people/'):
+                resource_name = line[4:].strip()
+                if resource_name and resource_name not in google_ids:
+                    print(f"  {'[DRY RUN] Would delete' if dry_run else 'Deleting'}: {vcf_path.name}")
+                    if not dry_run:
+                        vcf_path.unlink()
+                        state['files'].pop(str(vcf_path), None)
+                    deleted.append(vcf_path.name)
+                break
+    return deleted
+
+
+def main():
+    parser = argparse.ArgumentParser(description='Sync Google Contacts with local vCards')
+    parser.add_argument('--dry-run', '-n', action='store_true', help='Show what would be done')
+    parser.add_argument('--pull', action='store_true', help='Only pull from Google')
+    parser.add_argument('--push', action='store_true', help='Only push to Google')
+    args = parser.parse_args()
+
+    creds = get_credentials()
+    service = build('people', 'v1', credentials=creds)
+    state = load_state()
+
+    google_ids = None
+    if args.pull or not args.push:
+        google_ids = sync_from_google(service, state, args.dry_run)
+        if google_ids:
+            delete_removed_contacts(google_ids, state, args.dry_run)
+
+    if args.push or not args.pull:
+        sync_to_google(service, state, args.dry_run)
+
+    if not args.dry_run:
+        save_state(state)
+
+    print("\nSync complete!")
+    print(f"Contacts directory: {CONTACTS_DIR}")
+
+
+if __name__ == '__main__':
+    main()

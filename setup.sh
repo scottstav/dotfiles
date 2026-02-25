@@ -369,7 +369,56 @@ if [ -s "$GCAL_CLIENT_SECRET" ]; then
 fi
 
 # ------------------------------------------------------------------
-# 8. Claude Ask / Claude Voice
+# 8. Google Contacts sync
+# ------------------------------------------------------------------
+step "Google Contacts sync"
+
+CONTACTS_DIR="$HOME/.local/share/contacts"
+CONTACTS_TOKEN="$HOME/.config/google-contacts/token.json"
+
+# Install phonenumbers for location lookup
+if ! pacman -Q python-phonenumbers &>/dev/null; then
+    sudo pacman -S --needed --noconfirm python-phonenumbers
+    ok "python-phonenumbers installed"
+else
+    ok "python-phonenumbers already installed"
+fi
+
+# Create contacts directory
+mkdir -p "$CONTACTS_DIR"
+ok "Contacts directory ready"
+
+# OAuth flow if no token exists (reuses client_secret.json from gcal)
+if [ -s "$CONTACTS_TOKEN" ]; then
+    ok "Google Contacts OAuth token exists"
+elif [ -s "$GCAL_CLIENT_SECRET" ]; then
+    echo "  Google Contacts needs OAuth authorization."
+    echo "  This will open a browser to authorize contacts access."
+    read -rp "  Run OAuth flow now? (y/n) " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+        google-contacts-sync
+        if [ -s "$CONTACTS_TOKEN" ]; then
+            ok "Google Contacts authenticated"
+        else
+            fail "OAuth flow did not produce a token"
+        fi
+    else
+        warn "Skipped — run: google-contacts-sync"
+    fi
+else
+    warn "client_secret.json not found — run gcal setup first"
+fi
+
+# Enable sync timer
+if systemctl --user is-enabled google-contacts-sync.timer &>/dev/null; then
+    ok "google-contacts-sync.timer already enabled"
+else
+    systemctl --user enable --now google-contacts-sync.timer
+    ok "google-contacts-sync.timer enabled"
+fi
+
+# ------------------------------------------------------------------
+# 9. Claude Ask / Claude Voice
 # ------------------------------------------------------------------
 step "Claude Ask / Claude Voice"
 
@@ -417,7 +466,7 @@ for svc in claude-ask.service claude-voice.service; do
 done
 
 # ------------------------------------------------------------------
-# 9. Voice typing
+# 10. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"
 
@@ -470,7 +519,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 10. NVM / Node
+# 11. NVM / Node
 # ------------------------------------------------------------------
 step "NVM / Node.js"
 
@@ -489,7 +538,7 @@ fi
 
 
 # ------------------------------------------------------------------
-# 11. Email (mu4e + mbsync + msmtp)
+# 12. Email (mu4e + mbsync + msmtp)
 # ------------------------------------------------------------------
 step "Email setup (mu4e)"
 

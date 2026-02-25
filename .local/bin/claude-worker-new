@@ -1,0 +1,28 @@
+#!/bin/bash
+# Interactive new worker setup — runs inside foot (fzf-picker)
+# Picks a directory and task, then spawns a background worker
+
+STATE_DIR="$HOME/.local/state/claude-worker"
+HISTORY_FILE="$STATE_DIR/dir-history"
+mkdir -p "$STATE_DIR"
+
+# Pick directory with fzf (recent selections first)
+dir=$(
+    {
+        [[ -f "$HISTORY_FILE" ]] && tac "$HISTORY_FILE" | awk '!seen[$0]++'
+        fd -t d -H '^\.git$' -d 4 ~ --prune | sed 's/\.git\/$//' | sort
+    } | awk '!seen[$0]++' | fzf --prompt="  Directory: " --height=100% --layout=reverse
+)
+[[ -z "$dir" ]] && exit 0
+echo "$dir" >> "$HISTORY_FILE"
+
+# Prompt for task
+read -r -p "  Task: " task
+[[ -z "$task" ]] && exit 0
+
+# Generate unique ID and spawn background worker
+ID=$(date +%s)
+setsid claude-worker-session "$ID" "$dir" "$task" </dev/null &>/dev/null &
+
+echo "Worker $ID started in background."
+sleep 0.5

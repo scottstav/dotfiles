@@ -1,106 +1,66 @@
 #!/bin/bash
-# Claude Worker session — runs inside foot terminal
-# Usage: claude-worker-session <id> [dir] [task]
-#   Interactive: just pass <id>, picks dir via fzf and prompts for task
-#   Programmatic: pass all three to skip interactive steps
+# Claude Worker session — runs as background daemon (no terminal)
+# Usage: claude-worker-session <id> <dir> <task>
 
 ID="$1"
-if [[ -z "$ID" ]]; then
-    echo "Usage: claude-worker-session <id> [dir] [task]"
+dir="$2"
+task="$3"
+
+if [[ -z "$ID" || -z "$dir" || -z "$task" ]]; then
+    echo "Usage: claude-worker-session <id> <dir> <task>" >&2
     exit 1
 fi
 
 STATE_DIR="$HOME/.local/state/claude-worker"
 STATE_FILE="$STATE_DIR/$ID.json"
-HISTORY_FILE="$STATE_DIR/dir-history"
+LOG_FILE="$STATE_DIR/$ID.log"
 mkdir -p "$STATE_DIR"
 
-# EXIT trap: clean up state and signal waybar on any exit
+# Prevent "nested session" error — workers are independent
+unset CLAUDECODE
+
+# EXIT trap: clean up only if still "working" (abnormal exit)
 cleanup() {
-    rm -f "$STATE_FILE"
-    pkill -SIGRTMIN+12 waybar
+    if [[ -f "$STATE_FILE" ]] && [[ "$(jq -r '.status' "$STATE_FILE" 2>/dev/null)" == "working" ]]; then
+        rm -f "$STATE_FILE" "$LOG_FILE"
+        pkill -SIGRTMIN+12 waybar
+    fi
 }
 trap cleanup EXIT
 
-dir="$2"
-task="$3"
-
-if [[ -z "$dir" ]]; then
-    # Interactive: pick directory with fzf (recent selections first)
-    dir=$(
-        {
-            [[ -f "$HISTORY_FILE" ]] && tac "$HISTORY_FILE" | awk '!seen[$0]++'
-            fd -t d -H '^\.git$' -d 4 ~ --prune | sed 's/\.git\/$//' | sort
-        } | awk '!seen[$0]++' | fzf --prompt="  Directory: " --height=100% --layout=reverse
-    )
-    [[ -z "$dir" ]] && exit 0
-    echo "$dir" >> "$HISTORY_FILE"
-fi
-
-if [[ -z "$task" ]]; then
-    # Interactive: prompt for task
-    read -r -p "  Task: " task
-    [[ -z "$task" ]] && exit 0
-fi
-
-# Generate a session ID so we can resume this exact session later
+# Generate a session ID for resume
 SESSION_ID=$(uuidgen)
 
-# Run claude in print mode (autonomous, streams output to terminal)
 cd "$dir" || exit 1
-claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task" &
+
+# Run claude in print mode, log output for debugging
+claude -p --dangerously-skip-permissions --session-id "$SESSION_ID" "$task" \
+    </dev/null >"$LOG_FILE" 2>&1 &
 CLAUDE_PID=$!
 
-# Write working state with PID and session ID so list can interrupt
+# Write working state
 jq -n --arg dir "$dir" --arg task "$task" --arg pid "$CLAUDE_PID" --arg sid "$SESSION_ID" \
     '{"status": "working", "directory": $dir, "task": $task, "pid": ($pid|tonumber), "session_id": $sid}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
 wait $CLAUDE_PID
-claude_exit=$?
 
-# If interrupted (SIGTERM=143), resume interactively
-if [[ $claude_exit -eq 143 ]]; then
-    echo
-    echo "Worker interrupted — resuming interactively..."
-    echo
-    claude --resume "$SESSION_ID" --dangerously-skip-permissions
-fi
-
-# Update state to done
+# Update state to done (EXIT trap won't delete it since status is no longer "working")
 jq -n --arg dir "$dir" --arg task "$task" --arg sid "$SESSION_ID" \
     '{"status": "done", "directory": $dir, "task": $task, "session_id": $sid}' > "$STATE_FILE"
 pkill -SIGRTMIN+12 waybar
 
-# Notify completion in background so terminal prompt appears immediately
-(
-    task_preview=$(echo "$task" | head -c 200)
-    action=$(notify-send -t 0 -a "Claude Worker" \
-        -A "focus=Focus" -A "dismiss=OK" \
-        --wait \
-        "Worker Done" "$task_preview" 2>/dev/null)
+# Notify completion with actions
+task_preview=$(echo "$task" | head -c 200)
+action=$(notify-send -t 0 -a "Claude Worker" \
+    -A "resume=Resume" -A "dismiss=OK" \
+    --wait \
+    "Worker Done" "$task_preview" 2>/dev/null)
 
-    if [[ "$action" == "focus" ]]; then
-        window_addr=$(hyprctl clients -j | jq -r \
-            ".[] | select(.class == \"claude-worker-$ID\") | .address")
-        if [[ -n "$window_addr" ]]; then
-            ws=$(hyprctl clients -j | jq -r \
-                ".[] | select(.class == \"claude-worker-$ID\") | .workspace.name")
-            if [[ "$ws" == special:* ]]; then
-                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
-            fi
-            hyprctl dispatch focuswindow address:"$window_addr"
-        fi
-    fi
-) &
-
-echo
-echo "Worker done."
-echo "  [Enter] Close window"
-echo "  [r]     Resume session interactively"
-read -r -n 1 choice
-echo
-
-if [[ "$choice" == "r" || "$choice" == "R" ]]; then
-    claude --resume "$SESSION_ID" --dangerously-skip-permissions
+if [[ "$action" == "resume" ]]; then
+    setsid alacritty --working-directory "$dir" -e claude --resume "$SESSION_ID" </dev/null &>/dev/null &
 fi
+
+# Clean up state and log
+rm -f "$STATE_FILE" "$LOG_FILE"
+pkill -SIGRTMIN+12 waybar

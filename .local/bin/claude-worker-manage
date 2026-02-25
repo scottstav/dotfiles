@@ -47,8 +47,7 @@ else
     dir=$(jq -r '.directory' "$STATE_FILE")
     task=$(jq -r '.task' "$STATE_FILE")
 
-    hyprctl dispatch exec -- \
-        "foot --app-id=claude-worker-$ID -- claude-worker-session '$ID' '$dir' '$task'"
+    setsid claude-worker-session "$ID" "$dir" "$task" </dev/null &>/dev/null &
 
     echo "Approved worker $ID → $dir"
 fi

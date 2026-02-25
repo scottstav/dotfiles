@@ -1,7 +1,30 @@
 #!/bin/bash
 # Show fzf picker of workers. Runs inside foot (launched by waybar).
 
+# Guard: if no TTY, re-exec inside foot
+if [[ ! -t 0 ]]; then
+    exec foot --app-id=fzf-picker -e "$0" "$@"
+fi
+
 STATE_DIR="$HOME/.local/state/claude-worker"
+
+# Pre-scan: clean stale "working" workers (dead PID)
+cleaned=0
+for f in "$STATE_DIR"/*.json; do
+    [[ -f "$f" ]] || continue
+    status=$(jq -r '.status' "$f")
+    if [[ "$status" == "working" ]]; then
+        pid=$(jq -r '.pid // empty' "$f")
+        if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+            rm -f "$f"
+            ((cleaned++))
+        fi
+    fi
+done
+if [[ $cleaned -gt 0 ]]; then
+    pkill -SIGRTMIN+12 waybar
+    echo "Cleaned $cleaned stale worker(s)."
+fi
 
 # Build list of workers
 entries=()
@@ -24,13 +47,16 @@ for f in "$STATE_DIR"/*.json; do
 done
 
 if [[ ${#entries[@]} -eq 0 ]]; then
+    [[ $cleaned -gt 0 ]] && echo "No active workers remain."
+    echo "No workers."
+    sleep 0.8
     exit 0
 fi
 
 # Show fzf picker
 selected=$(printf '%s\n' "${entries[@]}" | fzf \
     --ansi --height=100% --layout=reverse \
-    --header="⏳ enter=approve  ⚒️ enter=interrupt  ✅ enter=focus" \
+    --header="⏳ approve  ⚒️/✅ resume in alacritty" \
     --no-info --pointer=">" --no-scrollbar)
 [[ -z "$selected" ]] && exit 0
 
@@ -42,39 +68,32 @@ for i in "${!entries[@]}"; do
     fi
 done
 
+state_file="$STATE_DIR/$sel_id.json"
+
 case "$sel_status" in
     pending)
         claude-worker-manage "$sel_id"
         ;;
-    working)
-        # Interrupt: kill the claude -p process so the session resumes interactively
-        state_file="$STATE_DIR/$sel_id.json"
-        pid=$(jq -r '.pid // empty' "$state_file")
-        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-            kill "$pid"
-        fi
-        # Focus the worker terminal so the user sees the interactive resume
-        window_addr=$(hyprctl clients -j | jq -r \
-            ".[] | select(.class == \"claude-worker-$sel_id\") | .address")
-        if [[ -n "$window_addr" ]]; then
-            ws=$(hyprctl clients -j | jq -r \
-                ".[] | select(.class == \"claude-worker-$sel_id\") | .workspace.name")
-            if [[ "$ws" == special:* ]]; then
-                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
+    working|done)
+        # Kill autonomous process if still running
+        if [[ "$sel_status" == "working" ]]; then
+            pid=$(jq -r '.pid // empty' "$state_file")
+            if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+                kill "$pid"
             fi
-            hyprctl dispatch focuswindow address:"$window_addr"
         fi
-        ;;
-    done)
-        window_addr=$(hyprctl clients -j | jq -r \
-            ".[] | select(.class == \"claude-worker-$sel_id\") | .address")
-        if [[ -n "$window_addr" ]]; then
-            ws=$(hyprctl clients -j | jq -r \
-                ".[] | select(.class == \"claude-worker-$sel_id\") | .workspace.name")
-            if [[ "$ws" == special:* ]]; then
-                hyprctl dispatch movetoworkspace e+0,address:"$window_addr"
-            fi
-            hyprctl dispatch focuswindow address:"$window_addr"
+
+        session_id=$(jq -r '.session_id // empty' "$state_file")
+        dir=$(jq -r '.directory' "$state_file")
+
+        rm -f "$state_file" "$STATE_DIR/$sel_id.log"
+        pkill -SIGRTMIN+12 waybar
+
+        if [[ -n "$session_id" ]]; then
+            setsid env -u CLAUDECODE alacritty --working-directory "$dir" -e claude --resume "$session_id" </dev/null &>/dev/null &
+        else
+            echo "No session to resume. Cleaned up."
+            sleep 1
         fi
         ;;
 esac

@@ -275,9 +275,15 @@ step "Claude Ask / Claude Voice"
 CA_DIR="$HOME/.local/share/claude-ask"
 CV_DIR="$HOME/.local/share/claude-voice"
 
+# kokoro/faster-whisper need Python <3.13 — ensure python3.11 is installed
+if ! command -v python3.11 &>/dev/null; then
+    yay -S --needed --noconfirm python311
+    ok "python3.11 installed"
+fi
+
 # claude-ask venv + deps
 if [ ! -d "$CA_DIR/.venv" ]; then
-    python3 -m venv "$CA_DIR/.venv"
+    python3.11 -m venv "$CA_DIR/.venv"
     ok "claude-ask venv created"
 else
     ok "claude-ask venv already exists"
@@ -287,7 +293,7 @@ ok "claude-ask dependencies installed"
 
 # claude-voice venv + deps
 if [ ! -d "$CV_DIR/.venv" ]; then
-    python3 -m venv "$CV_DIR/.venv"
+    python3.11 -m venv "$CV_DIR/.venv"
     ok "claude-voice venv created"
 else
     ok "claude-voice venv already exists"

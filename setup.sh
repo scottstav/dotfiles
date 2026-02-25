@@ -20,6 +20,36 @@ warn()  { echo -e "  ${YELLOW}! $1${NC}"; }
 fail()  { echo -e "  ${RED}✗ $1${NC}"; }
 
 # ------------------------------------------------------------------
+# 0. Install packages
+# ------------------------------------------------------------------
+step "Install packages"
+
+if ! command -v yay &>/dev/null; then
+    warn "yay not found — install it first: https://github.com/Jguer/yay"
+    warn "Skipping package installation"
+else
+    # Read package lists (one per line, # comments and blank lines ignored)
+    readarray -t BASE_PACKAGES < <(grep -v '^\s*#\|^\s*$' "$DOTFILES/packages-base.txt")
+    readarray -t EXTRA_PACKAGES < <(grep -v '^\s*#\|^\s*$' "$DOTFILES/packages-extra.txt")
+
+    read -rp "  Install base packages? (y/n) " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+        yay -S --needed --noconfirm "${BASE_PACKAGES[@]}"
+        ok "Base packages installed"
+    else
+        skip "Base packages"
+    fi
+
+    read -rp "  Install extra packages? (y/n) " answer
+    if [[ "$answer" =~ ^[Yy]$ ]]; then
+        yay -S --needed --noconfirm "${EXTRA_PACKAGES[@]}"
+        ok "Extra packages installed"
+    else
+        skip "Extra packages"
+    fi
+fi
+
+# ------------------------------------------------------------------
 # 1. Stow dotfiles
 # ------------------------------------------------------------------
 step "Stow dotfiles"

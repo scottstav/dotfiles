@@ -1,0 +1,60 @@
+#!/bin/bash
+# App launcher — foot + fzf replacement for fuzzel
+
+declare -A cmd_map
+
+for desktop in /usr/share/applications/*.desktop ~/.local/share/applications/*.desktop; do
+    [[ -f "$desktop" ]] || continue
+
+    name="" exec="" hidden=false
+    while IFS='=' read -r key val; do
+        case "$key" in
+            Name)      [[ -z "$name" ]] && name="$val" ;;
+            Exec)      [[ -z "$exec" ]] && exec="$val" ;;
+            NoDisplay) [[ "$val" == "true" ]] && hidden=true ;;
+            Hidden)    [[ "$val" == "true" ]] && hidden=true ;;
+        esac
+    done < "$desktop"
+
+    $hidden && continue
+    [[ -z "$name" || -z "$exec" ]] && continue
+
+    # Strip field codes (%u %U %f %F etc)
+    exec=$(echo "$exec" | sed 's/ %[a-zA-Z]//g')
+
+    # Later entries (e.g. ~/.local) override earlier ones
+    cmd_map["$name"]="$exec"
+done
+
+HISTORY="$HOME/.local/state/app-launcher-history.txt"
+
+# Build list: history (deduped) first, then remaining apps sorted
+build_list() {
+    local all_apps
+    all_apps=$(printf '%s\n' "${!cmd_map[@]}" | sort)
+    if [[ -f "$HISTORY" ]]; then
+        # Only show history entries that still exist as apps
+        grep -Fxf <(echo "$all_apps") "$HISTORY" | awk '!seen[$0]++'
+        # Then remaining apps not in history
+        grep -Fxvf "$HISTORY" <(echo "$all_apps")
+    else
+        echo "$all_apps"
+    fi
+}
+
+selection=$(build_list | fzf \
+    --exact \
+    --height=100% \
+    --layout=reverse \
+    --no-sort \
+    --prompt='launch> ')
+
+[[ -z "$selection" ]] && exit 1
+
+# Update history — prepend selection, keep max 100 lines
+mkdir -p "$(dirname "$HISTORY")"
+{ echo "$selection"; cat "$HISTORY" 2>/dev/null; } | awk '!seen[$0]++' | head -100 > "$HISTORY.tmp"
+mv "$HISTORY.tmp" "$HISTORY"
+
+# Launch via hyprctl so it's not a child of this foot terminal
+hyprctl dispatch exec "${cmd_map["$selection"]}"

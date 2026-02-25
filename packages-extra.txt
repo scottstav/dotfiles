@@ -1,0 +1,29 @@
+# Communication
+slack-desktop-wayland
+vesktop
+zoom
+
+# Printer drivers
+brother-hll2300d
+brother-hll2350dw
+
+# 3D printing
+freecad
+prusa-slicer
+
+# Work (AWS / Terraform / MongoDB)
+aws-cli
+aws-vault
+aws-session-manager-plugin
+terraform
+mongodb-tools
+mongosh-bin
+
+# Crypto
+monero
+
+# Language servers
+gopls
+typescript-language-server
+esbuild
+ts-node

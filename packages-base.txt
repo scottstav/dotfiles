@@ -1,0 +1,194 @@
+# System core
+base
+base-devel
+linux
+linux-firmware
+linux-headers
+grub
+efibootmgr
+update-grub
+gptfdisk
+memtest86+
+sudo
+openssh
+fwupd
+reflector
+yay
+stow
+
+# Hyprland desktop
+hyprland
+hypridle
+hyprlock-git
+hyprpaper
+hyprpicker
+hyprtoolkit-git
+xdg-desktop-portal-gtk
+xdg-desktop-portal-hyprland
+xorg-xwayland
+waybar
+swaync
+polkit-gnome
+
+# Audio
+pipewire-pulse
+pavucontrol
+alsa-utils
+gst-plugins-good
+
+# Bluetooth
+bluez
+bluez-utils
+blueman
+
+# Network
+networkmanager
+network-manager-applet
+wireguard-tools
+nss-mdns
+
+# Terminals / Editor
+alacritty
+foot
+tmux
+emacs-wayland
+vim
+
+# Browser
+google-chrome
+
+# Clipboard / Screenshot / Input
+wl-clipboard
+cliphist
+grim
+slurp
+wf-recorder
+fzf
+dotool
+wtype
+ydotool
+brightnessctl
+bemoji
+
+# Hardware
+upower
+iio-sensor-proxy
+fprintd
+udiskie
+powertop
+
+# Fonts
+noto-fonts
+noto-fonts-cjk
+noto-fonts-emoji
+noto-fonts-extra
+ttf-all-the-icons
+ttf-iosevka
+ttf-nerd-fonts-symbols-mono
+woff2-font-awesome
+
+# Security / Auth
+gnome-keyring
+kwallet-pam
+kwalletmanager
+bitwarden
+bitwarden-cli
+1password-cli
+yubikey-manager
+paperkey
+trezor-udev
+
+# Files
+dropbox
+rsync
+
+# Communication
+kdeconnect
+
+# Printing
+cups
+cups-pdf
+system-config-printer
+
+# Dev core
+git
+github-cli
+docker
+docker-compose
+nvm
+pnpm
+yarn
+pyenv
+python311
+python-pip
+python-pipx
+python-rich
+python-lsp-server
+clang
+
+# CLI utilities
+fd
+ripgrep
+jq
+tree
+lsof
+wget
+which
+unzip
+zip
+7zip
+bc
+dos2unix
+net-tools
+traceroute
+groff
+dialog
+bash-completion
+words
+chafa
+bind
+downgrade
+neofetch
+
+# AI
+claude-code
+espeak-ng
+
+# Email / Contacts / Calendar
+mu
+isync
+msmtp
+goimapnotify
+khard
+aspell
+python-phonenumbers
+python-google-api-python-client
+python-google-auth-oauthlib
+python-aiohttp-oauthlib
+
+# Media
+mpv
+yt-dlp
+
+# LaTeX
+texlive-basic
+texlive-fontsrecommended
+texlive-latex
+texlive-latexextra
+texlive-latexrecommended
+texlive-plaingeneric
+texinfo
+pandoc-cli
+
+# Torrents
+qbittorrent
+
+# Android
+android-tools
+
+# OCR
+tesseract
+tesseract-data-eng
+
+# Network diagnostics
+nmap

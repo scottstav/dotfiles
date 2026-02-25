@@ -95,16 +95,9 @@
   :config
   (spacious-padding-mode 1))
 
-(load-theme 'deeper-blue t)
-
-;; Override theme's mode-line faces. Uses custom-set-faces so they
-;; survive daemon frame creation and spacious-padding's theme hooks.
-(custom-set-faces
- '(mode-line ((t (:height 0.8))))
- '(mode-line-active ((t (:background "#353550" :foreground "#b0b0c0"
-                          :box (:line-width 4 :color "#353550")))))
- '(mode-line-inactive ((t (:height 0.8 :background "#2a2a3a" :foreground "#7a7a8a"
-                            :box (:line-width 4 :color "#2a2a3a"))))))
+;; Theme loaded from system theme engine (~/.config/themes/)
+;; Run `theme set <name>` to change.
+(load (expand-file-name "~/.emacs.d/theme.el") t t)
 
 (use-package which-key
   :custom

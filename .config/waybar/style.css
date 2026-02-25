@@ -80,7 +80,7 @@ window#waybar {
 
 @keyframes blink {
     to {
-	background-color: #89cff0;
+	background-color: #00bfff;
 	color: #003366;
     }
 }
@@ -111,11 +111,11 @@ window#waybar {
 }
 
 #tray {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-sysinfo {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-sysinfo.warning {
@@ -132,7 +132,7 @@ window#waybar {
 }
 
 #custom-external-drive {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-external-drive.mounted {
@@ -145,12 +145,12 @@ window#waybar {
 }
 
 #custom-notification.notification {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-notification.dnd-notification,
 #custom-notification.dnd-none {
-    color: #808080;
+    color: #6e7681;
 }
 
 #custom-notification.inhibited-notification,
@@ -191,7 +191,7 @@ window#waybar {
 }
 
 #custom-voice-typing.paused {
-    color: #808080;
+    color: #6e7681;
 }
 
 #custom-voice-typing.off {
@@ -216,7 +216,7 @@ window#waybar {
 }
 
 #custom-system-freshness.healthy {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-system-freshness.aging {
@@ -255,7 +255,7 @@ window#waybar {
 }
 
 #custom-gcal.upcoming {
-    color: #89cff0;
+    color: #00bfff;
 }
 
 #custom-gcal.later {
@@ -263,7 +263,7 @@ window#waybar {
 }
 
 #custom-gcal.idle {
-    color: #808080;
+    color: #6e7681;
 }
 
 #custom-gcal.none {
@@ -272,26 +272,26 @@ window#waybar {
 
 /* Smooth color glow animations for claude-ask states */
 @keyframes glow-blue {
-    0% { color: #89cff0; }
-    50% { color: #b4d8f0; }
-    100% { color: #89cff0; }
+    0% { color: #00bfff; }
+    50% { color: #99e5ff; }
+    100% { color: #00bfff; }
 }
 
 @keyframes glow-green {
-    0% { color: #a6e3a1; }
-    50% { color: #d4f0d3; }
-    100% { color: #a6e3a1; }
+    0% { color: #00ff7f; }
+    50% { color: #99ffcb; }
+    100% { color: #00ff7f; }
 }
 
 @keyframes glow-amber {
-    0% { color: #fab387; }
-    50% { color: #fcd5b8; }
-    100% { color: #fab387; }
+    0% { color: #ffa500; }
+    50% { color: #ffdb99; }
+    100% { color: #ffa500; }
 }
 
 /* Claude Ask module */
 #custom-claude-ask {
-    color: #b4befe;
+    color: #00bfff;
 }
 
 #custom-claude-ask.thinking {
@@ -316,7 +316,7 @@ window#waybar {
 }
 
 #custom-claude-ask.listening {
-    color: #fab387;
+    color: #ffa500;
     animation-name: pulse;
     animation-duration: 0.8s;
     animation-timing-function: ease-in-out;
@@ -324,9 +324,9 @@ window#waybar {
 }
 
 @keyframes glow-yellow {
-    0% { color: #f9e2af; opacity: 1; }
+    0% { color: #e5c07b; opacity: 1; }
     50% { color: #7c6f3e; opacity: 0.5; }
-    100% { color: #f9e2af; opacity: 1; }
+    100% { color: #e5c07b; opacity: 1; }
 }
 
 #custom-claude-ask.worker-working {
@@ -338,13 +338,13 @@ window#waybar {
 
 @keyframes arrive-green {
     0% { color: #ffffff; }
-    30% { color: #a6e3a1; }
+    30% { color: #00ff7f; }
     60% { color: #ffffff; }
-    100% { color: #a6e3a1; }
+    100% { color: #00ff7f; }
 }
 
 #custom-claude-ask.worker-done {
-    color: #a6e3a1;
+    color: #00ff7f;
     animation-name: arrive-green;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -352,5 +352,5 @@ window#waybar {
 }
 
 #custom-claude-ask.worker-pending {
-    color: #585b70;
+    color: #6e7681;
 }

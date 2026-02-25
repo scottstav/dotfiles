@@ -349,7 +349,7 @@ class Daemon:
         except OSError:
             log.exception("Failed to write usage log")
 
-    def _final_notify(self, tag, text, conv_id, archive_file=None):
+    def _final_notify(self, tag, text, conv_id, archive_file=None, tools_used=None):
         """Show final notification with Reply and Open actions.
 
         Runs in a background thread because --wait blocks until the user
@@ -359,6 +359,8 @@ class Daemon:
             truncated = text[:NOTIFY_BODY_MAX_CHARS]
             if len(text) > NOTIFY_BODY_MAX_CHARS:
                 truncated += "..."
+            if tools_used:
+                truncated += "\n\n<small>" + " → ".join(tools_used) + "</small>"
             try:
                 result = subprocess.run(
                     [
@@ -422,11 +424,10 @@ class Daemon:
                             for sentence in sentences:
                                 self.tts.speak(sentence)
 
-                        if not speak_on:
-                            now = time.monotonic()
-                            if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
-                                self._notify(tag, accumulated_text)
-                                last_notify_time = now
+                        now = time.monotonic()
+                        if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
+                            self._notify(tag, accumulated_text)
+                            last_notify_time = now
 
             response = stream.get_final_message()
 
@@ -540,6 +541,8 @@ class Daemon:
         else:
             self.waybar.set_status("thinking")
 
+        tools_used = []
+
         while True:
             response = await loop.run_in_executor(
                 None, self._stream_response, conv["messages"], tag
@@ -582,6 +585,7 @@ class Daemon:
             # Execute each tool and feed results back
             tool_results = []
             for tool_block in tool_use_blocks:
+                tools_used.append(tool_block.name)
                 log.info("Executing tool: %s", tool_block.name)
                 self.waybar.set_status("tool_use", tool_name=tool_block.name)
                 result = self._run_tool(tool_block.name, tool_block.input)
@@ -640,7 +644,7 @@ class Daemon:
         loop.run_in_executor(None, self._archive_conversation, conv, arch)
 
         # Show final notification immediately without waiting for archiving
-        self._final_notify(tag, final_text, conv["id"], arch)
+        self._final_notify(tag, final_text, conv["id"], arch, tools_used=tools_used or None)
 
     async def run(self):
         """Start the asyncio Unix socket server."""

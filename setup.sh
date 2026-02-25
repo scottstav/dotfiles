@@ -70,8 +70,73 @@ else
     ok "Already in input group"
 fi
 
+# Shared dropbox group for cross-user Dropbox access
+if ! getent group dropbox &>/dev/null; then
+    sudo groupadd dropbox
+    ok "Created dropbox group"
+else
+    ok "dropbox group exists"
+fi
+
+if ! id -nG "$USER" | grep -qw dropbox; then
+    sudo usermod -aG dropbox "$USER"
+    warn "Added $USER to dropbox group — log out and back in for this to take effect"
+else
+    ok "Already in dropbox group"
+fi
+
 # ------------------------------------------------------------------
-# 3. KDE Wallet — Bitwarden credentials
+# 3. Shared Dropbox directory (/shared/)
+# ------------------------------------------------------------------
+step "Shared Dropbox directory"
+
+# /shared/ holds Dropbox data, metadata, and binary so both ifit and
+# scottstav can access them via symlinks.  Setgid ensures new files
+# inherit the dropbox group; default ACLs ensure group read/write.
+
+if [ ! -d /shared ]; then
+    sudo mkdir -p /shared
+    sudo chown "$USER:dropbox" /shared
+    sudo chmod 2775 /shared
+    ok "Created /shared/ (owner=$USER:dropbox, mode=2775)"
+else
+    ok "/shared/ already exists"
+fi
+
+for target in Dropbox .dropbox .dropbox-dist; do
+    src="/shared/$target"
+    dest="$HOME/$target"
+    if [ -L "$dest" ]; then
+        ok "$target → $src (symlink exists)"
+    elif [ -e "$dest" ]; then
+        warn "$dest exists as a real file/directory — migrate it to $src manually, then re-run"
+    else
+        mkdir -p "$src"
+        ln -s "$src" "$dest"
+        ok "$target → $src (created)"
+    fi
+done
+
+# Default ACLs so both users get group read/write on all new files.
+# Requires sudo because another user may own some files.
+if command -v setfacl &>/dev/null; then
+    for target in Dropbox .dropbox .dropbox-dist; do
+        if [ -d "/shared/$target" ]; then
+            sudo setfacl -R -m g:dropbox:rwX "/shared/$target" 2>/dev/null
+            sudo setfacl -R -d -m g:dropbox:rwx "/shared/$target" 2>/dev/null
+        fi
+    done
+    ok "ACLs set on /shared/ directories"
+else
+    warn "setfacl not found — install acl package for cross-user permissions"
+fi
+
+# Setgid bit on all subdirectories
+sudo find /shared -type d -exec chmod g+s {} + 2>/dev/null
+ok "Setgid applied to /shared/ subdirectories"
+
+# ------------------------------------------------------------------
+# 4. KDE Wallet — Bitwarden credentials
 # ------------------------------------------------------------------
 step "KDE Wallet (Bitwarden credentials)"
 
@@ -124,7 +189,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 4. Bitwarden session (for fetching secrets during setup)
+# 5. Bitwarden session (for fetching secrets during setup)
 # ------------------------------------------------------------------
 step "Bitwarden session"
 
@@ -158,7 +223,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 5. Systemd user services
+# 6. Systemd user services
 # ------------------------------------------------------------------
 step "Systemd user services"
 
@@ -192,16 +257,18 @@ else
     fi
 fi
 
-# Dropbox — only enable, don't start (needs auth first on new user)
-if [ -d "$HOME/.dropbox-dist" ]; then
+# Dropbox — enable the service. The binary lives at /shared/.dropbox-dist
+# (symlinked from ~/.dropbox-dist by section 3).
+if [ -f "$HOME/.dropbox-dist/dropboxd" ]; then
     systemctl --user enable dropbox.service
-    ok "Dropbox service enabled (start after authenticating)"
+    ok "Dropbox service enabled"
 else
-    warn "Dropbox not installed at ~/.dropbox-dist — install from dropbox.com, then: systemctl --user enable --now dropbox.service"
+    systemctl --user enable dropbox.service 2>/dev/null
+    warn "Dropbox binary not found — install from dropbox.com, then: systemctl --user start dropbox.service"
 fi
 
 # ------------------------------------------------------------------
-# 6. Claude Ask + Claude Voice
+# 7. Claude Ask + Claude Voice
 # ------------------------------------------------------------------
 step "Claude Ask / Claude Voice"
 
@@ -243,7 +310,7 @@ for svc in claude-ask.service claude-voice.service; do
 done
 
 # ------------------------------------------------------------------
-# 7. Voice typing
+# 8. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"
 
@@ -296,7 +363,7 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 8. NVM / Node
+# 9. NVM / Node
 # ------------------------------------------------------------------
 step "NVM / Node.js"
 
@@ -315,7 +382,7 @@ fi
 
 
 # ------------------------------------------------------------------
-# 9. Email (mu4e + mbsync + msmtp)
+# 10. Email (mu4e + mbsync + msmtp)
 # ------------------------------------------------------------------
 step "Email setup (mu4e)"
 
@@ -406,10 +473,12 @@ fi
 step "Setup complete"
 echo ""
 echo "  Remaining manual steps:"
-echo "    1. Log out and back in (for input group)"
+echo "    1. Log out and back in (for group changes: input, dropbox)"
 echo "    2. If KWallet credentials were skipped, set them up via kwalletmanager"
 echo "       (folder: Bitwarden, entries: BW_CLIENTID, BW_CLIENTSECRET, BW_PASSWORD)"
-echo "    3. Authenticate Dropbox if not already: ~/.dropbox-dist/dropboxd"
+echo "    3. If Dropbox binary not yet installed: download from dropbox.com"
+echo "       It will install to /shared/.dropbox-dist/ via the symlink."
+echo "       Then authenticate: ~/.dropbox-dist/dropboxd"
 echo "    4. Start Hyprland from tty1 (happens automatically via .profile)"
 echo "    5. If email was skipped: re-run setup or manually run the email steps"
 echo "       (mu init, mbsync -Va, systemctl --user enable --now mbsync.timer)"

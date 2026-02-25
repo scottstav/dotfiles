@@ -8,6 +8,8 @@
 
 **Tech Stack:** Linux groups, POSIX ACLs (setfacl), setgid, systemd user services, GNU Stow (not used for symlinks — these are system-level, not dotfiles).
 
+**Automation:** Tasks 2, 3, 5, 6, 7, and 10 are handled by `setup.sh` (sections 2-3 and 6). On a new machine, `setup.sh` creates the group, `/shared/` directory, symlinks, and ACLs automatically. Only Tasks 1, 4, 8, and 9 are manual (one-time migration of existing data).
+
 ---
 
 ### Task 1: Stop Dropbox and Verify It's Down

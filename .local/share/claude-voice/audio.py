@@ -5,13 +5,16 @@ Provides a two-phase audio pipeline for the claude-voice daemon:
    keeping a rolling pre-roll buffer of 30ms frames.
 2. Speech capture phase: read 30ms frames with WebRTC VAD, accumulating
    audio until the caller decides speech has ended.
+
+Uses pw-record (PipeWire) for audio capture instead of PyAudio, since
+PortAudio's ALSA backend doesn't reliably route through PipeWire.
 """
 
 import collections
 import logging
+import subprocess
 
 import numpy as np
-import pyaudio
 import webrtcvad
 
 log = logging.getLogger("claude-voice")
@@ -19,10 +22,10 @@ log = logging.getLogger("claude-voice")
 # Audio stream parameters
 RATE = 16000
 CHANNELS = 1
-FORMAT = pyaudio.paInt16
 VAD_FRAME_MS = 30
 VAD_FRAME_SAMPLES = int(RATE * VAD_FRAME_MS / 1000)  # 480 samples
 OWW_CHUNK = 1280  # 80ms for OpenWakeWord
+BYTES_PER_SAMPLE = 2  # int16
 
 
 class AudioPipeline:
@@ -43,9 +46,8 @@ class AudioPipeline:
     """
 
     def __init__(self, pre_roll_seconds: float = 0.5, input_device: str | None = None):
-        self._pa: pyaudio.PyAudio | None = None
-        self._stream: pyaudio.Stream | None = None
-        self._input_device = input_device  # device name or None for default
+        self._proc: subprocess.Popen | None = None
+        self._input_device = input_device  # unused now, pw-record uses PipeWire default
 
         # WebRTC VAD at aggressiveness 2 (moderate filtering)
         self._vad = webrtcvad.Vad(2)
@@ -63,45 +65,39 @@ class AudioPipeline:
     # Stream lifecycle
     # ------------------------------------------------------------------
 
-    def _find_device_index(self, pa: pyaudio.PyAudio) -> int | None:
-        """Find the PyAudio device index matching self._input_device name."""
-        if not self._input_device:
-            return None
-        for i in range(pa.get_device_count()):
-            info = pa.get_device_info_by_index(i)
-            if info["maxInputChannels"] > 0 and info["name"] == self._input_device:
-                log.info("Using input device [%d] %s", i, info["name"])
-                return i
-        log.warning("Input device %r not found, using default", self._input_device)
-        return None
-
     def start(self) -> None:
-        """Open the microphone stream."""
-        self._pa = pyaudio.PyAudio()
-        device_index = self._find_device_index(self._pa)
-        log.info("Opening mic stream (rate=%d, chunk=%d, device=%s)",
-                 RATE, OWW_CHUNK, device_index or "default")
-        kwargs = dict(
-            format=FORMAT,
-            channels=CHANNELS,
-            rate=RATE,
-            input=True,
-            frames_per_buffer=OWW_CHUNK,
+        """Open the microphone stream via pw-record subprocess."""
+        cmd = [
+            "pw-record",
+            "--rate", str(RATE),
+            "--channels", str(CHANNELS),
+            "--format", "s16",
+            "--target", "@DEFAULT_SOURCE@",
+            "-",  # write to stdout
+        ]
+        log.info("Starting pw-record: %s", " ".join(cmd))
+        self._proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
-        if device_index is not None:
-            kwargs["input_device_index"] = device_index
-        self._stream = self._pa.open(**kwargs)
+        # pw-record outputs a 24-byte SND/AU header before raw PCM
+        self._read_exact(24)
 
     def stop(self) -> None:
-        """Close the stream and release PyAudio resources."""
-        if self._stream is not None:
-            log.info("Closing mic stream")
-            self._stream.stop_stream()
-            self._stream.close()
-            self._stream = None
-        if self._pa is not None:
-            self._pa.terminate()
-            self._pa = None
+        """Kill the pw-record subprocess."""
+        if self._proc is not None:
+            log.info("Stopping pw-record")
+            self._proc.terminate()
+            self._proc.wait()
+            self._proc = None
+
+    def _read_exact(self, num_bytes: int) -> bytes:
+        """Read exactly num_bytes from the pw-record stdout."""
+        data = self._proc.stdout.read(num_bytes)
+        if len(data) < num_bytes:
+            raise IOError("pw-record stream ended unexpectedly")
+        return data
 
     # ------------------------------------------------------------------
     # Wake word detection phase
@@ -117,7 +113,7 @@ class AudioPipeline:
         Returns:
             int16 numpy array of shape ``(1280,)``.
         """
-        raw = self._stream.read(OWW_CHUNK, exception_on_overflow=False)
+        raw = self._read_exact(OWW_CHUNK * BYTES_PER_SAMPLE)
         samples = np.frombuffer(raw, dtype=np.int16)
 
         # Slice into 30ms frames for the pre-roll buffer.
@@ -159,7 +155,7 @@ class AudioPipeline:
             ``(raw_bytes, is_speech)`` where *raw_bytes* is 960 bytes of
             int16 PCM and *is_speech* is the WebRTC VAD verdict.
         """
-        raw = self._stream.read(VAD_FRAME_SAMPLES, exception_on_overflow=False)
+        raw = self._read_exact(VAD_FRAME_SAMPLES * BYTES_PER_SAMPLE)
         is_speech = self._vad.is_speech(raw, RATE)
         self._capture_buf.append(raw)
         return raw, is_speech

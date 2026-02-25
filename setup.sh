@@ -106,6 +106,12 @@ else
     ok "/shared/ already exists"
 fi
 
+# Stop Dropbox if running — we may need to replace symlinks with bind mounts
+if systemctl --user is-active dropbox.service &>/dev/null; then
+    systemctl --user stop dropbox.service
+    ok "Stopped dropbox.service for setup"
+fi
+
 # .dropbox-dist (binary) — symlink to shared copy
 if [ -L "$HOME/.dropbox-dist" ]; then
     ok ".dropbox-dist → /shared/.dropbox-dist (symlink exists)"
@@ -292,11 +298,11 @@ else
     fi
 fi
 
-# Dropbox — enable the service. The binary lives at /shared/.dropbox-dist
+# Dropbox — enable and start the service. The binary lives at /shared/.dropbox-dist
 # (symlinked from ~/.dropbox-dist by section 3).
 if [ -f "$HOME/.dropbox-dist/dropboxd" ]; then
-    systemctl --user enable dropbox.service
-    ok "Dropbox service enabled"
+    systemctl --user enable --now dropbox.service
+    ok "Dropbox service enabled and started"
 else
     systemctl --user enable dropbox.service 2>/dev/null
     warn "Dropbox binary not found — install from dropbox.com, then: systemctl --user start dropbox.service"

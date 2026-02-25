@@ -10,7 +10,7 @@ window#waybar {
     min-height: 24px;
 }
 window#waybar {
-    color: #e0e0e0;
+    color: #d4d4d4;
     background-color: transparent;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
@@ -18,11 +18,11 @@ window#waybar {
 
 #window {
     font-family: "Iosevka";
-    color: #c0c0c0;
+    color: #d4d4d4;
 }
 
 #workspaces button {
-    color: #e0e0e0;
+    color: #d4d4d4;
     /* round the edges */
     border-radius: 100px;
 }
@@ -66,27 +66,27 @@ window#waybar {
 
 #custom-waybarstatus {
     padding: 2px 4px;
-    color: #c0c0c0;
+    color: #d4d4d4;
     background-color: rgba(50, 50, 50, 0.7);
 }
 
 #battery icon {
-    color: #dc143c;
+    color: #e06060;
 }
 
 #battery.charging {
-    color: #00ff7f;
+    color: #50c878;
 }
 
 @keyframes blink {
     to {
-	background-color: #00bfff;
+	background-color: #60b0a0;
 	color: #003366;
     }
 }
 
 #battery.warning:not(.charging) {
-    color: #dc143c;
+    color: #e06060;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -95,35 +95,35 @@ window#waybar {
 }
 
 #network.disconnected {
-    background: #dc143c;
+    background: #e06060;
 }
 
 #pulseaudio.muted {
-    color: #dc143c;
+    color: #e06060;
 }
 
 #pulseaudio.source-muted {
-    color: #dc143c;
+    color: #e06060;
 }
 
 #custom-spotify {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #tray {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-sysinfo {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-sysinfo.warning {
-    color: #ffa500;
+    color: #d4944a;
 }
 
 #custom-sysinfo.critical {
-    color: #dc143c;
+    color: #e06060;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -132,30 +132,30 @@ window#waybar {
 }
 
 #custom-external-drive {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-external-drive.mounted {
-    color: #00ff7f;
+    color: #50c878;
 }
 
 /* Notification module */
 #custom-notification {
-    color: #e0e0e0;
+    color: #d4d4d4;
 }
 
 #custom-notification.notification {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-notification.dnd-notification,
 #custom-notification.dnd-none {
-    color: #6e7681;
+    color: #6a7a6a;
 }
 
 #custom-notification.inhibited-notification,
 #custom-notification.inhibited-none {
-    color: #ffa500;
+    color: #d4944a;
 }
 
 /* Recording module */
@@ -164,7 +164,7 @@ window#waybar {
 }
 
 #custom-recording.recording {
-    color: #dc143c;
+    color: #e06060;
     animation-name: pulse;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
@@ -179,11 +179,11 @@ window#waybar {
 
 /* Voice typing module */
 #custom-voice-typing {
-    color: #6e7681;
+    color: #6a7a6a;
 }
 
 #custom-voice-typing.listening {
-    color: #00ff7f;
+    color: #50c878;
     animation-name: pulse;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -191,11 +191,11 @@ window#waybar {
 }
 
 #custom-voice-typing.paused {
-    color: #6e7681;
+    color: #6a7a6a;
 }
 
 #custom-voice-typing.off {
-    color: #3a3a4a;
+    color: #3a4a3a;
 }
 
 @keyframes pulse {
@@ -212,23 +212,23 @@ window#waybar {
 
 /* System freshness module */
 #custom-system-freshness.fresh {
-    color: #00ff7f;
+    color: #50c878;
 }
 
 #custom-system-freshness.healthy {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-system-freshness.aging {
-    color: #ffa500;
+    color: #d4944a;
 }
 
 #custom-system-freshness.wilting {
-    color: #dc143c;
+    color: #e06060;
 }
 
 #custom-system-freshness.dead {
-    color: #dc143c;
+    color: #e06060;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -238,11 +238,11 @@ window#waybar {
 
 /* Google Calendar module */
 #custom-gcal.active {
-    color: #00ff7f;
+    color: #50c878;
 }
 
 #custom-gcal.urgent {
-    color: #dc143c;
+    color: #e06060;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -251,19 +251,19 @@ window#waybar {
 }
 
 #custom-gcal.soon {
-    color: #ffa500;
+    color: #d4944a;
 }
 
 #custom-gcal.upcoming {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-gcal.later {
-    color: #e0e0e0;
+    color: #d4d4d4;
 }
 
 #custom-gcal.idle {
-    color: #6e7681;
+    color: #6a7a6a;
 }
 
 #custom-gcal.none {
@@ -272,26 +272,26 @@ window#waybar {
 
 /* Smooth color glow animations for claude-ask states */
 @keyframes glow-blue {
-    0% { color: #00bfff; }
-    50% { color: #99e5ff; }
-    100% { color: #00bfff; }
+    0% { color: #60b0a0; }
+    50% { color: #c6e2dd; }
+    100% { color: #60b0a0; }
 }
 
 @keyframes glow-green {
-    0% { color: #00ff7f; }
-    50% { color: #99ffcb; }
-    100% { color: #00ff7f; }
+    0% { color: #50c878; }
+    50% { color: #c4ecd1; }
+    100% { color: #50c878; }
 }
 
 @keyframes glow-amber {
-    0% { color: #ffa500; }
-    50% { color: #ffdb99; }
-    100% { color: #ffa500; }
+    0% { color: #d4944a; }
+    50% { color: #f1ddc5; }
+    100% { color: #d4944a; }
 }
 
 /* Claude Ask module */
 #custom-claude-ask {
-    color: #00bfff;
+    color: #60b0a0;
 }
 
 #custom-claude-ask.thinking {
@@ -316,7 +316,7 @@ window#waybar {
 }
 
 #custom-claude-ask.listening {
-    color: #ffa500;
+    color: #d4944a;
     animation-name: pulse;
     animation-duration: 0.8s;
     animation-timing-function: ease-in-out;
@@ -324,9 +324,9 @@ window#waybar {
 }
 
 @keyframes glow-yellow {
-    0% { color: #e5c07b; opacity: 1; }
+    0% { color: #c4b060; opacity: 1; }
     50% { color: #7c6f3e; opacity: 0.5; }
-    100% { color: #e5c07b; opacity: 1; }
+    100% { color: #c4b060; opacity: 1; }
 }
 
 #custom-claude-ask.worker-working {
@@ -338,13 +338,13 @@ window#waybar {
 
 @keyframes arrive-green {
     0% { color: #ffffff; }
-    30% { color: #00ff7f; }
+    30% { color: #50c878; }
     60% { color: #ffffff; }
-    100% { color: #00ff7f; }
+    100% { color: #50c878; }
 }
 
 #custom-claude-ask.worker-done {
-    color: #00ff7f;
+    color: #50c878;
     animation-name: arrive-green;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -352,5 +352,5 @@ window#waybar {
 }
 
 #custom-claude-ask.worker-pending {
-    color: #6e7681;
+    color: #6a7a6a;
 }

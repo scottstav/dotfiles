@@ -1,0 +1,47 @@
+[meta]
+name = "Ocean"
+style = "dark"
+
+[palette]
+background    = "#0a0e14"
+surface       = "#1a1e24"
+foreground    = "#e0e0e0"
+dim           = "#6e7681"
+border        = "#3a3a4a"
+
+[hues]
+red           = "#dc143c"
+orange        = "#ffa500"
+yellow        = "#e5c07b"
+green         = "#00ff7f"
+cyan          = "#00bfff"
+blue          = "#1e90ff"
+magenta       = "#9370db"
+
+[roles]
+accent        = "blue"
+accent_bright = "cyan"
+error         = "red"
+warning       = "orange"
+success       = "green"
+
+[emacs]
+theme = "deeper-blue"
+
+[emacs.faces]
+mode-line-active-bg   = "#353550"
+mode-line-active-fg   = "#b0b0c0"
+mode-line-inactive-bg = "#2a2a3a"
+mode-line-inactive-fg = "#7a7a8a"
+
+[terminal]
+black          = "#0a0e14"
+white          = "#c0c0c0"
+bright_black   = "#404040"
+bright_red     = "#ff4060"
+bright_green   = "#50ffa0"
+bright_yellow  = "#ffcc44"
+bright_blue    = "#89cff0"
+bright_magenta = "#b19cd9"
+bright_cyan    = "#40d0ff"
+bright_white   = "#ffffff"

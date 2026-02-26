@@ -39,7 +39,7 @@ AUTO_REPLY_THRESHOLD_SECS = 60
 
 def get_socket_path():
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-    return os.path.join(runtime_dir, "claude-ask.sock")
+    return os.path.join(runtime_dir, "claude-voice.sock")
 
 
 def get_clipboard_image():
@@ -90,9 +90,11 @@ def get_clipboard_file():
 
 
 def send_message(text, conversation_id, image=None, file=None):
-    """Send the query as JSON over the Unix socket."""
+    """Send query to claude-voice control socket."""
     sock_path = get_socket_path()
-    payload = {"text": text, "conversation_id": conversation_id}
+    payload = {"action": "query", "text": text}
+    if conversation_id is not None:
+        payload["conversation_id"] = conversation_id
     if image:
         payload["image"] = image
     if file:
@@ -105,7 +107,7 @@ def send_message(text, conversation_id, image=None, file=None):
         sock.sendall(msg.encode("utf-8"))
         sock.close()
     except (ConnectionRefusedError, FileNotFoundError) as e:
-        print(f"Could not connect to daemon: {e}", file=sys.stderr)
+        print(f"Could not connect to claude-voice: {e}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -237,6 +239,7 @@ def main():
     # Mutable state for the app
     state = {
         "selected_conv_id": selected_conv_id,
+        "explicitly_deselected": False,
         "image": None,  # base64 PNG data, set by explicit Ctrl+G
         "file": None,   # file path from clipboard URI, set by Ctrl+G
     }
@@ -287,11 +290,13 @@ def main():
         if state["selected_conv_id"] is not None:
             # Deselect: go back to new mode
             state["selected_conv_id"] = None
+            state["explicitly_deselected"] = True
         else:
             # Select the highlighted conversation
             idx = picker_index[0]
             if 0 <= idx < len(conversations):
                 state["selected_conv_id"] = conversations[idx]["id"]
+                state["explicitly_deselected"] = False
 
         # Force redraw
         event.app.invalidate()
@@ -439,6 +444,8 @@ def main():
 
     if result["submitted"]:
         conv_id = state["selected_conv_id"]
+        if conv_id is None and state["explicitly_deselected"]:
+            conv_id = "__new__"
         send_message(result["text"], conv_id, image=state["image"], file=state["file"])
 
 

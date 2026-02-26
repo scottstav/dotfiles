@@ -496,12 +496,18 @@ ensure_venv "$CV_DIR" python3.11 "claude-voice"
 "$CV_DIR/.venv/bin/pip" install -q -r "$CV_DIR/requirements.txt"
 ok "claude-voice dependencies installed"
 
+# claude-hid venv + deps
+CH_DIR="$HOME/.local/share/claude-hid"
+ensure_venv "$CH_DIR" python3.11 "claude-hid"
+"$CH_DIR/.venv/bin/pip" install -q -r "$CH_DIR/requirements.txt"
+ok "claude-hid dependencies installed"
+
 # Archive directory for conversation transcripts
 mkdir -p "$HOME/Dropbox/LLM/Chats"
 ok "Conversation archive directory ready"
 
 # Enable services
-for svc in claude-ask.service claude-voice.service; do
+for svc in claude-ask.service claude-voice.service claude-hid.service; do
     if systemctl --user is-enabled "$svc" &>/dev/null; then
         ok "$svc already enabled"
     else

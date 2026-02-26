@@ -630,15 +630,16 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         _store.save(conv)
         _save_last_state(conv["id"])
 
-        # Wait for TTS (check _running, not waybar status — status can be
-        # changed externally by stop_tts without the TTS threads being alive)
+        # Wait for TTS — skip if cancelled
         if tts._running:
-            tts.finish()
-            tts.wait_done(120)
-            tts.stop()
+            if cancel_event and cancel_event.is_set():
+                tts.stop()
+            else:
+                tts.finish()
+                tts.wait_done(120)
+                tts.stop()
             _voice_control("unmute")
 
-        waybar.set_status("idle")
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
         # Archive
@@ -662,7 +663,6 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         notify(tag, f"API error: {e}")
         tts.stop()
         _voice_control("unmute")
-        waybar.set_status("idle")
         _store.save(conv)
     except Exception:
         log.exception("Unexpected error during query")
@@ -671,5 +671,6 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         notify(tag, "Unexpected error (check logs)")
         tts.stop()
         _voice_control("unmute")
-        waybar.set_status("idle")
         _store.save(conv)
+    finally:
+        waybar.set_status("idle")

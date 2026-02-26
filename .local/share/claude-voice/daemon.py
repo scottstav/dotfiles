@@ -370,8 +370,13 @@ async def handle_control_client(daemon, reader, writer):
             from query import _get_tts, _get_waybar, _voice_control
             _get_tts().stop()
             _voice_control("unmute")
-            _get_waybar().set_status("thinking")
-            log.info("Control socket: stop_tts")
+            with daemon._cancel_lock:
+                query_active = daemon._cancel_event is not None
+            if query_active:
+                _get_waybar().set_status("thinking")
+            else:
+                _get_waybar().set_status("idle")
+            log.info("Control socket: stop_tts (query_active=%s)", query_active)
         else:
             log.warning("Control socket: unknown action %r", action)
 

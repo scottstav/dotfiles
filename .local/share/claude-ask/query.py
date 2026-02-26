@@ -597,7 +597,7 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
                 full_text += "\n\n"
             full_text += f"{tool_names}\n\n"
             _overlay_send(overlay_sock, {"cmd": "replace", "data": full_text})
-            if waybar.speak_enabled:
+            if waybar.speak_enabled and tts._running:
                 waybar.set_status("speaking")
             else:
                 waybar.set_status("thinking")
@@ -605,8 +605,9 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         _store.save(conv)
         _save_last_state(conv["id"])
 
-        # Wait for TTS
-        if waybar.status == "speaking":
+        # Wait for TTS (check _running, not waybar status — status can be
+        # changed externally by stop_tts without the TTS threads being alive)
+        if tts._running:
             tts.finish()
             tts.wait_done(120)
             tts.stop()

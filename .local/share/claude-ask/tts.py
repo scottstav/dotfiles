@@ -7,6 +7,7 @@ playback (audio → speakers). Supports interruption and lazy model loading.
 import logging
 import queue
 import threading
+import time
 
 log = logging.getLogger("claude-ask")
 
@@ -84,7 +85,8 @@ class TTSPipeline:
         except Exception:
             pass
 
-        # Wait for threads
+        # Wait briefly for threads to notice the stop signal.
+        # Don't null references — wait_done() may be polling them concurrently.
         if self._synth_thread:
             self._synth_thread.join(timeout=2)
         if self._play_thread:
@@ -102,10 +104,17 @@ class TTSPipeline:
 
     def wait_done(self, timeout=120):
         """Wait for playback to complete. Returns True if done, False if timeout."""
-        if self._play_thread and self._play_thread.is_alive():
-            self._play_thread.join(timeout=timeout)
-            return not self._play_thread.is_alive()
-        return True
+        deadline = time.monotonic() + timeout
+        while True:
+            thread = self._play_thread
+            if thread is None or not thread.is_alive():
+                return True
+            if not self._running:
+                return True  # stop() was called, don't wait further
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            thread.join(timeout=min(remaining, 0.5))
 
     def _synth_loop(self):
         """Thread: pull sentences, synthesize with Kokoro, push audio."""
@@ -147,7 +156,14 @@ class TTSPipeline:
                 break
             try:
                 sd.play(item, samplerate=24000)
-                sd.wait()
+                # Poll _running during playback so stop() can interrupt us
+                # without relying on cross-thread sd.stop() (unreliable with PipeWire)
+                stream = sd.get_stream()
+                while stream and stream.active:
+                    if not self._running:
+                        sd.stop()
+                        break
+                    time.sleep(0.05)
             except Exception:
                 log.exception("Audio playback error")
 

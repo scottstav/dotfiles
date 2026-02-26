@@ -38,6 +38,7 @@ struct overlay_state {
 
     /* Pointer / scroll input */
     double pending_scroll_delta;
+    uint32_t pending_button;   /* button code from last press, 0 = none */
     bool pointer_over;
     bool input_enabled;
 

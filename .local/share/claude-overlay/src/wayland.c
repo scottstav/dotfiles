@@ -70,7 +70,13 @@ static void pointer_motion(void *data, struct wl_pointer *p,
 static void pointer_button(void *data, struct wl_pointer *p,
                             uint32_t serial, uint32_t time,
                             uint32_t button, uint32_t st)
-{ (void)data; (void)p; (void)serial; (void)time; (void)button; (void)st; }
+{
+    (void)p; (void)serial; (void)time;
+    struct overlay_state *state = data;
+    /* Record button on press (state==1), ignore release */
+    if (st == WL_POINTER_BUTTON_STATE_PRESSED)
+        state->pending_button = button;
+}
 
 static void pointer_axis(void *data, struct wl_pointer *pointer,
                           uint32_t time, uint32_t axis, wl_fixed_t value)
@@ -285,13 +291,8 @@ bool wayland_create_surface(struct overlay_state *state,
     zwlr_layer_surface_v1_add_listener(state->layer_surface,
                                        &layer_surface_listener, state);
 
-    /* Start with input passthrough (empty region) */
-    {
-        struct wl_region *empty = wl_compositor_create_region(state->compositor);
-        wl_surface_set_input_region(state->surface, empty);
-        wl_region_destroy(empty);
-    }
-    state->input_enabled = false;
+    /* Accept all pointer input (scroll + click) */
+    state->input_enabled = true;
 
     wl_surface_commit(state->surface);
     state->surface_visible = true;

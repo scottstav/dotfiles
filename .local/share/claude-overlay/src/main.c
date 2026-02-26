@@ -6,6 +6,9 @@
 #include <poll.h>
 #include <unistd.h>
 #include <sys/timerfd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <linux/input-event-codes.h>
 #include "wayland.h"
 #include "config.h"
 #include "render.h"
@@ -15,6 +18,27 @@
 static volatile sig_atomic_t quit = 0;
 
 static void handle_signal(int sig) { (void)sig; quit = 1; }
+
+/* Send a JSON action to the claude-voice daemon */
+static void send_daemon_action(const char *action_json)
+{
+    const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
+    if (!runtime_dir) return;
+
+    char path[256];
+    snprintf(path, sizeof(path), "%s/claude-voice.sock", runtime_dir);
+
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) return;
+
+    struct sockaddr_un addr = {0};
+    addr.sun_family = AF_UNIX;
+    snprintf(addr.sun_path, sizeof(addr.sun_path), "%s", path);
+
+    if (connect(fd, (struct sockaddr *)&addr, sizeof(addr)) == 0)
+        (void)write(fd, action_json, strlen(action_json));
+    close(fd);
+}
 
 static void arm_timer(int fd, bool on)
 {
@@ -190,6 +214,48 @@ int main(int argc, char *argv[])
             state.pending_scroll_delta = 0.0;
         }
 
+        /* --- Process pointer button clicks --- */
+        if (state.pending_button && state.surface_visible) {
+            uint32_t btn = state.pending_button;
+            state.pending_button = 0;
+
+            if (btn == BTN_LEFT) {
+                /* Left click: dismiss overlay */
+                text_buf[0] = '\0';
+                text_len = 0;
+                fade_anim.current = 1.0;
+                fade_anim.active = false;
+                scroll_anim.current = 0.0;
+                scroll_anim.active = false;
+                user_scrolling = false;
+                if (timer_armed) {
+                    arm_timer(timer_fd, false);
+                    timer_armed = false;
+                }
+                wayland_destroy_surface(&state);
+            } else if (btn == BTN_RIGHT) {
+                /* Right click: cancel query (stops stream + TTS + overlay) */
+                send_daemon_action("{\"action\":\"cancel\"}\n");
+                text_buf[0] = '\0';
+                text_len = 0;
+                fade_anim.current = 1.0;
+                fade_anim.active = false;
+                scroll_anim.current = 0.0;
+                scroll_anim.active = false;
+                user_scrolling = false;
+                if (timer_armed) {
+                    arm_timer(timer_fd, false);
+                    timer_armed = false;
+                }
+                wayland_destroy_surface(&state);
+            } else if (btn == BTN_MIDDLE) {
+                /* Middle click: stop TTS only, text keeps streaming */
+                send_daemon_action("{\"action\":\"stop_tts\"}\n");
+            }
+        } else {
+            state.pending_button = 0;
+        }
+
         /* Handle timer tick for animations */
         if (fds[1].revents & POLLIN) {
             uint64_t expirations;
@@ -282,17 +348,13 @@ int main(int argc, char *argv[])
                     /* Configure callback will set needs_redraw */
                 }
             }
-            /* Compute scroll target + toggle input region */
+            /* Compute scroll target */
             {
                 int content_h = renderer_measure(&rend, &cfg, text_buf);
                 uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
-                bool overflows = (uint32_t)content_h > visible_h;
-
-                /* Enable pointer input when content overflows */
-                wayland_set_input_enabled(&state, overflows);
 
                 /* Only auto-scroll to bottom if user hasn't scrolled up */
-                if (overflows && !user_scrolling) {
+                if ((uint32_t)content_h > visible_h && !user_scrolling) {
                     double new_target = (double)(content_h - (int)visible_h);
                     if (new_target != scroll_anim.target || !scroll_anim.active) {
                         anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
@@ -369,17 +431,14 @@ int main(int argc, char *argv[])
             {
                 int content_h = renderer_measure(&rend, &cfg, text_buf);
                 uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
-                bool overflows = (uint32_t)content_h > visible_h;
 
-                wayland_set_input_enabled(&state, overflows);
-
-                if (overflows && !user_scrolling) {
+                if ((uint32_t)content_h > visible_h && !user_scrolling) {
                     double new_target = (double)(content_h - (int)visible_h);
                     if (new_target != scroll_anim.target || !scroll_anim.active) {
                         anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
                         ensure_timer(timer_fd, &timer_armed);
                     }
-                } else if (!overflows) {
+                } else if ((uint32_t)content_h <= visible_h) {
                     scroll_anim.current = 0.0;
                     scroll_anim.active = false;
                     user_scrolling = false;

@@ -100,9 +100,9 @@ The user may also type free-form text via "Other". Interpret their input:
 
 - If it starts with **"dive:"** or is clearly an investigation request (e.g. "verify the update path actually works in user-service", "check if the test coverage handles edge case X", "look at how this interacts with the foo module in ~/projects/bar") — treat it as a research task. See Step 3b.
 - If it says **"stop"** — break out of the loop, proceed to Phase 3.
-- **Anything else** — treat it as a **note**. See Step 3d.
 - If it says **"test file"** or **"generate test file"** — treat as Generate test file request. See Step 3c.
 - If it says **"walk"** or **"walkthrough"** — treat as Walk through changes request. See Step 3e.
+- **Anything else** — treat it as a **note**. See Step 3d.
 
 ### Step 3b: Deep dive
 

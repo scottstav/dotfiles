@@ -7,6 +7,43 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+/* --- wl_output listener (for scale detection) --- */
+
+static void output_geometry(void *data, struct wl_output *output,
+                            int32_t x, int32_t y, int32_t pw, int32_t ph,
+                            int32_t subpixel, const char *make,
+                            const char *model, int32_t transform)
+{
+    (void)data; (void)output; (void)x; (void)y; (void)pw; (void)ph;
+    (void)subpixel; (void)make; (void)model; (void)transform;
+}
+
+static void output_mode(void *data, struct wl_output *output,
+                        uint32_t flags, int32_t w, int32_t h, int32_t refresh)
+{
+    (void)data; (void)output; (void)flags; (void)w; (void)h; (void)refresh;
+}
+
+static void output_scale(void *data, struct wl_output *output, int32_t factor)
+{
+    (void)output;
+    struct overlay_state *state = data;
+    if (factor > state->scale)
+        state->scale = factor;
+}
+
+static void output_done(void *data, struct wl_output *output)
+{
+    (void)data; (void)output;
+}
+
+static const struct wl_output_listener output_listener = {
+    .geometry = output_geometry,
+    .mode = output_mode,
+    .done = output_done,
+    .scale = output_scale,
+};
+
 /* --- Registry listener --- */
 
 static void registry_handle_global(void *data, struct wl_registry *registry,
@@ -14,7 +51,6 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
                                    uint32_t version)
 {
     struct overlay_state *state = data;
-    (void)version;
 
     if (strcmp(interface, wl_compositor_interface.name) == 0)
         state->compositor = wl_registry_bind(registry, name,
@@ -25,6 +61,16 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
     else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0)
         state->layer_shell = wl_registry_bind(registry, name,
                                               &zwlr_layer_shell_v1_interface, 1);
+    else if (strcmp(interface, wl_output_interface.name) == 0) {
+        /* Bind version 2+ to get the scale event */
+        uint32_t bind_ver = version >= 2 ? 2 : version;
+        struct wl_output *output = wl_registry_bind(registry, name,
+                                                    &wl_output_interface, bind_ver);
+        wl_output_add_listener(output, &output_listener, state);
+        /* Keep first output reference for potential future use */
+        if (!state->output)
+            state->output = output;
+    }
 }
 
 static void registry_handle_global_remove(void *data,
@@ -73,6 +119,8 @@ static const struct zwlr_layer_surface_v1_listener layer_surface_listener = {
 
 bool wayland_init(struct overlay_state *state)
 {
+    state->scale = 1;  /* default until output reports otherwise */
+
     state->display = wl_display_connect(NULL);
     if (!state->display) {
         fprintf(stderr, "wayland_init: failed to connect to display\n");
@@ -82,9 +130,9 @@ bool wayland_init(struct overlay_state *state)
     state->registry = wl_display_get_registry(state->display);
     wl_registry_add_listener(state->registry, &registry_listener, state);
 
-    /* First roundtrip discovers globals */
+    /* First roundtrip discovers globals (including wl_output) */
     wl_display_roundtrip(state->display);
-    /* Second roundtrip completes setup (e.g. wl_shm formats) */
+    /* Second roundtrip delivers output events (mode, scale, done) */
     wl_display_roundtrip(state->display);
 
     if (!state->compositor) {
@@ -100,6 +148,7 @@ bool wayland_init(struct overlay_state *state)
         return false;
     }
 
+    fprintf(stderr, "claude-overlay: detected output scale %d\n", state->scale);
     return true;
 }
 
@@ -116,6 +165,10 @@ bool wayland_create_surface(struct overlay_state *state,
         return false;
     }
 
+    /* Set buffer scale for HiDPI */
+    if (state->scale > 1)
+        wl_surface_set_buffer_scale(state->surface, state->scale);
+
     state->layer_surface = zwlr_layer_shell_v1_get_layer_surface(
         state->layer_shell, state->surface, NULL,
         ZWLR_LAYER_SHELL_V1_LAYER_OVERLAY, "claude-overlay");
@@ -129,11 +182,12 @@ bool wayland_create_surface(struct overlay_state *state,
     zwlr_layer_surface_v1_set_anchor(state->layer_surface,
         ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP);
 
-    /* -1 exclusive zone = don't reserve space, don't push others */
-    zwlr_layer_surface_v1_set_exclusive_zone(state->layer_surface, -1);
+    /* 0 exclusive zone = respect others' reserved space, don't reserve our own */
+    zwlr_layer_surface_v1_set_exclusive_zone(state->layer_surface, 0);
 
     zwlr_layer_surface_v1_set_margin(state->layer_surface, margin_top, 0, 0, 0);
 
+    /* Size is in logical pixels */
     zwlr_layer_surface_v1_set_size(state->layer_surface, width, height);
     zwlr_layer_surface_v1_add_listener(state->layer_surface,
                                        &layer_surface_listener, state);
@@ -171,8 +225,11 @@ void wayland_destroy_surface(struct overlay_state *state)
 
 bool wayland_alloc_buffer(struct overlay_state *state)
 {
-    int stride = (int)state->configured_width * 4;
-    size_t size = (size_t)stride * state->configured_height;
+    int32_t s = state->scale > 1 ? state->scale : 1;
+    uint32_t buf_w = state->configured_width * (uint32_t)s;
+    uint32_t buf_h = state->configured_height * (uint32_t)s;
+    int stride = (int)buf_w * 4;
+    size_t size = (size_t)stride * buf_h;
 
     /* Reuse existing buffer if size matches */
     if (state->buffer && state->shm_size == size)
@@ -202,7 +259,7 @@ bool wayland_alloc_buffer(struct overlay_state *state)
     struct wl_shm_pool *pool = wl_shm_create_pool(state->shm, state->shm_fd,
                                                    (int32_t)size);
     state->buffer = wl_shm_pool_create_buffer(pool, 0,
-        (int32_t)state->configured_width, (int32_t)state->configured_height,
+        (int32_t)buf_w, (int32_t)buf_h,
         stride, WL_SHM_FORMAT_ARGB8888);
     wl_shm_pool_destroy(pool);
 
@@ -211,10 +268,11 @@ bool wayland_alloc_buffer(struct overlay_state *state)
 
 void wayland_commit(struct overlay_state *state)
 {
+    int32_t s = state->scale > 1 ? state->scale : 1;
     wl_surface_attach(state->surface, state->buffer, 0, 0);
     wl_surface_damage_buffer(state->surface, 0, 0,
-                             (int32_t)state->configured_width,
-                             (int32_t)state->configured_height);
+                             (int32_t)(state->configured_width * (uint32_t)s),
+                             (int32_t)(state->configured_height * (uint32_t)s));
     wl_surface_commit(state->surface);
 }
 
@@ -222,6 +280,10 @@ void wayland_cleanup(struct overlay_state *state)
 {
     wayland_destroy_surface(state);
 
+    if (state->output) {
+        wl_output_destroy(state->output);
+        state->output = NULL;
+    }
     if (state->layer_shell) {
         zwlr_layer_shell_v1_destroy(state->layer_shell);
         state->layer_shell = NULL;

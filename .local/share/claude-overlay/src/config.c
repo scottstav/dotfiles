@@ -12,13 +12,16 @@ void config_defaults(struct overlay_config *cfg)
     cfg->background      = 0x1a1a2ee6;
     cfg->text_color      = 0xe0e0e0ff;
     cfg->border_color    = 0x333355ff;
+    cfg->accent_color    = 0xD4714Aff;
     cfg->width           = 600;
     cfg->max_lines       = 12;
     cfg->padding_x       = 12;
     cfg->padding_y       = 8;
     cfg->corner_radius   = 8;
     cfg->border_width    = 1;
+    cfg->accent_height   = 3;
     cfg->margin_top      = 0;
+    cfg->line_spacing    = 0;
     cfg->scroll_duration = 150;
     cfg->fade_duration   = 500;
     cfg->socket_path[0]  = '\0';
@@ -71,6 +74,8 @@ static void config_set(struct overlay_config *cfg, const char *key,
         parse_color(value, &cfg->text_color);
     } else if (strcmp(key, "border_color") == 0) {
         parse_color(value, &cfg->border_color);
+    } else if (strcmp(key, "accent_color") == 0) {
+        parse_color(value, &cfg->accent_color);
     } else if (strcmp(key, "width") == 0) {
         cfg->width = (uint32_t)strtoul(value, NULL, 10);
     } else if (strcmp(key, "max_lines") == 0) {
@@ -83,8 +88,12 @@ static void config_set(struct overlay_config *cfg, const char *key,
         cfg->corner_radius = (uint32_t)strtoul(value, NULL, 10);
     } else if (strcmp(key, "border_width") == 0) {
         cfg->border_width = (uint32_t)strtoul(value, NULL, 10);
+    } else if (strcmp(key, "accent_height") == 0) {
+        cfg->accent_height = (uint32_t)strtoul(value, NULL, 10);
     } else if (strcmp(key, "margin_top") == 0) {
         cfg->margin_top = (uint32_t)strtoul(value, NULL, 10);
+    } else if (strcmp(key, "line_spacing") == 0) {
+        cfg->line_spacing = (uint32_t)strtoul(value, NULL, 10);
     } else if (strcmp(key, "scroll_duration") == 0) {
         cfg->scroll_duration = (uint32_t)strtoul(value, NULL, 10);
     } else if (strcmp(key, "fade_duration") == 0) {

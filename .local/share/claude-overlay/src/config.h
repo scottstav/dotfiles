@@ -9,13 +9,16 @@ struct overlay_config {
     uint32_t background;     // RGBA: 0xRRGGBBAA
     uint32_t text_color;     // RGBA: 0xRRGGBBAA
     uint32_t border_color;   // RGBA: 0xRRGGBBAA
+    uint32_t accent_color;   // RGBA: 0xRRGGBBAA — top accent line
     uint32_t width;
     uint32_t max_lines;
     uint32_t padding_x;
     uint32_t padding_y;
     uint32_t corner_radius;
     uint32_t border_width;
+    uint32_t accent_height;  // pixels, 0 = disabled
     uint32_t margin_top;
+    uint32_t line_spacing;   // extra pixels between lines (Pango spacing)
     uint32_t scroll_duration; // milliseconds
     uint32_t fade_duration;   // milliseconds
     char socket_path[512];    // empty = default

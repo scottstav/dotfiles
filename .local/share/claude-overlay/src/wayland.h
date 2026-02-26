@@ -13,6 +13,7 @@ struct overlay_state {
     struct wl_compositor *compositor;
     struct wl_shm *shm;
     struct zwlr_layer_shell_v1 *layer_shell;
+    struct wl_output *output;
 
     /* Surface */
     struct wl_surface *surface;
@@ -29,6 +30,9 @@ struct overlay_state {
     uint32_t height;
     uint32_t configured_width;
     uint32_t configured_height;
+
+    /* Scale (detected from wl_output) */
+    int32_t scale;
 
     /* State flags */
     bool surface_visible;

@@ -128,8 +128,9 @@ int main(int argc, char *argv[])
                 break;
             }
 
+            uint32_t s = state.scale > 1 ? state.scale : 1;
             renderer_draw(&rend, &cfg, state.pixels,
-                          state.configured_width, state.configured_height,
+                          state.configured_width * s, state.configured_height * s,
                           text_buf, scroll_anim.current, fade_anim.current);
 
             wayland_commit(&state);

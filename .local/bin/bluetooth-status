@@ -1,0 +1,101 @@
+#!/bin/bash
+# Waybar custom module: bluetooth status
+# Shows connection icon, battery %, device info in tooltip
+
+# Check if bluetooth controller exists and is powered
+controller_info=$(busctl get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Powered 2>/dev/null)
+if [[ -z "$controller_info" ]]; then
+    printf '{"text": "", "tooltip": "No bluetooth controller", "class": "off"}\n'
+    exit
+fi
+
+powered=$(echo "$controller_info" | awk '{print $2}')
+if [[ "$powered" != "true" ]]; then
+    printf '{"text": "󰂲", "tooltip": "Bluetooth off", "class": "off"}\n'
+    exit
+fi
+
+# Enumerate devices via dbus
+declare -a connected_names connected_batteries connected_icons
+declare -a paired_names paired_macs paired_connected
+device_count=0
+
+for devpath in $(busctl tree org.bluez 2>/dev/null | grep -oP '/org/bluez/hci0/dev_[A-F0-9_]+' | sort -u); do
+    name=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Alias 2>/dev/null | sed 's/^s "//;s/"$//')
+    [[ -z "$name" ]] && continue
+    paired=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Paired 2>/dev/null | awk '{print $2}')
+    connected=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Connected 2>/dev/null | awk '{print $2}')
+    battery=$(busctl get-property org.bluez "$devpath" org.bluez.Battery1 Percentage 2>/dev/null | awk '{print $2}')
+    icon=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Icon 2>/dev/null | sed 's/^s "//;s/"$//')
+
+    [[ "$paired" != "true" ]] && continue
+
+    mac=$(basename "$devpath" | sed 's/dev_//' | tr '_' ':')
+    paired_names+=("$name")
+    paired_macs+=("$mac")
+    paired_connected+=("$connected")
+
+    if [[ "$connected" == "true" ]]; then
+        connected_names+=("$name")
+        connected_batteries+=("${battery:-}")
+        connected_icons+=("${icon:-}")
+        (( device_count++ ))
+    fi
+done
+
+# Build display text
+if (( device_count == 0 )); then
+    text="󰂯"
+    class="on"
+elif (( device_count == 1 )); then
+    bat="${connected_batteries[0]}"
+    if [[ -n "$bat" ]]; then
+        text="󰂱 ${bat}"
+        (( bat <= 20 )) && class="low-battery" || class="connected"
+    else
+        text="󰂱"
+        class="connected"
+    fi
+else
+    # Multiple devices — show count
+    text="󰂱 ${device_count}"
+    class="connected"
+fi
+
+# Build tooltip
+tooltip="<b>Bluetooth</b>"
+if (( device_count > 0 )); then
+    tooltip="$tooltip  ${device_count} connected"
+    for i in "${!connected_names[@]}"; do
+        bat="${connected_batteries[$i]}"
+        ico="${connected_icons[$i]}"
+        # Pick a nice icon based on device type
+        case "$ico" in
+            audio-headset|audio-headphones) dev_icon="🎧" ;;
+            input-mouse)                    dev_icon="🖱" ;;
+            input-keyboard)                 dev_icon="⌨" ;;
+            *)                              dev_icon="•" ;;
+        esac
+        line="\\n$dev_icon ${connected_names[$i]}"
+        [[ -n "$bat" ]] && line="$line  ${bat}%"
+        tooltip="$tooltip$line"
+    done
+else
+    tooltip="$tooltip\\n${dim}no devices connected${reset}"
+fi
+
+# Show paired but disconnected devices
+has_disconnected=false
+for i in "${!paired_names[@]}"; do
+    if [[ "${paired_connected[$i]}" != "true" ]]; then
+        if ! $has_disconnected; then
+            tooltip="$tooltip\\n\\n<i>Paired</i>"
+            has_disconnected=true
+        fi
+        tooltip="$tooltip\\n  ${paired_names[$i]}"
+    fi
+done
+
+tooltip="${tooltip//\"/\\\"}"
+
+printf '{"text": "%s", "tooltip": "%s", "class": "%s"}\n' "$text" "$tooltip" "$class"

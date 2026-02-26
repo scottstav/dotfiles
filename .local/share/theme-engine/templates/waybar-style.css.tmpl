@@ -98,12 +98,46 @@ window#waybar {
     background: ${error};
 }
 
-#pulseaudio.muted {
+/* Audio module */
+#custom-audio {
+    color: ${foreground};
+}
+
+#custom-audio.muted {
     color: ${error};
 }
 
-#pulseaudio.source-muted {
+#custom-audio.source-muted {
     color: ${error};
+}
+
+#custom-audio.high {
+    color: ${warning};
+}
+
+/* Bluetooth module */
+#custom-bluetooth {
+    color: ${foreground};
+}
+
+#custom-bluetooth.off {
+    color: ${border};
+}
+
+#custom-bluetooth.on {
+    color: ${dim};
+}
+
+#custom-bluetooth.connected {
+    color: ${accent_bright};
+}
+
+#custom-bluetooth.low-battery {
+    color: ${warning};
+    animation-name: pulse;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
 }
 
 #custom-spotify {

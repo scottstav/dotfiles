@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/claude-ask", "custom/recording", "custom/external-drive", "bluetooth", "pulseaudio", "custom/voice-typing"],
+    "modules-center": ["custom/claude-ask", "custom/recording", "custom/external-drive", "custom/bluetooth", "custom/audio", "custom/voice-typing"],
     "modules-right": ["custom/emacs-daemon", "custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
@@ -107,31 +107,26 @@
         "format-disconnected": "Disconnected ⚠",
         "format-alt": "-"
     },
-    "pulseaudio": {
-        "format": "{icon} {format_source}",
-        "format-bluetooth": "{icon} [] {format_source}",
-        "format-bluetooth-muted": "[] {format_source}",
-        "format-muted": "{format_source}",
-        "format-source": "",
-        "format-source-muted": "",
-        "format-icons": {
-            "default": ["", "", ""]
-        },
+    "custom/audio": {
+        "exec": "audio-status",
+        "return-type": "json",
+        "interval": 2,
+        "signal": 14,
+        "tooltip": true,
         "on-click": "sleep 0.1 && foot --app-id=fzf-picker -e audio-switcher",
-        "on-scroll-up": "audio-volume up",
-        "on-scroll-down": "audio-volume down"
+        "on-click-right": "sleep 0.1 && foot --app-id=fzf-picker -e audio-mixer",
+        "on-click-middle": "pactl set-sink-mute @DEFAULT_SINK@ toggle && pkill -RTMIN+14 waybar",
+        "on-scroll-up": "audio-volume up && pkill -RTMIN+14 waybar",
+        "on-scroll-down": "audio-volume down && pkill -RTMIN+14 waybar"
     },
-    "bluetooth": {
-        "format": "",
-        "format-connected": " {device_alias}",
-        "format-connected-battery": "* {device_battery_percentage}%",
-        "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
-        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
-        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
-
-
-        "on-click": ""
+    "custom/bluetooth": {
+        "exec": "bluetooth-status",
+        "return-type": "json",
+        "interval": 5,
+        "signal": 15,
+        "tooltip": true,
+        "on-click": "sleep 0.1 && foot --app-id=fzf-picker -e bluetooth-picker",
+        "on-click-right": "foot -e bluetoothctl"
     },
     "custom/waybarstatus": {
         "exec": "waybar-status",

@@ -1,0 +1,96 @@
+#!/bin/bash
+# Waybar custom module: audio status
+# Shows volume icon + %, mic indicator. Rich tooltip with active streams.
+
+sink=$(pactl get-default-sink 2>/dev/null)
+vol_raw=$(pactl get-sink-volume "$sink" 2>/dev/null | grep -oP '\d+%' | head -1)
+vol=${vol_raw%%%}
+muted=$(pactl get-sink-mute "$sink" 2>/dev/null | grep -oP 'yes|no')
+sink_desc=$(pactl list sinks 2>/dev/null | awk -v name="$sink" '
+    $0 ~ "Name: " name { found=1 }
+    found && /Description:/ { sub(/.*Description: /, ""); print; exit }
+')
+
+# Source (mic) info
+source=$(pactl get-default-source 2>/dev/null)
+source_muted=$(pactl get-source-mute "$source" 2>/dev/null | grep -oP 'yes|no')
+
+# Volume icon
+if [[ "$muted" == "yes" ]]; then
+    icon=""
+elif (( vol == 0 )); then
+    icon=""
+elif (( vol <= 30 )); then
+    icon=""
+elif (( vol <= 70 )); then
+    icon=""
+else
+    icon=""
+fi
+
+# Build display text
+if [[ "$muted" == "yes" ]]; then
+    text="$icon"
+else
+    text="$icon $vol"
+fi
+
+# Mic indicator (only show when source exists and is not a monitor)
+if [[ -n "$source" && ! "$source" =~ \.monitor$ ]]; then
+    if [[ "$source_muted" == "yes" ]]; then
+        text="$text "
+    fi
+fi
+
+# --- Tooltip ---
+tooltip="<b>$sink_desc</b>  ${vol_raw}"
+[[ "$muted" == "yes" ]] && tooltip="$tooltip  <i>muted</i>"
+
+# Active streams — try application.name, fall back to node.name
+streams=$(pactl list sink-inputs 2>/dev/null | awk '
+    /^Sink Input #/ {
+        if (name != "") {
+            m = (mute == "yes") ? "  muted" : ""
+            printf "  %s  %s%s\n", name, vol, m
+        }
+        name = ""; app = ""; node = ""; vol = ""; mute = ""
+    }
+    /application\.name = / { gsub(/.*= "/, ""); gsub(/"$/, ""); app = $0 }
+    /node\.name = / && name == "" { gsub(/.*= "/, ""); gsub(/"$/, ""); node = $0 }
+    /^\tVolume:/ { match($0, /[0-9]+%/); vol = substr($0, RSTART, RLENGTH) }
+    /^\tMute:/ { mute = $2 }
+    { if (app != "" && name == "") name = app; if (node != "" && name == "") name = node }
+    END {
+        if (name != "") {
+            m = (mute == "yes") ? "  muted" : ""
+            printf "  %s  %s%s", name, vol, m
+        }
+    }
+')
+[[ -n "$streams" ]] && tooltip="$tooltip\\n$streams"
+
+# Source info in tooltip
+if [[ -n "$source" && ! "$source" =~ \.monitor$ ]]; then
+    source_desc=$(pactl list sources 2>/dev/null | awk -v name="$source" '
+        $0 ~ "Name: " name { found=1 }
+        found && /Description:/ { sub(/.*Description: /, ""); print; exit }
+    ')
+    source_vol=$(pactl get-source-volume "$source" 2>/dev/null | grep -oP '\d+%' | head -1)
+    mic_label="\\n<b>$source_desc</b>  ${source_vol}"
+    [[ "$source_muted" == "yes" ]] && mic_label="$mic_label  <i>muted</i>"
+    tooltip="$tooltip$mic_label"
+fi
+
+# CSS class
+class=""
+if [[ "$muted" == "yes" ]]; then
+    class="muted"
+elif [[ "$source_muted" == "yes" ]]; then
+    class="source-muted"
+fi
+(( vol > 100 )) && class="${class:+$class }high"
+
+# Escape quotes in tooltip for JSON
+tooltip="${tooltip//\"/\\\"}"
+
+printf '{"text": "%s", "tooltip": "%s", "class": "%s"}\n' "$text" "$tooltip" "$class"

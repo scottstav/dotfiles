@@ -19,3 +19,5 @@ case "$direction" in
     up)   pactl set-sink-volume "$sink_name" +5% ;;
     down) pactl set-sink-volume "$sink_name" -5% ;;
 esac
+
+pkill -RTMIN+14 waybar 2>/dev/null

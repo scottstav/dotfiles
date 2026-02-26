@@ -98,12 +98,46 @@ window#waybar {
     background: #e06060;
 }
 
-#pulseaudio.muted {
+/* Audio module */
+#custom-audio {
+    color: #d4d4d4;
+}
+
+#custom-audio.muted {
     color: #e06060;
 }
 
-#pulseaudio.source-muted {
+#custom-audio.source-muted {
     color: #e06060;
+}
+
+#custom-audio.high {
+    color: #d4944a;
+}
+
+/* Bluetooth module */
+#custom-bluetooth {
+    color: #d4d4d4;
+}
+
+#custom-bluetooth.off {
+    color: #3a4a3a;
+}
+
+#custom-bluetooth.on {
+    color: #6a7a6a;
+}
+
+#custom-bluetooth.connected {
+    color: #60b0a0;
+}
+
+#custom-bluetooth.low-battery {
+    color: #d4944a;
+    animation-name: pulse;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
 }
 
 #custom-spotify {

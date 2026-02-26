@@ -1,0 +1,147 @@
+#!/bin/bash
+# Bluetooth quick-connect TUI — fzf in foot
+# Select a paired device to toggle connect/disconnect
+# Or scan for new devices
+
+source ~/.local/share/fzf-picker/theme.sh
+
+bold=$'\e[1m'
+dim=$'\e[2m'
+reset=$'\e[0m'
+green=$'\e[32m'
+red=$'\e[31m'
+cyan=$'\e[36m'
+yellow=$'\e[33m'
+
+# Check controller
+powered=$(busctl get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Powered 2>/dev/null | awk '{print $2}')
+if [[ "$powered" != "true" ]]; then
+    echo "${red}Bluetooth is off${reset}" | fzf \
+        "${FZF_PICKER_OPTS[@]}" --ansi \
+        --header="${bold}Bluetooth${reset}" \
+        --bind 'enter:execute-silent(busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 Set ss org.bluez.Adapter1 Powered vb true)+abort'
+    exit
+fi
+
+# List paired devices
+list_devices() {
+    for devpath in $(busctl tree org.bluez 2>/dev/null | grep -oP '/org/bluez/hci0/dev_[A-F0-9_]+' | sort -u); do
+        name=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Alias 2>/dev/null | sed 's/^s "//;s/"$//')
+        [[ -z "$name" ]] && continue
+        paired=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Paired 2>/dev/null | awk '{print $2}')
+        [[ "$paired" != "true" ]] && continue
+        connected=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Connected 2>/dev/null | awk '{print $2}')
+        battery=$(busctl get-property org.bluez "$devpath" org.bluez.Battery1 Percentage 2>/dev/null | awk '{print $2}')
+        icon=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Icon 2>/dev/null | sed 's/^s "//;s/"$//')
+        mac=$(basename "$devpath" | sed 's/dev_//' | tr '_' ':')
+
+        # Status indicator
+        if [[ "$connected" == "true" ]]; then
+            marker="${green}●${reset}"
+            status="${green}connected${reset}"
+        else
+            marker="${dim}○${reset}"
+            status="${dim}disconnected${reset}"
+        fi
+
+        # Battery
+        bat_str=""
+        if [[ -n "$battery" ]]; then
+            if (( battery <= 20 )); then
+                bat_str="  ${red}${battery}%${reset}"
+            else
+                bat_str="  ${battery}%"
+            fi
+        fi
+
+        # Device icon
+        case "$icon" in
+            audio-headset|audio-headphones) dev_icon="🎧" ;;
+            input-mouse)                    dev_icon="🖱 " ;;
+            input-keyboard)                 dev_icon="⌨ " ;;
+            *)                              dev_icon="  " ;;
+        esac
+
+        printf "%s %s ${bold}%-24s${reset} %s%s\t%s\t%s\n" \
+            "$marker" "$dev_icon" "$name" "$status" "$bat_str" "$mac" "$connected"
+    done
+}
+
+# Scan action — discover new devices for 10 seconds
+scan_for_devices() {
+    # Start scanning
+    busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 StartDiscovery 2>/dev/null
+
+    echo "${cyan}Scanning for 10 seconds...${reset}"
+    sleep 10
+
+    busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 StopDiscovery 2>/dev/null
+
+    # Show discovered (unpaired) devices
+    for devpath in $(busctl tree org.bluez 2>/dev/null | grep -oP '/org/bluez/hci0/dev_[A-F0-9_]+' | sort -u); do
+        name=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Alias 2>/dev/null | sed 's/^s "//;s/"$//')
+        [[ -z "$name" ]] && continue
+        paired=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Paired 2>/dev/null | awk '{print $2}')
+        [[ "$paired" == "true" ]] && continue
+        mac=$(basename "$devpath" | sed 's/dev_//' | tr '_' ':')
+        printf "${dim}○${reset}   ${bold}%-24s${reset} ${dim}new${reset}\t%s\tnew\n" "$name" "$mac"
+    done
+}
+
+# Main picker
+while true; do
+    devices=$(list_devices)
+
+    # Add scan option at the bottom
+    scan_line="${cyan}  Scan for new devices${reset}\t__scan__\tfalse"
+    all_items="$devices"
+    [[ -n "$all_items" ]] && all_items="$all_items"$'\n'"$scan_line" || all_items="$scan_line"
+
+    selection=$(echo "$all_items" | fzf \
+        "${FZF_PICKER_OPTS[@]}" --ansi \
+        --header="${bold}Bluetooth${reset}  ${dim}enter: connect/disconnect${reset}" \
+        --delimiter=$'\t' --with-nth=1 \
+        --bind 'left-click:accept' \
+        --bind 'esc:abort')
+
+    [[ $? -ne 0 || -z "$selection" ]] && break
+
+    mac=$(printf '%s' "$selection" | awk -F'\t' '{print $2}')
+    was_connected=$(printf '%s' "$selection" | awk -F'\t' '{print $3}')
+
+    if [[ "$mac" == "__scan__" ]]; then
+        # Run scan and show results
+        new_devices=$(scan_for_devices)
+        if [[ -n "$new_devices" ]]; then
+            pair_selection=$(echo "$new_devices" | fzf \
+                "${FZF_PICKER_OPTS[@]}" --ansi \
+                --header="${bold}Pair new device${reset}" \
+                --delimiter=$'\t' --with-nth=1 \
+                --bind 'left-click:accept' \
+                --bind 'esc:abort')
+
+            if [[ -n "$pair_selection" ]]; then
+                pair_mac=$(printf '%s' "$pair_selection" | awk -F'\t' '{print $2}')
+                devpath="/org/bluez/hci0/dev_${pair_mac//:/_}"
+                busctl call org.bluez "$devpath" org.bluez.Device1 Pair 2>/dev/null
+                busctl call org.bluez "$devpath" org.freedesktop.DBus.Properties Set ssv \
+                    org.bluez.Device1 Trusted vb true 2>/dev/null
+                busctl call org.bluez "$devpath" org.bluez.Device1 Connect 2>/dev/null
+            fi
+        fi
+        pkill -RTMIN+15 waybar 2>/dev/null
+        continue
+    fi
+
+    # Toggle connect/disconnect
+    devpath="/org/bluez/hci0/dev_${mac//:/_}"
+    if [[ "$was_connected" == "true" ]]; then
+        busctl call org.bluez "$devpath" org.bluez.Device1 Disconnect 2>/dev/null &
+    else
+        busctl call org.bluez "$devpath" org.bluez.Device1 Connect 2>/dev/null &
+    fi
+
+    # Brief wait for state change, then refresh
+    sleep 1
+    pkill -RTMIN+15 waybar 2>/dev/null
+done

@@ -1,0 +1,117 @@
+#!/bin/bash
+# Per-stream audio mixer TUI — fzf in foot
+# ←/→: volume ±5%  |  enter: change output  |  m: mute  |  q/esc: quit
+
+source ~/.local/share/fzf-picker/theme.sh
+
+SELF=$(realpath "$0")
+bold=$'\e[1m'
+dim=$'\e[2m'
+reset=$'\e[0m'
+green=$'\e[32m'
+red=$'\e[31m'
+
+# --- Subcommands (called by fzf keybinds) ---
+case "$1" in
+    --list)
+        # Build sink ID → description map
+        declare -A sink_descs
+        while IFS=$'\t' read -r sid sname _rest; do
+            sink_descs[$sid]=$(pactl list sinks 2>/dev/null | awk -v sn="$sname" '
+                $0 ~ "Name: " sn { f=1 } f && /Description:/ { sub(/.*Description: /, ""); print; exit }
+            ')
+        done < <(pactl list sinks short 2>/dev/null)
+
+        pactl list sink-inputs 2>/dev/null | awk \
+            -v B="$bold" -v D="$dim" -v R="$reset" -v G="$green" -v RED="$red" '
+        function vbar(v,   w,f,e,s,i) {
+            w=10; f=int(v*w/100); if(f>w)f=w; e=w-f; s=""
+            for(i=0;i<f;i++) s=s"━"; for(i=0;i<e;i++) s=s"░"; return s
+        }
+        /^Sink Input #/ {
+            if(app!="") printf "%s%-22s %s%s %3d%%%s  %s→ SINK:%s%s\t%s\n", \
+                B,app,G,vbar(vol),vol,(mt=="yes"?RED" muted"R:""),D,sk,R,id
+            id=$3; sub(/#/,"",id); app=""; appn=""; vol=0; mt=""; sk=""
+        }
+        /application\.name = / { gsub(/.*= "/,""); gsub(/"$/,""); appn=$0 }
+        /node\.name = / && appn=="" { gsub(/.*= "/,""); gsub(/"$/,""); appn=$0 }
+        /^\tVolume:/ { match($0,/([0-9]+)%/); vol=substr($0,RSTART,RLENGTH-1)+0 }
+        /^\tMute:/ { mt=$2 }
+        /^\tSink:/ { sk=$2 }
+        { if (appn!="" && app=="") app=appn }
+        END { if(app!="") printf "%s%-22s %s%s %3d%%%s  %s→ SINK:%s%s\t%s\n", \
+            B,app,G,vbar(vol),vol,(mt=="yes"?RED" muted"R:""),D,sk,R,id }
+        ' | while IFS= read -r line; do
+            if [[ "$line" =~ SINK:([0-9]+) ]]; then
+                sid="${BASH_REMATCH[1]}"
+                desc="${sink_descs[$sid]:-Sink $sid}"
+                echo "${line/SINK:$sid/$desc}"
+            else
+                echo "$line"
+            fi
+        done
+        exit
+        ;;
+    --vol-up)
+        pactl set-sink-input-volume "$2" +5% 2>/dev/null
+        pkill -RTMIN+14 waybar 2>/dev/null
+        exit
+        ;;
+    --vol-down)
+        pactl set-sink-input-volume "$2" -5% 2>/dev/null
+        pkill -RTMIN+14 waybar 2>/dev/null
+        exit
+        ;;
+    --mute)
+        pactl set-sink-input-mute "$2" toggle 2>/dev/null
+        pkill -RTMIN+14 waybar 2>/dev/null
+        exit
+        ;;
+esac
+
+# --- Main loop ---
+while true; do
+    streams=$("$SELF" --list)
+
+    if [[ -z "$streams" ]]; then
+        echo "${dim}no active streams${reset}" | fzf \
+            "${FZF_PICKER_OPTS[@]}" --ansi \
+            --header="${bold}Audio Mixer${reset}"
+        break
+    fi
+
+    selection=$(echo "$streams" | fzf \
+        "${FZF_PICKER_OPTS[@]}" --ansi \
+        --header="${bold}Audio Mixer${reset}  ${dim}←/→ vol · enter: output · m: mute${reset}" \
+        --delimiter=$'\t' --with-nth=1 \
+        --bind "right:execute-silent($SELF --vol-up {2})+reload($SELF --list)" \
+        --bind "left:execute-silent($SELF --vol-down {2})+reload($SELF --list)" \
+        --bind "m:execute-silent($SELF --mute {2})+reload($SELF --list)" \
+        --bind 'left-click:accept' \
+        --bind 'esc:abort')
+
+    [[ $? -ne 0 || -z "$selection" ]] && break
+
+    # Enter → move stream to different output
+    input_id=$(printf '%s' "$selection" | awk -F'\t' '{print $NF}')
+    [[ -z "$input_id" ]] && continue
+
+    default_sink=$(pactl get-default-sink 2>/dev/null)
+    sink_selection=$(pactl list sinks short | while read -r id name _rest; do
+        desc=$(pactl list sinks 2>/dev/null | awk -v sn="$name" '
+            $0 ~ "Name: " sn { f=1 } f && /Description:/ { sub(/.*Description: /, ""); print; exit }
+        ')
+        marker="  "
+        [[ "$name" == "$default_sink" ]] && marker="${green}* ${reset}"
+        printf "%s${bold}%s${reset}\t%s\n" "$marker" "$desc" "$name"
+    done | fzf \
+        "${FZF_PICKER_OPTS[@]}" --ansi \
+        --header="${bold}Move stream to:${reset}" \
+        --delimiter=$'\t' --with-nth=1 \
+        --bind 'left-click:accept')
+
+    [[ -z "$sink_selection" ]] && continue
+    sink_name=$(printf '%s' "$sink_selection" | awk -F'\t' '{print $NF}')
+    [[ -n "$sink_name" ]] && pactl move-sink-input "$input_id" "$sink_name"
+    pkill -RTMIN+14 waybar 2>/dev/null
+done

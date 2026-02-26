@@ -55,10 +55,12 @@ TOKEN_PRICES = {
 # Sentinel for explicit "start a new conversation"
 NEW_CONVERSATION = object()
 
-SYSTEM_PROMPT = """\
+_SYSTEM_PROMPT_TEMPLATE = """\
 You are a quick-answer assistant running as a desktop overlay on a Linux workstation \
 (Arch Linux, Hyprland/Wayland, Emacs). Responses are displayed in desktop notifications \
 with limited space.
+
+Today is {today_long} ({today_iso}, {weekday}).
 
 Be extremely concise. Default to 1-3 sentences. Use bullet points over paragraphs. \
 Skip preamble, hedging, and sign-offs. Only give longer responses when the user \
@@ -66,9 +68,22 @@ explicitly asks for detail or the question genuinely requires it.
 
 You have tools. Use them proactively:
 - shell: run commands to answer questions about the system, files, processes, etc.
+- search_notes: search the user's denote notes by keyword. Good for finding topics \
+  across many notes, but only returns snippets — use shell to read full files.
 - web_search + fetch_url: search the web, then read articles for current info/news.
 - clipboard: copy useful output to the user's clipboard without being asked.
 - screenshot: capture the screen when the user asks about something visible.
+
+Denote notes: all notes live under ~/Dropbox/org/denote/ (with subdirs like journal/, \
+work/journal/, work/docs/). Every filename starts with a timestamp: YYYYMMDDTHHMMSS. \
+When the user asks about a date or time range ("today", "last week", "february 2024"), \
+use shell to find files by their date prefix. Examples:
+  ls ~/Dropbox/org/denote/journal/20260226*        # specific day
+  ls ~/Dropbox/org/denote/journal/202602*           # whole month
+  ls ~/Dropbox/org/denote/**/202402*                # feb 2024, all subdirs
+  ls -t ~/Dropbox/org/denote/journal/ | head -5     # most recent entries
+Then cat the matching files to read their contents. Use search_notes only for \
+keyword/topic searches, not date-based lookups.
 
 You can delegate complex coding tasks to a Claude Code worker session. Workers are \
 autonomous agents running in their own terminal with full codebase context, file \
@@ -87,6 +102,16 @@ When using spawn_worker, infer the project directory from context. Common locati
 fd -t d <name> ~). Write a thorough, detailed task description for the worker — \
 it operates autonomously without follow-up.\
 """
+
+
+def _build_system_prompt() -> str:
+    now = datetime.now()
+    return _SYSTEM_PROMPT_TEMPLATE.format(
+        today_long=now.strftime("%d %B %Y"),
+        today_iso=now.strftime("%Y-%m-%d"),
+        weekday=now.strftime("%A"),
+        today_prefix=now.strftime("%Y%m%d"),
+    )
 
 # ---------------------------------------------------------------------------
 # Module-level singletons (lazy)
@@ -439,7 +464,7 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
     api_kwargs = {
         "model": _load_model(),
         "max_tokens": MAX_TOKENS,
-        "system": SYSTEM_PROMPT,
+        "system": _build_system_prompt(),
         "messages": messages,
     }
     if tools:

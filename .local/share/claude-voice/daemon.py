@@ -105,10 +105,12 @@ class Daemon:
             was_muted = self._muted
             self._muted = muted
         if was_muted and not muted:
-            # Transitioning from muted → unmuted: reset model state and
-            # flush stale audio so the model starts clean
+            # Reset wake word model state so it doesn't carry over
+            # activations from before the mute. No audio.flush() here —
+            # the main loop reads continuously while muted so there's no
+            # stale data, and flush() from this thread would race with
+            # the main thread's blocking reads on the same pipe fd.
             self.wake_word.reset()
-            self.audio.flush()
         log.info("Wake word %s", "muted" if muted else "unmuted")
 
     def _check_listen_request(self):

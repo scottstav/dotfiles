@@ -3,8 +3,8 @@
 
 # Long-running systemd user services (should stay active)
 SERVICES=(
-    claude-ask
     claude-voice
+    claude-hid
     voice-typing
     dropbox
 )

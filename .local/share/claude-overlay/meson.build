@@ -48,6 +48,8 @@ endforeach
 # Main executable
 executable('claude-overlay',
   'src/main.c',
+  'src/wayland.c',
+  'src/shm.c',
   src_protocols,
   dependencies: [
     dep_wayland_client,

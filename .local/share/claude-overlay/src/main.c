@@ -5,26 +5,11 @@
 #include <poll.h>
 #include "wayland.h"
 #include "config.h"
+#include "render.h"
 
 static volatile sig_atomic_t quit = 0;
 
 static void handle_signal(int sig) { (void)sig; quit = 1; }
-
-/* Convert RGBA (0xRRGGBBAA) to premultiplied ARGB for Wayland */
-static uint32_t rgba_to_premul_argb(uint32_t rgba)
-{
-    uint8_t r = (rgba >> 24) & 0xFF;
-    uint8_t g = (rgba >> 16) & 0xFF;
-    uint8_t b = (rgba >> 8)  & 0xFF;
-    uint8_t a = rgba & 0xFF;
-
-    uint8_t pr = (uint16_t)r * a / 255;
-    uint8_t pg = (uint16_t)g * a / 255;
-    uint8_t pb = (uint16_t)b * a / 255;
-
-    return ((uint32_t)a << 24) | ((uint32_t)pr << 16) |
-           ((uint32_t)pg << 8) | pb;
-}
 
 int main(int argc, char *argv[])
 {
@@ -45,6 +30,9 @@ int main(int argc, char *argv[])
                  "%s/.config/claude-overlay/config", getenv("HOME"));
     config_load(&cfg, config_path);
 
+    struct renderer rend = {0};
+    renderer_init(&rend, &cfg);
+
     struct overlay_state state = {0};
     state.shm_fd = -1;
 
@@ -53,12 +41,15 @@ int main(int argc, char *argv[])
 
     if (!wayland_init(&state)) {
         fprintf(stderr, "Failed to initialize Wayland\n");
+        renderer_cleanup(&rend);
         return EXIT_FAILURE;
     }
 
-    if (!wayland_create_surface(&state, cfg.width, 200, cfg.margin_top)) {
+    uint32_t initial_h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+    if (!wayland_create_surface(&state, cfg.width, initial_h, cfg.margin_top)) {
         fprintf(stderr, "Failed to create surface\n");
         wayland_cleanup(&state);
+        renderer_cleanup(&rend);
         return EXIT_FAILURE;
     }
 
@@ -66,7 +57,10 @@ int main(int argc, char *argv[])
         { .fd = wayland_get_fd(&state), .events = POLLIN },
     };
 
-    uint32_t bg_color = rgba_to_premul_argb(cfg.background);
+    const char *test_text =
+        "Hello from claude-overlay!\n"
+        "This is a test of Pango text rendering with word wrapping "
+        "and a nice rounded rectangle.";
 
     while (!quit && !state.closed) {
         if (state.needs_redraw && state.configured) {
@@ -75,8 +69,9 @@ int main(int argc, char *argv[])
                 break;
             }
 
-            for (uint32_t i = 0; i < state.configured_width * state.configured_height; i++)
-                state.pixels[i] = bg_color;
+            renderer_draw(&rend, &cfg, state.pixels,
+                          state.configured_width, state.configured_height,
+                          test_text, 0.0, 1.0);
 
             wayland_commit(&state);
             state.needs_redraw = false;
@@ -97,6 +92,7 @@ int main(int argc, char *argv[])
         }
     }
 
+    renderer_cleanup(&rend);
     wayland_cleanup(&state);
     return EXIT_SUCCESS;
 }

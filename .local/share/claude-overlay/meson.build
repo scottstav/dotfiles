@@ -51,6 +51,7 @@ executable('claude-overlay',
   'src/wayland.c',
   'src/shm.c',
   'src/config.c',
+  'src/render.c',
   src_protocols,
   dependencies: [
     dep_wayland_client,

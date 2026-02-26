@@ -13,6 +13,7 @@ import os
 import socket
 import threading
 import time
+from pathlib import Path
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,6 +38,23 @@ from wake_word import WakeWordListener
 # ---------------------------------------------------------------------------
 # Socket path helpers
 # ---------------------------------------------------------------------------
+
+LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
+AUTO_REPLY_THRESHOLD_SECS = 60
+
+
+def _read_last_conversation():
+    """Read claude-ask's last.json. Returns conversation_id if recent, else None."""
+    try:
+        data = json.loads(LAST_STATE_FILE.read_text())
+        conv_id = data.get("conversation_id")
+        ts = data.get("timestamp", 0)
+        if conv_id and (time.time() - ts) < AUTO_REPLY_THRESHOLD_SECS:
+            return conv_id
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+    return None
+
 
 def get_control_socket_path():
     """Return path to the claude-voice control socket."""
@@ -151,7 +169,7 @@ class Daemon:
                     continue
                 if self.wake_word.detect(chunk):
                     notify_ack()
-                    self._capture_and_send()
+                    self._capture_and_send(conversation_id=_read_last_conversation())
         except KeyboardInterrupt:
             log.info("Interrupted")
         finally:

@@ -90,7 +90,7 @@ mode=$(printf '%s\n' \
     "screen	${cyan}${bold}  Screen${reset}          ${dim}Screen region + desktop audio${reset}" \
     "webcam	${cyan}${bold}  Webcam${reset}          ${dim}Webcam + microphone with preview${reset}" \
     "combined	${green}${bold}  Screen + Webcam${reset}  ${dim}Combined with circular overlay${reset}" \
-    | fzf "${FZF_PICKER_OPTS[@]}" \
+    | fzf "${FZF_PICKER_OPTS[@]}" --ansi \
         --border-label=' Record ' \
         --prompt='  ' \
         --delimiter='\t' --with-nth=2 \
@@ -129,7 +129,7 @@ get_mics() {
 
 pick_webcam() {
     local sel
-    sel=$(get_webcams | fzf "${FZF_PICKER_OPTS[@]}" \
+    sel=$(get_webcams | fzf "${FZF_PICKER_OPTS[@]}" --ansi \
         --border-label=' Webcam ' \
         --prompt='  ' \
         --delimiter='\t' --with-nth=1)
@@ -139,7 +139,7 @@ pick_webcam() {
 
 pick_mic() {
     local sel
-    sel=$(get_mics | fzf "${FZF_PICKER_OPTS[@]}" \
+    sel=$(get_mics | fzf "${FZF_PICKER_OPTS[@]}" --ansi \
         --border-label=' Microphone ' \
         --prompt='  ' \
         --delimiter='\t' --with-nth=1)

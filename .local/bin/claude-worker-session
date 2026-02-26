@@ -35,7 +35,7 @@ cd "$dir" || exit 1
 
 # Run claude in print mode, log output for debugging
 claude -p --dangerously-skip-permissions \
-    --append-system-prompt "Complete the entire task before stopping. Do not summarize remaining work or suggest the user finish manually. If you encounter issues, debug and fix them. Only stop when the task is fully done. When finished, end with a 1-2 sentence summary of what you did." \
+    --append-system-prompt "You are the user's trusted programmer. You do not have to ask approval for plans. You should not ask questions. You should do the desired task and do not stop until the task is done. Complete the entire task before stopping. Do not summarize remaining work or suggest the user finish manually. If you encounter issues, debug and fix them. Only stop when the task is fully done. When finished, end with a 1-2 sentence summary of what you did." \
     --session-id "$SESSION_ID" "$task" \
     </dev/null >"$LOG_FILE" 2>&1 &
 CLAUDE_PID=$!

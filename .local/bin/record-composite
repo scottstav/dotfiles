@@ -19,13 +19,21 @@ if [[ -f "$webcam" ]]; then
     r=$(( d / 2 ))
     pad=20
 
-    ffmpeg -y -i "$screen" -i "$webcam" -filter_complex "
-[1:v]scale=${d}:${d}:force_original_aspect_ratio=decrease,setsar=1,pad=${d}:${d}:(ow-iw)/2:(oh-ih)/2:color=black@0.0,format=yuva420p,geq=lum='p(X,Y)':a='if(lt(pow(X-${r},2)+pow(Y-${r},2),pow(${r},2)),255,0)'[cam];
+    # Pre-generate a static circle mask instead of running geq per frame
+    mask="/tmp/record-mask-$$.png"
+    ffmpeg -f lavfi -i "color=white:s=${d}x${d},format=gray,geq=lum='if(lt(pow(X-${r},2)+pow(Y-${r},2),pow(${r},2)),255,0)'" \
+        -frames:v 1 -y "$mask" 2>/dev/null
+
+    ffmpeg -y -i "$screen" -i "$webcam" -stream_loop -1 -i "$mask" -filter_complex "
+[1:v]scale=${d}:${d}:force_original_aspect_ratio=decrease,setsar=1,pad=${d}:${d}:(ow-iw)/2:(oh-ih)/2,format=yuva420p[cam_rgb];
+[cam_rgb][2:v]alphamerge[cam];
 [0:v][cam]overlay=main_w-overlay_w-${pad}:main_h-overlay_h-${pad}[vout];
 [0:a][1:a]amix=inputs=2:duration=shortest:dropout_transition=2[aout]
 " -map "[vout]" -map "[aout]" -shortest \
-        -c:v libx264 -crf 23 -preset medium \
-        -c:a aac -b:a 192k "$output"
+        -c:v libx264 -crf 28 -preset veryfast \
+        -c:a aac -b:a 128k "$output"
+
+    rm -f "$mask"
 else
     cp "$screen" "$output"
 fi

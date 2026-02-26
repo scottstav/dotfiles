@@ -27,20 +27,15 @@ wayland_scanner_header = generator(wayland_scanner,
 )
 
 # Protocol sources
+# xdg-shell is required by wlr-layer-shell (references xdg_popup_interface)
 protocol_dir = meson.current_source_dir() / 'protocols'
-
-protocols = [
-  protocol_dir / 'wlr-layer-shell-unstable-v1.xml',
-]
-
-# Also need xdg-shell from wayland-protocols
 wl_protocol_dir = dep_wayland_protocols.get_variable('pkgdatadir')
-protocols += [
-  wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
-]
 
 src_protocols = []
-foreach p : protocols
+foreach p : [
+  protocol_dir / 'wlr-layer-shell-unstable-v1.xml',
+  wl_protocol_dir / 'stable/xdg-shell/xdg-shell.xml',
+]
   src_protocols += wayland_scanner_code.process(p)
   src_protocols += wayland_scanner_header.process(p)
 endforeach

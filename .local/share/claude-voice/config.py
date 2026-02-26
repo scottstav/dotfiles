@@ -19,6 +19,7 @@ DEFAULTS = {
     "speech": {
         "smart_silence": True,
         "silence_timeout": 2.5,
+        "no_speech_timeout": 3.0,
         "force_send_phrases": ["send it", "that's it"],
     },
 }

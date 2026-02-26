@@ -214,6 +214,9 @@ class Daemon:
         self.detector.on_speech_start()
         silence_start = None
         last_interim_time = 0
+        capture_start = time.monotonic()
+        heard_speech = False
+        no_speech_timeout = self.config["speech"]["no_speech_timeout"]
 
         try:
             while True:
@@ -233,7 +236,18 @@ class Daemon:
                         interim_text = transcribe(full_audio, self.whisper_config)
                         self.detector.update_transcript(interim_text)
                         notify_transcription(interim_text)
+                        if interim_text.strip():
+                            heard_speech = True
                     last_interim_time = now
+
+                    # Bail if no words detected after timeout
+                    if not heard_speech and (now - capture_start) >= no_speech_timeout:
+                        log.info("No speech detected after %.1fs, discarding",
+                                 now - capture_start)
+                        self.audio.end_capture()
+                        self._post_capture_reset()
+                        notify_dismiss()
+                        return
 
                     # Check for force-send phrase
                     phrase = self.detector.check_force_send()

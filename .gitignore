@@ -10,3 +10,4 @@ __pycache__/
 /.env.test
 /.env.prod
 /.local/state/
+/.local/share/claude-overlay/.cache/

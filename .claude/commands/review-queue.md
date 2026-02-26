@@ -61,6 +61,8 @@ In a single message, do all of these in parallel:
 
 After all agents complete, present their outputs under clear headers:
 
+**Important:** Store the code reviewer agent's raw output in a variable — the walkthrough data JSON block will be needed if the user selects "Walk through changes" in Step 3.
+
 ```
 ---
 ## PR #{number}: {title} ({owner}/{repo})
@@ -91,7 +93,7 @@ Then use `AskUserQuestion` to present the action menu (max 4 options — the use
 
 - **Approve** — Approve the PR (notes become your review comment)
 - **Request changes** — Request changes (notes become your review comment)
-- **Generate test file** — Create an org-mode test file for manual testing, then return here
+- **Walk through changes** — Interactive file-by-file walkthrough with Emacs integration
 - **Skip** — Move to the next PR without action
 
 The user may also type free-form text via "Other". Interpret their input:
@@ -99,6 +101,8 @@ The user may also type free-form text via "Other". Interpret their input:
 - If it starts with **"dive:"** or is clearly an investigation request (e.g. "verify the update path actually works in user-service", "check if the test coverage handles edge case X", "look at how this interacts with the foo module in ~/projects/bar") — treat it as a research task. See Step 3b.
 - If it says **"stop"** — break out of the loop, proceed to Phase 3.
 - **Anything else** — treat it as a **note**. See Step 3d.
+- If it says **"test file"** or **"generate test file"** — treat as Generate test file request. See Step 3c.
+- If it says **"walk"** or **"walkthrough"** — treat as Walk through changes request. See Step 3e.
 
 ### Step 3b: Deep dive
 
@@ -130,6 +134,68 @@ When the user types free-form text that isn't a deep dive or "stop":
 
 The user can take as many notes as they want. Notes persist across deep dives, test file generation, and other loop-backs within the same PR.
 
+### Step 3e: Walk through changes
+
+When the user selects "Walk through changes":
+
+1. **Parse walkthrough data** from the code reviewer's output. Find the `## Walkthrough Data` section and extract the JSON block.
+
+2. **Display filtered file summary:**
+   ```
+   ### Changed Files ({N} relevant, {M} noise filtered out)
+
+   Filtered out: {comma-separated noise file names}
+
+   | # | File | Change | Findings |
+   |---|------|--------|----------|
+   | 1 | src/path/to/file.ts | modified | 1 CRITICAL |
+   | 2 | src/path/to/other.ts | added | — |
+   ```
+
+   List only relevant files. Show finding counts per file with severity.
+
+3. **Display numbered findings with entry points:**
+   ```
+   ### Findings
+
+   1. [CRITICAL] file.ts:42 — Short description
+      Entry: src/routes/resource.route.ts:15 (POST /api/resource)
+      Trace: Start at POST route → service.create() → hook at :42
+
+   2. [IMPORTANT] service.ts:88 — Short description
+      Entry: src/routes/resource.route.ts:45 (PUT /api/resource/bulk)
+      Trace: PUT route → service.bulkUpdate() → forEach at :88
+   ```
+
+4. **Ask which findings to open** using `AskUserQuestion`:
+   - **Open all entry points** — Opens every finding's entry point in Emacs
+   - **Pick specific** — User types finding numbers (e.g. "1,3") via "Other"
+   - **Done** — Return to Step 3 action menu
+
+5. **For each selected finding, execute the open sequence:**
+
+   a. **Checkout PR branch** (only once per walkthrough, skip if already on it):
+      ```bash
+      cd ~/projects/{repo} && git fetch origin {prBranch} && git checkout {prBranch}
+      ```
+      If `~/projects/{repo}` doesn't exist, display a warning: `"Local repo not found at ~/projects/{repo}. Skipping Emacs open."` and skip the open steps.
+
+   b. **Open entry point in Emacs:**
+      ```bash
+      emacsclient -c +{entryPoint.line} ~/projects/{repo}/{entryPoint.file}
+      ```
+
+   c. **Display trace description:**
+      ```
+      Opened {entryPoint.file}:{entryPoint.line} ({entryPoint.label})
+
+      What to trace: {traceDescription}
+      ```
+
+   d. Repeat for each selected finding. Open each in a separate Emacs frame.
+
+6. **Return to Step 3** — re-display notes and action menu. The user can walk through again, take notes, deep dive, or choose a final action.
+
 ### Step 4: Execute action
 
 Based on the user's choice:
@@ -138,7 +204,7 @@ Based on the user's choice:
   1. If the user has accumulated notes, compose a draft review comment from them — format the notes into a clean, readable review body (bulleted list or paragraphs as appropriate).
   2. Present the draft to the user and ask if they want to use it as-is, edit it (via "Other"), or submit with no comment.
   3. Submit via `mcp__github__pull_request_review_write(method="create", owner=owner, repo=repo, pullNumber=number, event="APPROVE"|"REQUEST_CHANGES", body=message)`. If no comment desired, omit `body`.
-- **Generate test file**: See Step 3c — loops back to Step 3 after generating the file.
+- **Walk through changes**: See Step 3e — loops back to Step 3 after the walkthrough.
 - **Skip**:
   1. Use `AskUserQuestion` to confirm: "Skip PR #{number} ({title}) without taking action?" with options:
      - **Yes, skip** — Continue to next PR
@@ -173,5 +239,5 @@ Total: N PRs reviewed, X approved, Y changes requested, Z skipped
 - Parse `owner` and `repo` from the `repository_url` field of each search result.
 - If a search result doesn't have `repository_url`, try extracting owner/repo from `html_url` (format: `https://github.com/{owner}/{repo}/pull/{number}`).
 - For actions that need a message (approve with comments, request changes), use AskUserQuestion to get the message text from the user AFTER they select the action.
-- Deep dives, test file generation, and notes all loop back to the action menu — the user can deep dive, generate test files, take notes, and do manual testing as many times as they want before choosing a final action on the PR.
+- Deep dives, test file generation, walkthroughs, and notes all loop back to the action menu — the user can deep dive, generate test files, walk through changes, take notes, and do manual testing as many times as they want before choosing a final action on the PR.
 - Maintain a notes list per PR. Clear it when moving to the next PR. **CRITICAL: ALWAYS display accumulated notes under a `### Your Notes` header IMMEDIATELY before the `AskUserQuestion` call on EVERY loop-back to Step 3 — including after deep dives, test file generation, and note-taking. Never omit notes even if there is a lot of other output above.**

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Claude-voice daemon: wake word detection + voice capture + STT.
+"""Claude-voice daemon: wake word detection + voice capture + query pipeline.
 
 Listens for the wake word (or an external trigger via the control socket),
-captures speech, transcribes it with Whisper, and sends the text to the
-claude-ask daemon over its Unix socket.
+captures speech, transcribes it with Whisper, and runs queries directly
+via the query pipeline helpers in claude-ask/query.py.
 """
 
 import asyncio
@@ -11,7 +11,7 @@ import json
 import logging
 import os
 import re
-import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -35,63 +35,23 @@ from speech_detector import SpeechEndDetector
 from stt import transcribe
 from wake_word import WakeWordListener
 
+# Add claude-ask helpers to import path
+sys.path.insert(0, str(Path.home() / ".local" / "share" / "claude-ask"))
+from query import send_query, NEW_CONVERSATION
+
 
 # ---------------------------------------------------------------------------
-# Socket path helpers
+# Constants
 # ---------------------------------------------------------------------------
-
-LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
-AUTO_REPLY_THRESHOLD_SECS = 60
 
 # Strip wake word remnants ("ok computer", "computer") from transcription start
 _WAKE_WORD_RE = re.compile(r'^(ok\s+)?computer[.,!?\s:]*', re.IGNORECASE)
-
-
-def _read_last_conversation():
-    """Read claude-ask's last.json. Returns conversation_id if recent, else None."""
-    try:
-        data = json.loads(LAST_STATE_FILE.read_text())
-        conv_id = data.get("conversation_id")
-        ts = data.get("timestamp", 0)
-        if conv_id and (time.time() - ts) < AUTO_REPLY_THRESHOLD_SECS:
-            return conv_id
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        pass
-    return None
 
 
 def get_control_socket_path():
     """Return path to the claude-voice control socket."""
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
     return os.path.join(runtime_dir, "claude-voice.sock")
-
-
-def get_claude_ask_socket_path():
-    """Return path to the claude-ask daemon socket."""
-    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
-    return os.path.join(runtime_dir, "claude-ask.sock")
-
-
-# ---------------------------------------------------------------------------
-# Send transcribed text to claude-ask
-# ---------------------------------------------------------------------------
-
-def send_to_claude_ask(text, conversation_id=None):
-    """Send transcribed text to the claude-ask daemon via its Unix socket."""
-    sock_path = get_claude_ask_socket_path()
-    payload = {"text": text}
-    if conversation_id:
-        payload["conversation_id"] = conversation_id
-
-    log.info("Sending to claude-ask: %r (conv=%s)", text[:80], conversation_id or "new")
-    try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(sock_path)
-        sock.sendall(json.dumps(payload).encode("utf-8"))
-        sock.close()
-        log.info("Sent successfully")
-    except Exception:
-        log.exception("Failed to send to claude-ask at %s", sock_path)
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +86,8 @@ class Daemon:
         self._listen_request = None  # dict or None
         self._muted = False  # When True, wake word detections are ignored
         self._lock = threading.Lock()
+        self._cancel_event: threading.Event | None = None
+        self._cancel_lock = threading.Lock()
 
     # ------------------------------------------------------------------
     # Control socket interface
@@ -155,6 +117,41 @@ class Daemon:
             req = self._listen_request
             self._listen_request = None
             return req
+
+    # ------------------------------------------------------------------
+    # Query dispatch
+    # ------------------------------------------------------------------
+
+    def _start_query_thread(self, text, conversation_id=None, image=None, file=None):
+        """Spawn a query in a background thread with a cancel_event."""
+        cancel_event = threading.Event()
+        with self._cancel_lock:
+            # Cancel any existing query first
+            if self._cancel_event is not None:
+                self._cancel_event.set()
+            self._cancel_event = cancel_event
+
+        def _run():
+            try:
+                send_query(text, conversation_id=conversation_id,
+                           cancel_event=cancel_event, image=image, file=file)
+            finally:
+                with self._cancel_lock:
+                    if self._cancel_event is cancel_event:
+                        self._cancel_event = None
+
+        thread = threading.Thread(target=_run, daemon=True)
+        thread.start()
+        log.info("Query thread started (conv=%s)", conversation_id or "auto")
+
+    def cancel_query(self):
+        """Cancel the currently running query."""
+        with self._cancel_lock:
+            if self._cancel_event is not None:
+                self._cancel_event.set()
+                log.info("Query cancelled")
+            else:
+                log.info("No query to cancel")
 
     # ------------------------------------------------------------------
     # Post-capture cleanup
@@ -196,10 +193,7 @@ class Daemon:
                     continue
                 if self.wake_word.detect(chunk):
                     notify_ack()
-                    self._capture_and_send(
-                        conversation_id=_read_last_conversation(),
-                        skip_pre_roll=True,
-                    )
+                    self._capture_and_send(skip_pre_roll=True)
         except KeyboardInterrupt:
             log.info("Interrupted")
         finally:
@@ -211,7 +205,7 @@ class Daemon:
     # ------------------------------------------------------------------
 
     def _capture_and_send(self, conversation_id=None, skip_pre_roll=False):
-        """Capture speech, transcribe, and send to claude-ask."""
+        """Capture speech, transcribe, and send query."""
         notify_listening()
         self.audio.begin_capture(skip_pre_roll=skip_pre_roll)
         self.detector.on_speech_start()
@@ -249,7 +243,7 @@ class Daemon:
                             final_text = _WAKE_WORD_RE.sub('', final_text).strip()
                         if final_text.strip():
                             notify_sending()
-                            send_to_claude_ask(final_text.strip(), conversation_id)
+                            self._start_query_thread(final_text.strip(), conversation_id)
                         else:
                             notify_dismiss()
                         self._post_capture_reset()
@@ -285,7 +279,7 @@ class Daemon:
             notify_transcription(final_text.strip())
             time.sleep(3)
             notify_sending()
-            send_to_claude_ask(final_text.strip(), conversation_id)
+            self._start_query_thread(final_text.strip(), conversation_id)
         else:
             log.info("Empty transcription, discarding")
             notify_dismiss()
@@ -299,7 +293,13 @@ class Daemon:
 async def handle_control_client(daemon, reader, writer):
     """Handle a single control socket connection."""
     try:
-        data = await reader.read(4096)
+        chunks = []
+        while True:
+            chunk = await reader.read(65536)
+            if not chunk:
+                break
+            chunks.append(chunk)
+        data = b"".join(chunks)
         if not data:
             return
 
@@ -331,6 +331,29 @@ async def handle_control_client(daemon, reader, writer):
                 await writer.drain()
             except Exception:
                 pass
+        elif action == "query":
+            text = msg.get("text", "").strip()
+            if not text:
+                log.warning("Control socket: empty query text")
+            else:
+                raw_conv = msg.get("conversation_id")
+                if raw_conv == "__new__":
+                    conv_id = NEW_CONVERSATION
+                else:
+                    conv_id = raw_conv  # str or None
+                image = msg.get("image")
+                file = msg.get("file")
+                daemon._start_query_thread(text, conversation_id=conv_id,
+                                            image=image, file=file)
+                log.info("Control socket: query (conv=%s)", raw_conv or "auto")
+        elif action == "cancel":
+            daemon.cancel_query()
+            log.info("Control socket: cancel")
+        elif action == "stop_tts":
+            from query import _get_tts, _get_waybar
+            _get_tts().stop()
+            _get_waybar().set_status("idle")
+            log.info("Control socket: stop_tts")
         else:
             log.warning("Control socket: unknown action %r", action)
 

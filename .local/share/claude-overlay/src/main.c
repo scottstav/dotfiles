@@ -1,15 +1,38 @@
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 #include <poll.h>
+#include <unistd.h>
+#include <sys/timerfd.h>
 #include "wayland.h"
 #include "config.h"
 #include "render.h"
+#include "socket.h"
+#include "animation.h"
 
 static volatile sig_atomic_t quit = 0;
 
 static void handle_signal(int sig) { (void)sig; quit = 1; }
+
+static void arm_timer(int fd, bool on)
+{
+    struct itimerspec ts = {0};
+    if (on) {
+        ts.it_interval.tv_nsec = 16666667;  /* ~60fps */
+        ts.it_value.tv_nsec = 16666667;
+    }
+    timerfd_settime(fd, 0, &ts, NULL);
+}
+
+static void ensure_timer(int fd, bool *armed)
+{
+    if (!*armed) {
+        arm_timer(fd, true);
+        *armed = true;
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -45,25 +68,61 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    uint32_t initial_h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
-    if (!wayland_create_surface(&state, cfg.width, initial_h, cfg.margin_top)) {
-        fprintf(stderr, "Failed to create surface\n");
-        wayland_cleanup(&state);
+    /* Do NOT create surface on startup -- wait for commands */
+
+    /* Build socket path */
+    char sock_path[512];
+    if (cfg.socket_path[0]) {
+        snprintf(sock_path, sizeof(sock_path), "%s", cfg.socket_path);
+    } else {
+        const char *runtime_dir = getenv("XDG_RUNTIME_DIR");
+        if (!runtime_dir) {
+            fprintf(stderr, "XDG_RUNTIME_DIR not set\n");
+            renderer_cleanup(&rend);
+            wayland_cleanup(&state);
+            return EXIT_FAILURE;
+        }
+        snprintf(sock_path, sizeof(sock_path), "%s/claude-overlay.sock",
+                 runtime_dir);
+    }
+
+    struct socket_server srv = {0};
+    srv.client_fd = -1;
+    if (!socket_init(&srv, sock_path)) {
+        fprintf(stderr, "Failed to create socket at %s\n", sock_path);
         renderer_cleanup(&rend);
+        wayland_cleanup(&state);
         return EXIT_FAILURE;
     }
 
-    struct pollfd fds[1] = {
-        { .fd = wayland_get_fd(&state), .events = POLLIN },
-    };
+    /* Create timerfd for animations (~60fps) */
+    int timer_fd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK);
+    if (timer_fd < 0) {
+        perror("timerfd_create");
+        socket_cleanup(&srv);
+        renderer_cleanup(&rend);
+        wayland_cleanup(&state);
+        return EXIT_FAILURE;
+    }
 
-    const char *test_text =
-        "Hello from claude-overlay!\n"
-        "This is a test of Pango text rendering with word wrapping "
-        "and a nice rounded rectangle.";
+    /* Animation state */
+    struct animation scroll_anim = { .current = 0.0 };
+    struct animation fade_anim = { .current = 1.0 };
+    bool timer_armed = false;
+
+    struct pollfd fds[4]; /* wayland, timer, socket_listen, socket_client */
+    fds[0].fd = wayland_get_fd(&state);
+    fds[0].events = POLLIN;
+    fds[1].fd = timer_fd;
+    fds[1].events = POLLIN;
+
+    /* Text accumulation buffer */
+    char text_buf[65536] = {0};
+    size_t text_len = 0;
 
     while (!quit && !state.closed) {
-        if (state.needs_redraw && state.configured) {
+        /* Only redraw when surface is visible and configured */
+        if (state.needs_redraw && state.surface_visible && state.configured) {
             if (!wayland_alloc_buffer(&state)) {
                 fprintf(stderr, "Failed to allocate buffer\n");
                 break;
@@ -71,16 +130,18 @@ int main(int argc, char *argv[])
 
             renderer_draw(&rend, &cfg, state.pixels,
                           state.configured_width, state.configured_height,
-                          test_text, 0.0, 1.0);
+                          text_buf, scroll_anim.current, fade_anim.current);
 
             wayland_commit(&state);
             state.needs_redraw = false;
         }
 
+        int nfds = 2 + socket_get_fds(&srv, fds, 2);
+
         wl_display_flush(state.display);
 
-        if (poll(fds, 1, -1) < 0) {
-            if (quit)
+        if (poll(fds, nfds, -1) < 0) {
+            if (quit || errno == EINTR)
                 break;
             perror("poll");
             break;
@@ -90,8 +151,199 @@ int main(int argc, char *argv[])
             if (!wayland_dispatch(&state))
                 break;
         }
+
+        /* Handle timer tick for animations */
+        if (fds[1].revents & POLLIN) {
+            uint64_t expirations;
+            read(timer_fd, &expirations, sizeof(expirations));
+
+            uint64_t now = anim_now_ms();
+            bool scroll_active = anim_update(&scroll_anim, now);
+            bool fade_active = anim_update(&fade_anim, now);
+
+            if (scroll_active || fade_active) {
+                state.needs_redraw = true;
+            } else {
+                /* Both animations done -- disarm timer */
+                arm_timer(timer_fd, false);
+                timer_armed = false;
+
+                /* If fade completed (opacity ~0), destroy surface */
+                if (fade_anim.current <= 0.01 && state.surface_visible) {
+                    wayland_destroy_surface(&state);
+                }
+            }
+        }
+
+        struct overlay_command cmd = {0};
+        socket_process(&srv, fds, 2, &cmd);
+
+        if (cmd.cmd == CMD_NONE)
+            continue;
+
+        switch (cmd.cmd) {
+        case CMD_OPEN:
+            text_buf[0] = '\0';
+            text_len = 0;
+            /* Cancel fade, reset opacity */
+            fade_anim.current = 1.0;
+            fade_anim.active = false;
+            /* Reset scroll */
+            scroll_anim.current = 0.0;
+            scroll_anim.active = false;
+            if (!state.surface_visible) {
+                uint32_t h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+                if (!wayland_create_surface(&state, cfg.width, h, cfg.margin_top)) {
+                    fprintf(stderr, "Failed to create surface on CMD_OPEN\n");
+                    break;
+                }
+            }
+            state.needs_redraw = true;
+            break;
+
+        case CMD_TEXT:
+            /* Append text data to buffer */
+            {
+                size_t chunk_len = strlen(cmd.data);
+                if (text_len + chunk_len < sizeof(text_buf) - 1) {
+                    memcpy(text_buf + text_len, cmd.data, chunk_len);
+                    text_len += chunk_len;
+                    text_buf[text_len] = '\0';
+                }
+            }
+            /* Implicit open if surface not visible */
+            if (!state.surface_visible) {
+                /* Cancel any lingering fade */
+                fade_anim.current = 1.0;
+                fade_anim.active = false;
+                scroll_anim.current = 0.0;
+                scroll_anim.active = false;
+                uint32_t h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+                if (!wayland_create_surface(&state, cfg.width, h, cfg.margin_top)) {
+                    fprintf(stderr, "Failed to create surface on CMD_TEXT\n");
+                    break;
+                }
+            }
+            /* Resize surface if text height changed */
+            {
+                int content_h = renderer_measure(&rend, &cfg, text_buf);
+                uint32_t max_h = cfg.padding_y * 2
+                    + (uint32_t)rend.line_height * cfg.max_lines;
+                uint32_t target_h = (uint32_t)content_h + cfg.padding_y * 2;
+                if (target_h > max_h)
+                    target_h = max_h;
+                uint32_t min_h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+                if (target_h < min_h)
+                    target_h = min_h;
+                if (target_h != state.height && state.layer_surface) {
+                    zwlr_layer_surface_v1_set_size(state.layer_surface,
+                                                   cfg.width, target_h);
+                    wl_surface_commit(state.surface);
+                    state.height = target_h;
+                    /* Configure callback will set needs_redraw */
+                }
+            }
+            /* Compute scroll target */
+            {
+                int content_h = renderer_measure(&rend, &cfg, text_buf);
+                uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
+                if ((uint32_t)content_h > visible_h) {
+                    double new_target = (double)(content_h - (int)visible_h);
+                    if (new_target != scroll_anim.target || !scroll_anim.active) {
+                        anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
+                        ensure_timer(timer_fd, &timer_armed);
+                    }
+                }
+            }
+            state.needs_redraw = true;
+            break;
+
+        case CMD_DONE:
+            anim_set_target(&fade_anim, 0.0, cfg.fade_duration);
+            ensure_timer(timer_fd, &timer_armed);
+            state.needs_redraw = true;
+            break;
+
+        case CMD_CLEAR:
+            text_buf[0] = '\0';
+            text_len = 0;
+            fade_anim.current = 1.0;
+            fade_anim.active = false;
+            scroll_anim.current = 0.0;
+            scroll_anim.active = false;
+            if (timer_armed) {
+                arm_timer(timer_fd, false);
+                timer_armed = false;
+            }
+            if (state.surface_visible)
+                wayland_destroy_surface(&state);
+            break;
+
+        case CMD_REPLACE:
+            text_buf[0] = '\0';
+            text_len = 0;
+            {
+                size_t chunk_len = strlen(cmd.data);
+                if (chunk_len < sizeof(text_buf) - 1) {
+                    memcpy(text_buf, cmd.data, chunk_len);
+                    text_len = chunk_len;
+                    text_buf[text_len] = '\0';
+                }
+            }
+            if (!state.surface_visible) {
+                fade_anim.current = 1.0;
+                fade_anim.active = false;
+                scroll_anim.current = 0.0;
+                scroll_anim.active = false;
+                uint32_t h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+                if (!wayland_create_surface(&state, cfg.width, h, cfg.margin_top)) {
+                    fprintf(stderr, "Failed to create surface on CMD_REPLACE\n");
+                    break;
+                }
+            }
+            /* Resize surface for new content */
+            {
+                int content_h = renderer_measure(&rend, &cfg, text_buf);
+                uint32_t max_h = cfg.padding_y * 2
+                    + (uint32_t)rend.line_height * cfg.max_lines;
+                uint32_t target_h = (uint32_t)content_h + cfg.padding_y * 2;
+                if (target_h > max_h)
+                    target_h = max_h;
+                uint32_t min_h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
+                if (target_h < min_h)
+                    target_h = min_h;
+                if (target_h != state.height && state.layer_surface) {
+                    zwlr_layer_surface_v1_set_size(state.layer_surface,
+                                                   cfg.width, target_h);
+                    wl_surface_commit(state.surface);
+                    state.height = target_h;
+                }
+            }
+            /* Compute scroll target for replaced content */
+            {
+                int content_h = renderer_measure(&rend, &cfg, text_buf);
+                uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
+                if ((uint32_t)content_h > visible_h) {
+                    double new_target = (double)(content_h - (int)visible_h);
+                    if (new_target != scroll_anim.target || !scroll_anim.active) {
+                        anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
+                        ensure_timer(timer_fd, &timer_armed);
+                    }
+                } else {
+                    scroll_anim.current = 0.0;
+                    scroll_anim.active = false;
+                }
+            }
+            state.needs_redraw = true;
+            break;
+
+        case CMD_NONE:
+            break;
+        }
     }
 
+    close(timer_fd);
+    socket_cleanup(&srv);
     renderer_cleanup(&rend);
     wayland_cleanup(&state);
     return EXIT_SUCCESS;

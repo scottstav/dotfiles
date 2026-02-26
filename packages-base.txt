@@ -125,6 +125,8 @@ python-pipx
 python-rich
 python-lsp-server
 clang
+meson
+wlr-protocols
 
 # CLI utilities
 fd

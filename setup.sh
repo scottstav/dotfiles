@@ -511,6 +511,36 @@ for svc in claude-voice.service claude-hid.service; do
 done
 
 # ------------------------------------------------------------------
+# 9b. Claude Overlay (Wayland streaming text overlay)
+# ------------------------------------------------------------------
+step "Claude Overlay"
+
+OVERLAY_DIR="$HOME/.local/share/claude-overlay"
+OVERLAY_BIN="$HOME/.local/bin/claude-overlay"
+
+if [ -f "$OVERLAY_DIR/meson.build" ]; then
+    if [ ! -d "$OVERLAY_DIR/build" ]; then
+        meson setup "$OVERLAY_DIR/build" "$OVERLAY_DIR"
+        ok "meson configured"
+    else
+        skip "meson already configured"
+    fi
+
+    ninja -C "$OVERLAY_DIR/build"
+    cp "$OVERLAY_DIR/build/claude-overlay" "$OVERLAY_BIN"
+    ok "claude-overlay built and installed"
+
+    if systemctl --user is-enabled claude-overlay.service &>/dev/null; then
+        ok "claude-overlay.service already enabled"
+    else
+        systemctl --user enable claude-overlay.service
+        ok "claude-overlay.service enabled"
+    fi
+else
+    warn "claude-overlay source not found"
+fi
+
+# ------------------------------------------------------------------
 # 10. Voice typing
 # ------------------------------------------------------------------
 step "Voice typing setup"

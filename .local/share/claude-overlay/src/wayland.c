@@ -104,7 +104,8 @@ bool wayland_init(struct overlay_state *state)
 }
 
 bool wayland_create_surface(struct overlay_state *state,
-                            uint32_t width, uint32_t height)
+                            uint32_t width, uint32_t height,
+                            uint32_t margin_top)
 {
     state->width = width;
     state->height = height;
@@ -131,8 +132,7 @@ bool wayland_create_surface(struct overlay_state *state,
     /* -1 exclusive zone = don't reserve space, don't push others */
     zwlr_layer_surface_v1_set_exclusive_zone(state->layer_surface, -1);
 
-    /* Margin below waybar (8px for now, will be configurable) */
-    zwlr_layer_surface_v1_set_margin(state->layer_surface, 8, 0, 0, 0);
+    zwlr_layer_surface_v1_set_margin(state->layer_surface, margin_top, 0, 0, 0);
 
     zwlr_layer_surface_v1_set_size(state->layer_surface, width, height);
     zwlr_layer_surface_v1_add_listener(state->layer_surface,

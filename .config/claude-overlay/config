@@ -1,0 +1,28 @@
+# Claude Overlay Configuration
+# All values are optional — defaults are compiled in.
+
+# Font (Pango font description)
+# font = Sans 13
+
+# Colors (RGBA hex: #RRGGBBAA or #RRGGBB)
+# background = #1a1a2ee6
+# text_color = #e0e0e0ff
+# border_color = #333355ff
+
+# Dimensions (pixels)
+# width = 600
+# max_lines = 12
+# padding_x = 12
+# padding_y = 8
+# corner_radius = 8
+# border_width = 1
+
+# Position
+# margin_top = 0
+
+# Animation (milliseconds)
+# scroll_duration = 150
+# fade_duration = 500
+
+# Socket path (default: $XDG_RUNTIME_DIR/claude-overlay.sock)
+# socket_path =

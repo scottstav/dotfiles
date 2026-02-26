@@ -38,7 +38,6 @@ TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
-NOTIFY_DEBOUNCE_SECS = 0.2
 AUTO_REPLY_THRESHOLD_SECS = 60
 
 TOKEN_PRICES = {
@@ -269,6 +268,38 @@ def notify(tag: str, text: str):
     )
 
 
+def _connect_overlay():
+    """Connect to the claude-overlay Unix socket. Returns socket or None."""
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    sock_path = os.path.join(runtime_dir, "claude-overlay.sock")
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(sock_path)
+        return sock
+    except (ConnectionRefusedError, FileNotFoundError, OSError):
+        return None
+
+
+def _overlay_send(sock, msg):
+    """Send a JSON-line command to the overlay. Swallows errors."""
+    if sock is None:
+        return
+    try:
+        sock.sendall((json.dumps(msg) + "\n").encode("utf-8"))
+    except (BrokenPipeError, OSError):
+        pass
+
+
+def _overlay_close(sock):
+    """Close overlay socket, ignoring errors."""
+    if sock is None:
+        return
+    try:
+        sock.close()
+    except OSError:
+        pass
+
+
 def _voice_control(action: str, **extra):
     """Send a control command to the claude-voice daemon."""
     runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
@@ -379,8 +410,8 @@ def auto_resolve_conversation():
 # ---------------------------------------------------------------------------
 
 def stream_response(messages: list, tag: str, cancel_event: threading.Event | None = None,
-                    prior_text: str = "") -> tuple:
-    """Call Claude API with streaming, update notifications and TTS.
+                    prior_text: str = "", overlay_sock=None) -> tuple:
+    """Call Claude API with streaming, update overlay and TTS.
 
     Returns (response, accumulated_text).
     """
@@ -399,13 +430,13 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
         api_kwargs["tools"] = tools
 
     accumulated_text = prior_text
-    last_notify_time = 0.0
     sentence_buf = SentenceBuffer()
     speak_on = waybar.speak_enabled
 
     with client.messages.stream(**api_kwargs) as stream:
         for event in stream:
             if cancel_event and cancel_event.is_set():
+                _overlay_send(overlay_sock, {"cmd": "clear"})
                 stream.close()
                 break
             if event.type == "content_block_delta":
@@ -416,10 +447,10 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
                         for sentence in sentence_buf.add(event.delta.text):
                             tts.speak(sentence)
 
-                    now = time.monotonic()
-                    if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
-                        notify(tag, accumulated_text)
-                        last_notify_time = now
+                    _overlay_send(overlay_sock, {
+                        "cmd": "text",
+                        "data": event.delta.text,
+                    })
 
         response = stream.get_final_message()
 
@@ -486,11 +517,14 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
 
     tools_used = []
     full_text = ""
+    overlay_sock = _connect_overlay()
+    _overlay_send(overlay_sock, {"cmd": "open"})
 
     try:
         while True:
             response, full_text = stream_response(
-                conv["messages"], tag, cancel_event=cancel_event, prior_text=full_text,
+                conv["messages"], tag, cancel_event=cancel_event,
+                prior_text=full_text, overlay_sock=overlay_sock,
             )
             _log_usage(response)
 
@@ -545,8 +579,8 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
             tool_names = " \u2192 ".join(b.name for b in tool_use_blocks)
             if full_text:
                 full_text += "\n\n"
-            full_text += f"<small>{tool_names}</small>\n\n"
-            notify(tag, full_text)
+            full_text += f"{tool_names}\n\n"
+            _overlay_send(overlay_sock, {"cmd": "replace", "data": full_text})
             if waybar.speak_enabled:
                 waybar.set_status("speaking")
             else:
@@ -572,11 +606,17 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
             daemon=True,
         ).start()
 
+        # Fade out overlay
+        _overlay_send(overlay_sock, {"cmd": "done"})
+        _overlay_close(overlay_sock)
+
         # Final notification
         notify_final(tag, full_text, conv["id"], arch, tools_used=tools_used or None)
 
     except anthropic.APIError as e:
         log.error("API error: %s", e)
+        _overlay_send(overlay_sock, {"cmd": "clear"})
+        _overlay_close(overlay_sock)
         notify(tag, f"API error: {e}")
         tts.stop()
         _voice_control("unmute")
@@ -584,6 +624,8 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         _store.save(conv)
     except Exception:
         log.exception("Unexpected error during query")
+        _overlay_send(overlay_sock, {"cmd": "clear"})
+        _overlay_close(overlay_sock)
         notify(tag, "Unexpected error (check logs)")
         tts.stop()
         _voice_control("unmute")

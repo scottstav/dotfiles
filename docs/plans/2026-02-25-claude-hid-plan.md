@@ -370,24 +370,13 @@ python3.11 -m venv "$CH_DIR/.venv"
 "$CH_DIR/.venv/bin/pip" install -q -r "$CH_DIR/requirements.txt"
 ```
 
-**Step 3: Test device detection (dry run)**
+**Step 3: Test daemon starts and idles gracefully**
 
 ```bash
-"$CH_DIR/.venv/bin/python3" -c "
-from daemon import find_devices, load_config
-bindings = load_config()
-devices = find_devices(bindings)
-for dev, blist in devices:
-    print(f'Found: {dev.name} ({dev.path})')
-    for b in blist:
-        print(f'  {b[\"key_name\"]} → {b[\"action\"]}')
-    dev.close()
-if not devices:
-    print('No matching devices found (mic not plugged in?)')
-"
+timeout 5 "$CH_DIR/.venv/bin/python3" "$CH_DIR/daemon.py" 2>&1 || true
 ```
 
-Run from: `cd ~/.local/share/claude-hid`
+Expected: logs showing "Loaded 1 binding(s)" and either device matched or "No matching devices found, waiting for hot-plug..."
 
 **Step 4: Enable and start the service**
 
@@ -404,11 +393,11 @@ systemctl --user status claude-hid.service
 journalctl --user -u claude-hid -f
 ```
 
-Expected: either "Matched device: ..." + "Grabbed ..." if mic is plugged in, or "No matching devices found, waiting for hot-plug..." if not.
+Expected: active (running), appropriate log messages.
 
 **Step 6: Live test (if mic plugged in)**
 
-Press the record button on the Lark A1 while watching `journalctl`. Expected log:
+Press the record button on the Lark A1 while watching `journalctl`. Expected:
 ```
 KEY_VOLUMEDOWN → claude-voice-listen
 Sent listen request to claude-voice

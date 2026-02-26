@@ -3,7 +3,7 @@
 
 STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
 CONFIG_FILE="$HOME/.config/claude-ask/config.toml"
-SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-ask.sock"
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-voice.sock"
 
 if [ ! -f "$STATE_FILE" ]; then
     echo "claude-ask not running" >&2
@@ -13,13 +13,7 @@ fi
 # If currently speaking, stop TTS instead of toggling
 status=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('status',''))")
 if [ "$status" = "speaking" ]; then
-    python3 -c "
-import socket, json
-sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-sock.connect('$SOCK')
-sock.sendall(json.dumps({'action': 'stop_tts'}).encode())
-sock.close()
-"
+    echo '{"action":"stop_tts"}' | socat - UNIX-CONNECT:"$SOCK"
     pkill -SIGRTMIN+12 waybar 2>/dev/null
     exit 0
 fi

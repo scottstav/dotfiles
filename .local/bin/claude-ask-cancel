@@ -1,4 +1,4 @@
 #!/bin/bash
 # Cancel any running claude-ask query.
-SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-ask.sock"
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-voice.sock"
 echo '{"action":"cancel"}' | socat - UNIX-CONNECT:"$SOCK"

@@ -14,6 +14,8 @@ struct overlay_state {
     struct wl_shm *shm;
     struct zwlr_layer_shell_v1 *layer_shell;
     struct wl_output *output;
+    struct wl_seat *seat;
+    struct wl_pointer *pointer;
 
     /* Surface */
     struct wl_surface *surface;
@@ -34,6 +36,11 @@ struct overlay_state {
     /* Scale (detected from wl_output) */
     int32_t scale;
 
+    /* Pointer / scroll input */
+    double pending_scroll_delta;
+    bool pointer_over;
+    bool input_enabled;
+
     /* State flags */
     bool surface_visible;
     bool configured;
@@ -49,5 +56,6 @@ void wayland_commit(struct overlay_state *state);
 void wayland_cleanup(struct overlay_state *state);
 int wayland_get_fd(struct overlay_state *state);
 bool wayland_dispatch(struct overlay_state *state);
+void wayland_set_input_enabled(struct overlay_state *state, bool enabled);
 
 #endif

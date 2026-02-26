@@ -235,11 +235,29 @@ void renderer_draw(struct renderer *r, const struct overlay_config *cfg,
 
         g_object_unref(layout);
 
-        /* Bottom fade: erase text near the bottom edge for a soft fade-out.
-         * Only apply when content exceeds visible area. */
+        /* Edge fades: soft fade at top/bottom when content is clipped */
         int content_text_h = renderer_measure(r, cfg, text);
         uint32_t visible_h = (uint32_t)r->line_height * cfg->max_lines;
-        if ((uint32_t)content_text_h > visible_h) {
+        double max_scroll = content_text_h > (int)visible_h
+            ? (double)(content_text_h - (int)visible_h) : 0.0;
+
+        /* Top fade when scrolled down (content above) */
+        if (scroll_y > 1.0) {
+            double fade_h = 24.0;
+            cairo_set_operator(cr, CAIRO_OPERATOR_DEST_OUT);
+            cairo_pattern_t *fade = cairo_pattern_create_linear(
+                0, py, 0, py + fade_h);
+            cairo_pattern_add_color_stop_rgba(fade, 0.0, 0, 0, 0, 1.0);
+            cairo_pattern_add_color_stop_rgba(fade, 1.0, 0, 0, 0, 0.0);
+            cairo_set_source(cr, fade);
+            cairo_rectangle(cr, px, py, content_w, fade_h);
+            cairo_fill(cr);
+            cairo_pattern_destroy(fade);
+            cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
+        }
+
+        /* Bottom fade when more content below */
+        if (scroll_y < max_scroll - 1.0) {
             double fade_h = 24.0;
             double fade_top = py + content_h - fade_h;
             cairo_set_operator(cr, CAIRO_OPERATOR_DEST_OUT);

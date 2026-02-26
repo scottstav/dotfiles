@@ -120,6 +120,9 @@ int main(int argc, char *argv[])
     char text_buf[65536] = {0};
     size_t text_len = 0;
 
+    /* User scroll state: when true, auto-scroll-to-bottom is paused */
+    bool user_scrolling = false;
+
     while (!quit && !state.closed) {
         /* Only redraw when surface is visible and configured */
         if (state.needs_redraw && state.surface_visible && state.configured) {
@@ -153,6 +156,38 @@ int main(int argc, char *argv[])
         if (fds[0].revents & POLLIN) {
             if (!wayland_dispatch(&state))
                 break;
+        }
+
+        /* --- Process user scroll input --- */
+        if (state.pending_scroll_delta != 0.0 && state.surface_visible) {
+            double delta = state.pending_scroll_delta;
+            state.pending_scroll_delta = 0.0;
+
+            int content_h = renderer_measure(&rend, &cfg, text_buf);
+            uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
+            double max_scroll = content_h > (int)visible_h
+                ? (double)(content_h - (int)visible_h) : 0.0;
+
+            double new_pos = scroll_anim.current + delta;
+            if (new_pos < 0.0) new_pos = 0.0;
+            if (new_pos > max_scroll) new_pos = max_scroll;
+
+            scroll_anim.current = new_pos;
+            scroll_anim.target = new_pos;
+            scroll_anim.active = false;
+
+            /* If user scrolled away from bottom, pause auto-scroll */
+            user_scrolling = (new_pos < max_scroll - 5.0);
+
+            /* If user scrolls during fade-out, cancel the fade */
+            if (fade_anim.active && fade_anim.target < 0.5) {
+                fade_anim.current = 1.0;
+                fade_anim.active = false;
+            }
+
+            state.needs_redraw = true;
+        } else {
+            state.pending_scroll_delta = 0.0;
         }
 
         /* Handle timer tick for animations */
@@ -194,6 +229,7 @@ int main(int argc, char *argv[])
             /* Reset scroll */
             scroll_anim.current = 0.0;
             scroll_anim.active = false;
+            user_scrolling = false;
             if (!state.surface_visible) {
                 uint32_t h = cfg.padding_y * 2 + (uint32_t)rend.line_height;
                 if (!wayland_create_surface(&state, cfg.width, h, cfg.margin_top)) {
@@ -246,11 +282,17 @@ int main(int argc, char *argv[])
                     /* Configure callback will set needs_redraw */
                 }
             }
-            /* Compute scroll target */
+            /* Compute scroll target + toggle input region */
             {
                 int content_h = renderer_measure(&rend, &cfg, text_buf);
                 uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
-                if ((uint32_t)content_h > visible_h) {
+                bool overflows = (uint32_t)content_h > visible_h;
+
+                /* Enable pointer input when content overflows */
+                wayland_set_input_enabled(&state, overflows);
+
+                /* Only auto-scroll to bottom if user hasn't scrolled up */
+                if (overflows && !user_scrolling) {
                     double new_target = (double)(content_h - (int)visible_h);
                     if (new_target != scroll_anim.target || !scroll_anim.active) {
                         anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
@@ -274,6 +316,7 @@ int main(int argc, char *argv[])
             fade_anim.active = false;
             scroll_anim.current = 0.0;
             scroll_anim.active = false;
+            user_scrolling = false;
             if (timer_armed) {
                 arm_timer(timer_fd, false);
                 timer_armed = false;
@@ -326,15 +369,20 @@ int main(int argc, char *argv[])
             {
                 int content_h = renderer_measure(&rend, &cfg, text_buf);
                 uint32_t visible_h = (uint32_t)rend.line_height * cfg.max_lines;
-                if ((uint32_t)content_h > visible_h) {
+                bool overflows = (uint32_t)content_h > visible_h;
+
+                wayland_set_input_enabled(&state, overflows);
+
+                if (overflows && !user_scrolling) {
                     double new_target = (double)(content_h - (int)visible_h);
                     if (new_target != scroll_anim.target || !scroll_anim.active) {
                         anim_set_target(&scroll_anim, new_target, cfg.scroll_duration);
                         ensure_timer(timer_fd, &timer_armed);
                     }
-                } else {
+                } else if (!overflows) {
                     scroll_anim.current = 0.0;
                     scroll_anim.active = false;
+                    user_scrolling = false;
                 }
             }
             state.needs_redraw = true;

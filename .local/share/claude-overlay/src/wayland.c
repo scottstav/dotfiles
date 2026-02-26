@@ -44,6 +44,93 @@ static const struct wl_output_listener output_listener = {
     .scale = output_scale,
 };
 
+/* --- wl_pointer listener (for scroll input) --- */
+
+static void pointer_enter(void *data, struct wl_pointer *pointer,
+                           uint32_t serial, struct wl_surface *surface,
+                           wl_fixed_t sx, wl_fixed_t sy)
+{
+    (void)pointer; (void)serial; (void)surface; (void)sx; (void)sy;
+    struct overlay_state *state = data;
+    state->pointer_over = true;
+}
+
+static void pointer_leave(void *data, struct wl_pointer *pointer,
+                           uint32_t serial, struct wl_surface *surface)
+{
+    (void)pointer; (void)serial; (void)surface;
+    struct overlay_state *state = data;
+    state->pointer_over = false;
+}
+
+static void pointer_motion(void *data, struct wl_pointer *p,
+                            uint32_t time, wl_fixed_t sx, wl_fixed_t sy)
+{ (void)data; (void)p; (void)time; (void)sx; (void)sy; }
+
+static void pointer_button(void *data, struct wl_pointer *p,
+                            uint32_t serial, uint32_t time,
+                            uint32_t button, uint32_t st)
+{ (void)data; (void)p; (void)serial; (void)time; (void)button; (void)st; }
+
+static void pointer_axis(void *data, struct wl_pointer *pointer,
+                          uint32_t time, uint32_t axis, wl_fixed_t value)
+{
+    (void)pointer; (void)time;
+    if (axis != WL_POINTER_AXIS_VERTICAL_SCROLL) return;
+    struct overlay_state *state = data;
+    state->pending_scroll_delta += wl_fixed_to_double(value);
+}
+
+static void pointer_frame(void *data, struct wl_pointer *p)
+{ (void)data; (void)p; }
+static void pointer_axis_source(void *data, struct wl_pointer *p, uint32_t s)
+{ (void)data; (void)p; (void)s; }
+static void pointer_axis_stop(void *data, struct wl_pointer *p,
+                               uint32_t time, uint32_t axis)
+{ (void)data; (void)p; (void)time; (void)axis; }
+static void pointer_axis_discrete(void *data, struct wl_pointer *p,
+                                   uint32_t axis, int32_t discrete)
+{ (void)data; (void)p; (void)axis; (void)discrete; }
+static void pointer_axis_value120(void *data, struct wl_pointer *p,
+                                   uint32_t axis, int32_t value120)
+{ (void)data; (void)p; (void)axis; (void)value120; }
+static void pointer_axis_relative_direction(void *data, struct wl_pointer *p,
+                                             uint32_t axis, uint32_t dir)
+{ (void)data; (void)p; (void)axis; (void)dir; }
+
+static const struct wl_pointer_listener pointer_listener = {
+    .enter = pointer_enter,
+    .leave = pointer_leave,
+    .motion = pointer_motion,
+    .button = pointer_button,
+    .axis = pointer_axis,
+    .frame = pointer_frame,
+    .axis_source = pointer_axis_source,
+    .axis_stop = pointer_axis_stop,
+    .axis_discrete = pointer_axis_discrete,
+    .axis_value120 = pointer_axis_value120,
+    .axis_relative_direction = pointer_axis_relative_direction,
+};
+
+/* --- wl_seat listener --- */
+
+static void seat_capabilities(void *data, struct wl_seat *seat, uint32_t caps)
+{
+    struct overlay_state *state = data;
+    if ((caps & WL_SEAT_CAPABILITY_POINTER) && !state->pointer) {
+        state->pointer = wl_seat_get_pointer(seat);
+        wl_pointer_add_listener(state->pointer, &pointer_listener, state);
+    }
+}
+
+static void seat_name(void *data, struct wl_seat *seat, const char *name)
+{ (void)data; (void)seat; (void)name; }
+
+static const struct wl_seat_listener seat_listener = {
+    .capabilities = seat_capabilities,
+    .name = seat_name,
+};
+
 /* --- Registry listener --- */
 
 static void registry_handle_global(void *data, struct wl_registry *registry,
@@ -61,6 +148,12 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
     else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0)
         state->layer_shell = wl_registry_bind(registry, name,
                                               &zwlr_layer_shell_v1_interface, 1);
+    else if (strcmp(interface, wl_seat_interface.name) == 0) {
+        uint32_t bind_ver = version >= 5 ? 5 : version;
+        state->seat = wl_registry_bind(registry, name,
+                                       &wl_seat_interface, bind_ver);
+        wl_seat_add_listener(state->seat, &seat_listener, state);
+    }
     else if (strcmp(interface, wl_output_interface.name) == 0) {
         /* Bind version 2+ to get the scale event */
         uint32_t bind_ver = version >= 2 ? 2 : version;
@@ -192,6 +285,14 @@ bool wayland_create_surface(struct overlay_state *state,
     zwlr_layer_surface_v1_add_listener(state->layer_surface,
                                        &layer_surface_listener, state);
 
+    /* Start with input passthrough (empty region) */
+    {
+        struct wl_region *empty = wl_compositor_create_region(state->compositor);
+        wl_surface_set_input_region(state->surface, empty);
+        wl_region_destroy(empty);
+    }
+    state->input_enabled = false;
+
     wl_surface_commit(state->surface);
     state->surface_visible = true;
     return true;
@@ -221,6 +322,8 @@ void wayland_destroy_surface(struct overlay_state *state)
     }
     state->surface_visible = false;
     state->configured = false;
+    state->input_enabled = false;
+    state->pointer_over = false;
 }
 
 bool wayland_alloc_buffer(struct overlay_state *state)
@@ -276,10 +379,38 @@ void wayland_commit(struct overlay_state *state)
     wl_surface_commit(state->surface);
 }
 
+void wayland_set_input_enabled(struct overlay_state *state, bool enabled)
+{
+    if (!state->surface || !state->compositor)
+        return;
+    if (enabled == state->input_enabled)
+        return;
+
+    if (enabled) {
+        /* NULL input region = entire surface accepts input */
+        wl_surface_set_input_region(state->surface, NULL);
+    } else {
+        /* Empty region = passthrough */
+        struct wl_region *empty = wl_compositor_create_region(state->compositor);
+        wl_surface_set_input_region(state->surface, empty);
+        wl_region_destroy(empty);
+    }
+    wl_surface_commit(state->surface);
+    state->input_enabled = enabled;
+}
+
 void wayland_cleanup(struct overlay_state *state)
 {
     wayland_destroy_surface(state);
 
+    if (state->pointer) {
+        wl_pointer_destroy(state->pointer);
+        state->pointer = NULL;
+    }
+    if (state->seat) {
+        wl_seat_destroy(state->seat);
+        state->seat = NULL;
+    }
     if (state->output) {
         wl_output_destroy(state->output);
         state->output = NULL;

@@ -473,11 +473,10 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 9. Claude Ask / Claude Voice
+# 9. Claude Voice / Claude HID
 # ------------------------------------------------------------------
-step "Claude Ask / Claude Voice"
+step "Claude Voice / Claude HID"
 
-CA_DIR="$HOME/.local/share/claude-ask"
 CV_DIR="$HOME/.local/share/claude-voice"
 
 # kokoro/faster-whisper need Python <3.13 — ensure python3.11 is installed
@@ -486,12 +485,7 @@ if ! command -v python3.11 &>/dev/null; then
     ok "python3.11 installed"
 fi
 
-# claude-ask venv + deps
-ensure_venv "$CA_DIR" python3.11 "claude-ask"
-"$CA_DIR/.venv/bin/pip" install -q -r "$CA_DIR/requirements.txt"
-ok "claude-ask dependencies installed"
-
-# claude-voice venv + deps
+# claude-voice venv + deps (includes query pipeline deps from claude-ask)
 ensure_venv "$CV_DIR" python3.11 "claude-voice"
 "$CV_DIR/.venv/bin/pip" install -q -r "$CV_DIR/requirements.txt"
 ok "claude-voice dependencies installed"
@@ -507,7 +501,7 @@ mkdir -p "$HOME/Dropbox/LLM/Chats"
 ok "Conversation archive directory ready"
 
 # Enable services
-for svc in claude-ask.service claude-voice.service claude-hid.service; do
+for svc in claude-voice.service claude-hid.service; do
     if systemctl --user is-enabled "$svc" &>/dev/null; then
         ok "$svc already enabled"
     else

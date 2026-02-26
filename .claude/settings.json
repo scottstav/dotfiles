@@ -1,34 +1,35 @@
 {
-  "enabledPlugins": {
-    "superpowers@claude-plugins-official": true,
-    "superpowers@superpowers-marketplace": true,
-    "typescript-lsp@claude-plugins-official": true
-  },
   "hooks": {
     "Notification": [
       {
+        "matcher": "permission_prompt",
         "hooks": [
           {
-            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Needs permission - check terminal'",
-            "type": "command"
+            "type": "command",
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Needs permission - check terminal'"
           }
-        ],
-        "matcher": "permission_prompt"
+        ]
       },
       {
+        "matcher": "idle_prompt",
         "hooks": [
           {
-            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Waiting for input'",
-            "type": "command"
+            "type": "command",
+            "command": "jq -r '.cwd | split(\"/\") | last' | xargs -I {} notify-send -i claude-code -u low -t 5000 'Claude Code [{}]' 'Waiting for input'"
           }
-        ],
-        "matcher": "idle_prompt"
+        ]
       }
     ]
   },
-  "skipDangerousModePermissionPrompt": true,
   "statusLine": {
-    "command": "~/.claude/statusline.sh",
-    "type": "command"
-  }
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "superpowers@superpowers-marketplace": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "clangd-lsp@claude-plugins-official": true
+  },
+  "skipDangerousModePermissionPrompt": true
 }

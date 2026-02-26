@@ -140,7 +140,9 @@ int main(int argc, char *argv[])
 
         wl_display_flush(state.display);
 
-        if (poll(fds, nfds, -1) < 0) {
+        /* Don't block if there's buffered socket data to drain */
+        int poll_timeout = socket_has_pending(&srv) ? 0 : -1;
+        if (poll(fds, nfds, poll_timeout) < 0) {
             if (quit || errno == EINTR)
                 break;
             perror("poll");

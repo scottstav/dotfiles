@@ -95,6 +95,26 @@ int socket_get_fds(struct socket_server *srv, struct pollfd *fds, int offset)
     return 1;
 }
 
+static void consume_one(struct socket_server *srv, struct overlay_command *cmd)
+{
+    char *nl = memchr(srv->read_buf, '\n', srv->read_len);
+    if (!nl)
+        return;
+    *nl = '\0';
+    parse_command(srv->read_buf, cmd);
+    size_t consumed = (size_t)(nl - srv->read_buf) + 1;
+    size_t remaining = srv->read_len - consumed;
+    if (remaining > 0)
+        memmove(srv->read_buf, nl + 1, remaining);
+    srv->read_len = remaining;
+}
+
+bool socket_has_pending(struct socket_server *srv)
+{
+    return srv->read_len > 0
+        && memchr(srv->read_buf, '\n', srv->read_len) != NULL;
+}
+
 bool socket_process(struct socket_server *srv, struct pollfd *fds, int offset,
                     struct overlay_command *cmd)
 {
@@ -113,11 +133,20 @@ bool socket_process(struct socket_server *srv, struct pollfd *fds, int offset,
         }
     }
 
-    /* Check for data on client fd */
+    /* Drain any already-buffered complete message first */
+    if (srv->read_len > 0) {
+        consume_one(srv, cmd);
+        if (cmd->cmd != CMD_NONE)
+            return true;
+    }
+
+    /* Read new data from client */
     if (srv->client_fd >= 0 && fds[offset + 1].revents & POLLIN) {
         ssize_t n = read(srv->client_fd, srv->read_buf + srv->read_len,
                          sizeof(srv->read_buf) - srv->read_len - 1);
         if (n <= 0) {
+            /* Process any trailing message before closing */
+            consume_one(srv, cmd);
             close(srv->client_fd);
             srv->client_fd = -1;
             srv->read_len = 0;
@@ -126,20 +155,7 @@ bool socket_process(struct socket_server *srv, struct pollfd *fds, int offset,
 
         srv->read_len += (size_t)n;
         srv->read_buf[srv->read_len] = '\0';
-
-        /* Scan for newline-delimited JSON */
-        char *nl = memchr(srv->read_buf, '\n', srv->read_len);
-        if (nl) {
-            *nl = '\0';
-            parse_command(srv->read_buf, cmd);
-
-            /* Shift remaining data */
-            size_t consumed = (size_t)(nl - srv->read_buf) + 1;
-            size_t remaining = srv->read_len - consumed;
-            if (remaining > 0)
-                memmove(srv->read_buf, nl + 1, remaining);
-            srv->read_len = remaining;
-        }
+        consume_one(srv, cmd);
     }
 
     return true;

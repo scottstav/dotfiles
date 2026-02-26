@@ -29,6 +29,7 @@ struct socket_server {
 
 bool socket_init(struct socket_server *srv, const char *path);
 int socket_get_fds(struct socket_server *srv, struct pollfd *fds, int offset);
+bool socket_has_pending(struct socket_server *srv);
 bool socket_process(struct socket_server *srv, struct pollfd *fds, int offset,
                     struct overlay_command *cmd);
 void socket_cleanup(struct socket_server *srv);

@@ -36,9 +36,15 @@ USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
 CONFIG_FILE = Path.home() / ".config" / "claude-ask" / "config.toml"
 TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
 
-MODEL = "claude-sonnet-4-6"
+DEFAULT_MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 4096
 AUTO_REPLY_THRESHOLD_SECS = 60
+
+AVAILABLE_MODELS = [
+    {"id": "claude-haiku-4-5", "short": "Haiku 4.5"},
+    {"id": "claude-sonnet-4-6", "short": "Sonnet 4.6"},
+    {"id": "claude-opus-4-6", "short": "Opus 4.6"},
+]
 
 TOKEN_PRICES = {
     "claude-sonnet-4-6":  {"input": 3.0, "output": 15.0},
@@ -157,6 +163,16 @@ def _load_api_key() -> str:
             continue
 
     raise RuntimeError("No api.anthropic.com entry in ~/.authinfo.gpg")
+
+
+def _load_model() -> str:
+    """Read the configured model from config.toml, falling back to DEFAULT_MODEL."""
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            config = tomllib.load(f)
+        return config.get("model", {}).get("name", DEFAULT_MODEL)
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        return DEFAULT_MODEL
 
 
 def _load_voice_config() -> dict:
@@ -421,7 +437,7 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
     tts = _get_tts()
 
     api_kwargs = {
-        "model": MODEL,
+        "model": _load_model(),
         "max_tokens": MAX_TOKENS,
         "system": SYSTEM_PROMPT,
         "messages": messages,

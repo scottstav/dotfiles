@@ -17,7 +17,15 @@ status = d.get('status', 'idle')
 speak = d.get('speak_enabled', False)
 wake_muted = d.get('wake_muted', False)
 tool_name = d.get('tool_name', '')
+model_id = d.get('model', 'claude-sonnet-4-6')
 usage = d.get('usage', {})
+
+MODEL_NAMES = {
+    'claude-haiku-4-5': 'Haiku',
+    'claude-sonnet-4-6': 'Sonnet',
+    'claude-opus-4-6': 'Opus',
+}
+model_short = MODEL_NAMES.get(model_id, model_id)
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
 
@@ -100,7 +108,7 @@ elif status == 'speaking':
 elif status == 'listening':
     tip = 'Listening...'
 else:
-    tip = f'{month_name}: {month} | Last: {last}'
+    tip = f'{model_short} | {month_name}: {month} | Last: {last}'
     tip += ' | Voice: ON' if speak else ' | Voice: OFF'
     tip += ' | Wake: OFF' if wake_muted else ' | Wake: ON'
 

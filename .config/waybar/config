@@ -200,6 +200,8 @@
         "on-click": "foot --app-id=fzf-picker -e claude-worker-list",
         "on-click-middle": "claude-voice-cycle",
         "on-click-right": "claude-worker-toggle",
+        "on-scroll-up": "claude-model-cycle up",
+        "on-scroll-down": "claude-model-cycle down",
         "signal": 12,
         "tooltip": true
     },

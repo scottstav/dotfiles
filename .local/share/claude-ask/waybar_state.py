@@ -11,11 +11,26 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
+import tomllib
+
 log = logging.getLogger("claude-ask")
 
 STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "waybar.json"
 USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
+CONFIG_FILE = Path.home() / ".config" / "claude-ask" / "config.toml"
 WAYBAR_SIGNAL = 12  # SIGRTMIN+12
+
+DEFAULT_MODEL = "claude-sonnet-4-6"
+
+
+def _read_model_from_config() -> str:
+    """Read the model name from config.toml."""
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            config = tomllib.load(f)
+        return config.get("model", {}).get("name", DEFAULT_MODEL)
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        return DEFAULT_MODEL
 
 
 class WaybarState:
@@ -27,6 +42,7 @@ class WaybarState:
         self._state = {
             "status": "idle",
             "tool_name": "",
+            "model": _read_model_from_config(),
             "speak_enabled": False,
             "usage": {
                 "month_cost": f"${month_cost:.2f}",
@@ -99,6 +115,12 @@ class WaybarState:
                     self._state["speak_enabled"] = data.get("speak_enabled", False)
             except (json.JSONDecodeError, OSError):
                 pass
+
+    def reload_model(self):
+        """Re-read model from config.toml and update state."""
+        with self._lock:
+            self._state["model"] = _read_model_from_config()
+            self._write()
 
     def _write(self):
         """Write state to disk and signal Waybar."""

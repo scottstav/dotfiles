@@ -1,5 +1,5 @@
 [voice]
-enabled = true
+enabled = false
 model = "af_heart"
 speed = 1.0
 lang = "a"

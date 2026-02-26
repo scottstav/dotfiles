@@ -2,16 +2,20 @@
 # Waybar custom module: bluetooth status
 # Shows connection icon, battery %, device info in tooltip
 
+# Bluetooth icons (nerd font codepoints — escaped to survive file writes)
+ICON_BT=$'\uf294'
+ICON_BT_OFF=$'\uf294'
+
 # Check if bluetooth controller exists and is powered
 controller_info=$(busctl get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Powered 2>/dev/null)
 if [[ -z "$controller_info" ]]; then
-    printf '{"text": "", "tooltip": "No bluetooth controller", "class": "off"}\n'
+    printf '{"text": "%s", "tooltip": "No bluetooth controller", "class": "off"}\n' "$ICON_BT_OFF"
     exit
 fi
 
 powered=$(echo "$controller_info" | awk '{print $2}')
 if [[ "$powered" != "true" ]]; then
-    printf '{"text": "󰂲", "tooltip": "Bluetooth off", "class": "off"}\n'
+    printf '{"text": "%s", "tooltip": "Bluetooth off", "class": "off"}\n' "$ICON_BT_OFF"
     exit
 fi
 
@@ -45,20 +49,20 @@ done
 
 # Build display text
 if (( device_count == 0 )); then
-    text="󰂯"
+    text="$ICON_BT"
     class="on"
 elif (( device_count == 1 )); then
     bat="${connected_batteries[0]}"
     if [[ -n "$bat" ]]; then
-        text="󰂱 ${bat}"
+        text="$ICON_BT ${bat}"
         (( bat <= 20 )) && class="low-battery" || class="connected"
     else
-        text="󰂱"
+        text="$ICON_BT"
         class="connected"
     fi
 else
     # Multiple devices — show count
-    text="󰂱 ${device_count}"
+    text="$ICON_BT ${device_count}"
     class="connected"
 fi
 

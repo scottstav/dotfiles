@@ -15,17 +15,21 @@ sink_desc=$(pactl list sinks 2>/dev/null | awk -v name="$sink" '
 source=$(pactl get-default-source 2>/dev/null)
 source_muted=$(pactl get-source-mute "$source" 2>/dev/null | grep -oP 'yes|no')
 
-# Volume icon
+# Volume icon (nerd font codepoints — escaped to survive file writes)
+ICON_VOL_MUTE=$'\uf026'
+ICON_VOL_LOW=$'\uf027'
+ICON_VOL_HIGH=$'\uf028'
+ICON_MIC=$'\uf130'
+ICON_MIC_MUTE=$'\uf131'
+
 if [[ "$muted" == "yes" ]]; then
-    icon=""
+    icon="$ICON_VOL_MUTE"
 elif (( vol == 0 )); then
-    icon=""
-elif (( vol <= 30 )); then
-    icon=""
-elif (( vol <= 70 )); then
-    icon=""
+    icon="$ICON_VOL_MUTE"
+elif (( vol <= 50 )); then
+    icon="$ICON_VOL_LOW"
 else
-    icon=""
+    icon="$ICON_VOL_HIGH"
 fi
 
 # Build display text
@@ -38,7 +42,7 @@ fi
 # Mic indicator (only show when source exists and is not a monitor)
 if [[ -n "$source" && ! "$source" =~ \.monitor$ ]]; then
     if [[ "$source_muted" == "yes" ]]; then
-        text="$text "
+        text="$text $ICON_MIC_MUTE"
     fi
 fi
 

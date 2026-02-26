@@ -1,0 +1,1167 @@
+# Claude Pipeline Consolidation Implementation Plan
+
+> **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Eliminate the claude-ask daemon, consolidate all query logic into composable helper functions, and run everything from claude-voice with clean cancellation via `threading.Event`.
+
+**Architecture:** Two thin daemons (claude-hid, claude-voice) dispatch to helper functions in `.local/share/claude-ask/`. Claude-voice's control socket becomes the single entry point for all query types. The tri-state conversation resolution (`conv_id` / `NEW_CONVERSATION` / `None`) lives in one place: `send_query()`.
+
+**Tech Stack:** Python 3.11, anthropic SDK, Kokoro TTS, faster-whisper, threading.Event for cancellation
+
+**Design doc:** `docs/plans/2026-02-26-claude-pipeline-consolidation-design.md`
+
+---
+
+### Task 1: Extract helper module from claude-ask daemon
+
+Extract all business logic from `claude-ask/daemon.py`'s `Daemon` class into a standalone `claude-ask/query.py` module. This is the biggest task — it creates the core helper that everything else will call.
+
+**Files:**
+- Create: `.local/share/claude-ask/query.py`
+- Read: `.local/share/claude-ask/daemon.py` (source of logic to extract)
+
+**Step 1: Create query.py with constants, imports, and conversation resolution**
+
+```python
+"""Query pipeline: send text to Claude, stream response, run tools, speak.
+
+All functions are self-contained helpers with no daemon/socket dependencies.
+Called by claude-voice daemon threads and the TUI.
+"""
+
+import importlib.util
+import json
+import logging
+import os
+import socket
+import subprocess
+import threading
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+import anthropic
+import tomllib
+
+from format import archive_path, format_conversation
+from sentence_buffer import SentenceBuffer
+from tts import TTSPipeline
+from waybar_state import WaybarState
+
+log = logging.getLogger("claude-ask")
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+CONVERSATIONS_DIR = Path.home() / ".local" / "state" / "claude-ask" / "conversations"
+LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
+USAGE_LOG = Path.home() / ".local" / "state" / "claude-ask" / "usage.jsonl"
+CONFIG_FILE = Path.home() / ".config" / "claude-ask" / "config.toml"
+TOOLS_DIR = Path.home() / ".local" / "share" / "claude-ask" / "tools"
+
+MODEL = "claude-sonnet-4-6"
+MAX_TOKENS = 4096
+NOTIFY_DEBOUNCE_SECS = 0.2
+AUTO_REPLY_THRESHOLD_SECS = 60
+
+TOKEN_PRICES = {
+    "claude-sonnet-4-6":  {"input": 3.0, "output": 15.0},
+    "claude-opus-4-6":    {"input": 5.0, "output": 25.0},
+    "claude-haiku-4-5":   {"input": 1.0, "output": 5.0},
+}
+
+# Sentinel for explicit "start a new conversation"
+NEW_CONVERSATION = object()
+
+SYSTEM_PROMPT = """\
+You are a quick-answer assistant running as a desktop overlay on a Linux workstation \
+(Arch Linux, Hyprland/Wayland, Emacs). Responses are displayed in desktop notifications \
+with limited space.
+
+Be extremely concise. Default to 1-3 sentences. Use bullet points over paragraphs. \
+Skip preamble, hedging, and sign-offs. Only give longer responses when the user \
+explicitly asks for detail or the question genuinely requires it.
+
+You have tools. Use them proactively:
+- shell: run commands to answer questions about the system, files, processes, etc.
+- web_search + fetch_url: search the web, then read articles for current info/news.
+- clipboard: copy useful output to the user's clipboard without being asked.
+- screenshot: capture the screen when the user asks about something visible.
+
+You can delegate complex coding tasks to a Claude Code worker session. Workers are \
+autonomous agents running in their own terminal with full codebase context, file \
+editing, git, and multi-file reasoning. Use spawn_worker when the task requires:
+- Changes across multiple files
+- Understanding significant codebase context to make even a single change \
+  (tracing call chains, reading tests, understanding architecture)
+- Implementing a feature, refactoring, or debugging that requires exploration
+
+Do NOT use spawn_worker for simple tasks you can handle with the shell tool: \
+quick file edits, adding a journal entry, changing a config value, running a command. \
+If in doubt, just answer — the user can always ask for a worker explicitly.
+
+When using spawn_worker, infer the project directory from context. Common locations: \
+~/code/, ~/dotfiles/, ~/Dropbox/. Use the shell tool to search if unsure (e.g. \
+fd -t d <name> ~). Write a thorough, detailed task description for the worker — \
+it operates autonomously without follow-up.\
+"""
+
+# ---------------------------------------------------------------------------
+# Module-level singletons (lazy)
+# ---------------------------------------------------------------------------
+
+_client: anthropic.Anthropic | None = None
+_waybar: WaybarState | None = None
+_tts: TTSPipeline | None = None
+_tools: list[dict] | None = None
+_session_tokens = 0
+
+
+def _get_client() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic(api_key=_load_api_key())
+    return _client
+
+
+def _get_waybar() -> WaybarState:
+    global _waybar
+    if _waybar is None:
+        _waybar = WaybarState()
+        voice_cfg = _load_voice_config()
+        _waybar.speak_enabled = voice_cfg["enabled"]
+    return _waybar
+
+
+def _get_tts() -> TTSPipeline:
+    global _tts
+    if _tts is None:
+        voice_cfg = _load_voice_config()
+        _tts = TTSPipeline(
+            model=voice_cfg["model"],
+            speed=voice_cfg["speed"],
+            lang=voice_cfg["lang"],
+        )
+    return _tts
+
+
+def _get_tools() -> list[dict]:
+    global _tools
+    if _tools is None:
+        _tools = _load_tools()
+    return _tools
+
+
+# ---------------------------------------------------------------------------
+# Credential loading
+# ---------------------------------------------------------------------------
+
+def _load_api_key() -> str:
+    """Decrypt ~/.authinfo.gpg and extract the Anthropic API key."""
+    authinfo = Path.home() / ".authinfo.gpg"
+    if not authinfo.exists():
+        raise RuntimeError("~/.authinfo.gpg not found")
+
+    result = subprocess.run(
+        ["gpg", "--batch", "--quiet", "--decrypt", str(authinfo)],
+        capture_output=True, text=True, check=True,
+    )
+
+    for line in result.stdout.splitlines():
+        parts = line.split()
+        if len(parts) < 6:
+            continue
+        try:
+            machine_idx = parts.index("machine")
+            if parts[machine_idx + 1] != "api.anthropic.com":
+                continue
+            password_idx = parts.index("password")
+            return parts[password_idx + 1]
+        except (ValueError, IndexError):
+            continue
+
+    raise RuntimeError("No api.anthropic.com entry in ~/.authinfo.gpg")
+
+
+def _load_voice_config() -> dict:
+    defaults = {
+        "enabled": False, "model": "af_heart",
+        "speed": 1.0, "lang": "a",
+        "filter": {"skip_code_blocks": True, "skip_urls": True},
+    }
+    try:
+        with open(CONFIG_FILE, "rb") as f:
+            config = tomllib.load(f)
+        voice = config.get("voice", {})
+        return {k: voice.get(k, defaults[k]) for k in defaults}
+    except (FileNotFoundError, tomllib.TOMLDecodeError):
+        return defaults
+
+
+# ---------------------------------------------------------------------------
+# Conversation store
+# ---------------------------------------------------------------------------
+
+class ConversationStore:
+    """Load and save conversation JSON files."""
+
+    def __init__(self, directory=CONVERSATIONS_DIR):
+        self.directory = directory
+        self.directory.mkdir(parents=True, exist_ok=True)
+
+    def _path_for(self, conv_id):
+        return self.directory / f"{conv_id}.json"
+
+    def get_or_create(self, conv_id=None):
+        if conv_id:
+            path = self._path_for(conv_id)
+            if path.exists():
+                with open(path) as f:
+                    return json.load(f)
+        new_id = conv_id or str(uuid.uuid4())
+        return {
+            "id": new_id,
+            "created": datetime.now(timezone.utc).isoformat(),
+            "messages": [],
+        }
+
+    def save(self, conv):
+        path = self._path_for(conv["id"])
+        with open(path, "w") as f:
+            json.dump(conv, f, indent=2)
+        log.info("Saved conversation %s (%d messages)", conv["id"][:8], len(conv["messages"]))
+
+
+_store = ConversationStore()
+
+
+# ---------------------------------------------------------------------------
+# Tool loading and execution
+# ---------------------------------------------------------------------------
+
+def _load_tools() -> list[dict]:
+    tools = []
+    if not TOOLS_DIR.is_dir():
+        TOOLS_DIR.mkdir(parents=True, exist_ok=True)
+        return tools
+    for path in sorted(TOOLS_DIR.glob("*.py")):
+        try:
+            spec = importlib.util.spec_from_file_location(path.stem, path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            tools.append({
+                "name": mod.name,
+                "description": mod.description,
+                "input_schema": mod.input_schema,
+            })
+            log.info("Loaded tool: %s (%s)", mod.name, path.name)
+        except Exception:
+            log.exception("Failed to load tool from %s", path)
+    return tools
+
+
+def run_tool(name: str, input_data: dict):
+    """Execute a tool plugin by name. Returns str or image dict."""
+    for path in TOOLS_DIR.glob("*.py"):
+        try:
+            spec = importlib.util.spec_from_file_location(path.stem, path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            if mod.name == name:
+                result = mod.run(input_data)
+                if isinstance(result, dict) and result.get("type") == "image":
+                    return result
+                return str(result)
+        except Exception:
+            log.exception("Error running tool %s", name)
+            return f"Error: tool {name} raised an exception"
+    return f"Error: tool {name} not found"
+
+
+# ---------------------------------------------------------------------------
+# Notifications
+# ---------------------------------------------------------------------------
+
+def notify(tag: str, text: str):
+    """Fire-and-forget in-place notification update."""
+    subprocess.Popen(
+        ["notify-send", "-t", "0",
+         "-h", f"string:x-canonical-private-synchronous:{tag}",
+         "-a", "Claude", "Claude", text],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+
+
+def _voice_control(action: str, **extra):
+    """Send a control command to the claude-voice daemon."""
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    sock_path = os.path.join(runtime_dir, "claude-voice.sock")
+    payload = json.dumps({"action": action, **extra})
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(sock_path)
+        sock.sendall(payload.encode("utf-8"))
+        sock.close()
+    except (ConnectionRefusedError, FileNotFoundError):
+        pass
+
+
+def notify_final(tag: str, text: str, conv_id: str,
+                 archive_file: Path | None = None,
+                 tools_used: list[str] | None = None):
+    """Show final notification with Reply, Mic, and Open actions.
+
+    Runs in a background thread because --wait blocks.
+    """
+    def _run():
+        body = text
+        if tools_used:
+            body += "\n\n<small>" + " → ".join(tools_used) + "</small>"
+        try:
+            result = subprocess.run(
+                ["notify-send", "-t", "0",
+                 "-h", f"string:x-canonical-private-synchronous:{tag}",
+                 "-a", "Claude",
+                 "-A", "reply=\U000f0369",
+                 "-A", "mic=\U000f036c",
+                 "-A", "open=\U000f0219",
+                 "--wait", "Claude", body],
+                capture_output=True, text=True,
+            )
+            action = result.stdout.strip()
+            if action == "reply":
+                subprocess.Popen(["claude-ask", "--reply", conv_id])
+            elif action == "mic":
+                _voice_control("listen", conversation_id=conv_id)
+            elif action == "open":
+                if archive_file and archive_file.exists():
+                    subprocess.Popen(
+                        ["emacsclient", "-c", str(archive_file)],
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    )
+        except Exception:
+            log.exception("Error in final notification handler")
+
+    threading.Thread(target=_run, daemon=True).start()
+
+
+# ---------------------------------------------------------------------------
+# Usage tracking
+# ---------------------------------------------------------------------------
+
+def _log_usage(response):
+    usage = response.usage
+    model = response.model
+    prices = TOKEN_PRICES.get(model, TOKEN_PRICES["claude-sonnet-4-6"])
+    cost = (usage.input_tokens * prices["input"] + usage.output_tokens * prices["output"]) / 1_000_000
+    entry = {
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "model": model,
+        "input_tokens": usage.input_tokens,
+        "output_tokens": usage.output_tokens,
+        "cost_usd": round(cost, 6),
+    }
+    try:
+        USAGE_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with open(USAGE_LOG, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError:
+        log.exception("Failed to write usage log")
+
+
+def _save_last_state(conv_id: str):
+    try:
+        LAST_STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        LAST_STATE_FILE.write_text(json.dumps({
+            "conversation_id": conv_id,
+            "timestamp": time.time(),
+        }))
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Conversation resolution (tri-state)
+# ---------------------------------------------------------------------------
+
+def auto_resolve_conversation():
+    """Read last.json, return conv_id if <60s ago, else None."""
+    try:
+        data = json.loads(LAST_STATE_FILE.read_text())
+        conv_id = data.get("conversation_id")
+        ts = data.get("timestamp", 0)
+        if conv_id and (time.time() - ts) < AUTO_REPLY_THRESHOLD_SECS:
+            return conv_id
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        pass
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Streaming API call
+# ---------------------------------------------------------------------------
+
+def stream_response(messages: list, tag: str, cancel_event: threading.Event | None = None,
+                    prior_text: str = "") -> tuple:
+    """Call Claude API with streaming, update notifications and TTS.
+
+    Returns (response, accumulated_text).
+    """
+    client = _get_client()
+    tools = _get_tools()
+    waybar = _get_waybar()
+    tts = _get_tts()
+
+    api_kwargs = {
+        "model": MODEL,
+        "max_tokens": MAX_TOKENS,
+        "system": SYSTEM_PROMPT,
+        "messages": messages,
+    }
+    if tools:
+        api_kwargs["tools"] = tools
+
+    accumulated_text = prior_text
+    last_notify_time = 0.0
+    sentence_buf = SentenceBuffer()
+    speak_on = waybar.speak_enabled
+
+    with client.messages.stream(**api_kwargs) as stream:
+        for event in stream:
+            if cancel_event and cancel_event.is_set():
+                stream.close()
+                break
+            if event.type == "content_block_delta":
+                if event.delta.type == "text_delta":
+                    accumulated_text += event.delta.text
+
+                    if speak_on:
+                        for sentence in sentence_buf.add(event.delta.text):
+                            tts.speak(sentence)
+
+                    now = time.monotonic()
+                    if now - last_notify_time >= NOTIFY_DEBOUNCE_SECS:
+                        notify(tag, accumulated_text)
+                        last_notify_time = now
+
+        response = stream.get_final_message()
+
+    if speak_on:
+        for sentence in sentence_buf.flush():
+            tts.speak(sentence)
+
+    return response, accumulated_text
+
+
+# ---------------------------------------------------------------------------
+# Main query pipeline
+# ---------------------------------------------------------------------------
+
+def send_query(text: str, conversation_id=None, cancel_event: threading.Event | None = None,
+               image: str | None = None, file: str | None = None):
+    """Send text to Claude. The single entry point for all query paths.
+
+    conversation_id:
+      - None              -> auto-detect (<60s check)
+      - NEW_CONVERSATION  -> explicit fresh conversation
+      - "uuid-string"     -> continue that conversation
+    """
+    global _session_tokens
+
+    # Resolve conversation (tri-state)
+    if conversation_id is NEW_CONVERSATION:
+        conv = _store.get_or_create()
+    elif conversation_id is not None:
+        conv = _store.get_or_create(conversation_id)
+    else:
+        resolved = auto_resolve_conversation()
+        conv = _store.get_or_create(resolved) if resolved else _store.get_or_create()
+
+    # Inject file context
+    if file:
+        text = (f"[Attached file: {file}]\n"
+                "When you produce an output file, copy it to the clipboard "
+                "using the clipboard tool's file parameter.\n\n" + text)
+
+    # Build user message content
+    if image:
+        user_content = [
+            {"type": "image", "source": {
+                "type": "base64", "media_type": "image/png", "data": image}},
+            {"type": "text", "text": text},
+        ]
+    else:
+        user_content = text
+    conv["messages"].append({"role": "user", "content": user_content})
+    tag = f"claude-{conv['id'][:8]}"
+
+    waybar = _get_waybar()
+    tts = _get_tts()
+    tools = _get_tools()
+
+    # Start TTS if enabled
+    waybar.reload_speak_enabled()
+    if waybar.speak_enabled:
+        _voice_control("mute")
+        tts.start()
+        waybar.set_status("speaking")
+    else:
+        waybar.set_status("thinking")
+
+    tools_used = []
+    full_text = ""
+
+    try:
+        while True:
+            response, full_text = stream_response(
+                conv["messages"], tag, cancel_event=cancel_event, prior_text=full_text,
+            )
+            _log_usage(response)
+
+            # Update Waybar usage
+            prices = TOKEN_PRICES.get(response.model, TOKEN_PRICES["claude-sonnet-4-6"])
+            query_cost = (response.usage.input_tokens * prices["input"] +
+                          response.usage.output_tokens * prices["output"]) / 1_000_000
+            _session_tokens += response.usage.input_tokens + response.usage.output_tokens
+            waybar.update_usage(query_cost, _session_tokens)
+
+            # Build assistant message
+            assistant_content = []
+            tool_use_blocks = []
+            for block in response.content:
+                if block.type == "text":
+                    assistant_content.append({"type": "text", "text": block.text})
+                elif block.type == "tool_use":
+                    assistant_content.append({
+                        "type": "tool_use", "id": block.id,
+                        "name": block.name, "input": block.input,
+                    })
+                    tool_use_blocks.append(block)
+            conv["messages"].append({"role": "assistant", "content": assistant_content})
+
+            if not tool_use_blocks or (cancel_event and cancel_event.is_set()):
+                break
+
+            # Execute tools
+            tool_results = []
+            for tool_block in tool_use_blocks:
+                if cancel_event and cancel_event.is_set():
+                    break
+                tools_used.append(tool_block.name)
+                log.info("Executing tool: %s", tool_block.name)
+                waybar.set_status("tool_use", tool_name=tool_block.name)
+                result = run_tool(tool_block.name, tool_block.input)
+
+                if isinstance(result, dict) and result.get("type") == "image":
+                    content = [{"type": "image", "source": {
+                        "type": "base64", "media_type": result["media_type"],
+                        "data": result["data"]}}]
+                else:
+                    content = str(result)
+
+                tool_results.append({
+                    "type": "tool_result",
+                    "tool_use_id": tool_block.id,
+                    "content": content,
+                })
+
+            conv["messages"].append({"role": "user", "content": tool_results})
+            tool_names = " → ".join(b.name for b in tool_use_blocks)
+            if full_text:
+                full_text += "\n\n"
+            full_text += f"<small>{tool_names}</small>\n\n"
+            notify(tag, full_text)
+            if waybar.speak_enabled:
+                waybar.set_status("speaking")
+            else:
+                waybar.set_status("thinking")
+
+        _store.save(conv)
+        _save_last_state(conv["id"])
+
+        # Wait for TTS
+        if waybar.status == "speaking":
+            tts.finish()
+            tts.wait_done(120)
+            tts.stop()
+            _voice_control("unmute")
+
+        waybar.set_status("idle")
+        log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
+
+        # Archive
+        arch = archive_path(conv)
+        threading.Thread(
+            target=lambda: arch.write_text(format_conversation(conv)),
+            daemon=True,
+        ).start()
+
+        # Final notification
+        notify_final(tag, full_text, conv["id"], arch, tools_used=tools_used or None)
+
+    except anthropic.APIError as e:
+        log.error("API error: %s", e)
+        notify(tag, f"API error: {e}")
+        tts.stop()
+        _voice_control("unmute")
+        waybar.set_status("idle")
+        _store.save(conv)
+    except Exception:
+        log.exception("Unexpected error during query")
+        notify(tag, "Unexpected error (check logs)")
+        tts.stop()
+        _voice_control("unmute")
+        waybar.set_status("idle")
+        _store.save(conv)
+```
+
+**Step 2: Verify the module loads without errors**
+
+Run (from claude-ask's venv):
+```bash
+cd ~/.local/share/claude-ask && .venv/bin/python3 -c "import query; print('OK:', [f.__name__ for f in [query.send_query, query.stream_response, query.run_tool, query.auto_resolve_conversation, query.notify, query.notify_final]])"
+```
+Expected: `OK: ['send_query', 'stream_response', 'run_tool', 'auto_resolve_conversation', 'notify', 'notify_final']`
+
+**Step 3: Commit**
+
+```bash
+git add .local/share/claude-ask/query.py
+git commit -m "extract query pipeline helpers from claude-ask daemon"
+```
+
+---
+
+### Task 2: Merge venv dependencies
+
+Claude-voice will now import from claude-ask's helper module, which needs `anthropic`, `kokoro`, `sounddevice`, etc. Merge claude-ask's deps into claude-voice's venv.
+
+**Files:**
+- Modify: `.local/share/claude-voice/requirements.txt`
+- Modify: `setup.sh` (if it has venv setup sections)
+
+**Step 1: Update requirements.txt**
+
+Add claude-ask's deps to claude-voice's requirements:
+
+```
+openwakeword==0.6.0
+faster-whisper==1.2.1
+webrtcvad==2.0.10
+numpy==2.4.2
+pyyaml==6.0.3
+anthropic
+prompt_toolkit
+ddgs
+trafilatura
+kokoro>=0.9.4
+soundfile
+sounddevice
+tomli; python_version < "3.11"
+```
+
+**Step 2: Install the new deps**
+
+```bash
+~/.local/share/claude-voice/.venv/bin/pip install -r ~/.local/share/claude-voice/requirements.txt
+```
+
+**Step 3: Verify imports work**
+
+```bash
+~/.local/share/claude-voice/.venv/bin/python3 -c "import anthropic; from kokoro import KPipeline; import sounddevice; print('All imports OK')"
+```
+Expected: `All imports OK` (KPipeline may warn about model, that's fine)
+
+**Step 4: Commit**
+
+```bash
+git add .local/share/claude-voice/requirements.txt
+git commit -m "merge claude-ask deps into claude-voice venv"
+```
+
+---
+
+### Task 3: Extend claude-voice control socket with query and cancel actions
+
+Add `query` and `cancel` actions to claude-voice's control socket handler. The daemon holds a reference to the current `cancel_event` so cancel is instant.
+
+**Files:**
+- Modify: `.local/share/claude-voice/daemon.py`
+
+**Step 1: Add sys.path and imports at the top of daemon.py**
+
+After the existing local imports (line 36), add:
+
+```python
+import sys
+# Add claude-ask helpers to import path
+sys.path.insert(0, str(Path.home() / ".local" / "share" / "claude-ask"))
+from query import send_query, NEW_CONVERSATION
+```
+
+**Step 2: Add cancel_event tracking to the Daemon class**
+
+In `Daemon.__init__` (after `self._lock = threading.Lock()`), add:
+
+```python
+self._cancel_event: threading.Event | None = None
+self._cancel_lock = threading.Lock()
+```
+
+Add methods:
+
+```python
+def _start_query_thread(self, text, conversation_id=None, image=None, file=None):
+    """Spawn a query in a background thread with a cancel_event."""
+    cancel_event = threading.Event()
+    with self._cancel_lock:
+        # Cancel any existing query first
+        if self._cancel_event is not None:
+            self._cancel_event.set()
+        self._cancel_event = cancel_event
+
+    def _run():
+        try:
+            send_query(text, conversation_id=conversation_id,
+                       cancel_event=cancel_event, image=image, file=file)
+        finally:
+            with self._cancel_lock:
+                if self._cancel_event is cancel_event:
+                    self._cancel_event = None
+
+    thread = threading.Thread(target=_run, daemon=True)
+    thread.start()
+    log.info("Query thread started (conv=%s)", conversation_id or "auto")
+
+def cancel_query(self):
+    """Cancel the currently running query."""
+    with self._cancel_lock:
+        if self._cancel_event is not None:
+            self._cancel_event.set()
+            log.info("Query cancelled")
+        else:
+            log.info("No query to cancel")
+```
+
+**Step 3: Update _capture_and_send to use _start_query_thread**
+
+Replace the two calls to `send_to_claude_ask()` in `_capture_and_send` (lines 255 and 291) with calls to `self._start_query_thread()`. Also remove the conversation auto-resolution from `_capture_and_send` since `send_query` handles it now.
+
+The method should become:
+
+```python
+def _capture_and_send(self, conversation_id=None, skip_pre_roll=False):
+    """Capture speech, transcribe, and send query."""
+    notify_listening()
+    self.audio.begin_capture(skip_pre_roll=skip_pre_roll)
+    self.detector.on_speech_start()
+    silence_start = None
+    last_interim_time = 0
+
+    try:
+        while True:
+            raw, is_speech = self.audio.read_vad_frame()
+            self.detector.on_voice_activity(is_speech)
+
+            if is_speech:
+                silence_start = None
+            elif silence_start is None:
+                silence_start = time.monotonic()
+
+            now = time.monotonic()
+            if now - last_interim_time >= 2.0:
+                full_audio = self.audio.get_captured_audio()
+                if len(full_audio) > 0:
+                    interim_text = transcribe(full_audio, self.whisper_config)
+                    self.detector.update_transcript(interim_text)
+                    notify_transcription(interim_text)
+                last_interim_time = now
+
+                phrase = self.detector.check_force_send()
+                if phrase:
+                    log.info("Force-send phrase detected: %r", phrase)
+                    final_audio = self.audio.end_capture()
+                    final_text = transcribe(final_audio, self.whisper_config)
+                    final_text = SpeechEndDetector.strip_force_phrase(final_text, phrase)
+                    if skip_pre_roll:
+                        final_text = _WAKE_WORD_RE.sub('', final_text).strip()
+                    if final_text.strip():
+                        notify_sending()
+                        self._start_query_thread(final_text.strip(), conversation_id)
+                    else:
+                        notify_dismiss()
+                    self._post_capture_reset()
+                    return
+
+            if silence_start is not None:
+                elapsed = time.monotonic() - silence_start
+                if self.detector.is_done(elapsed):
+                    log.info("Silence timeout reached (%.1fs)", elapsed)
+                    break
+
+    except Exception:
+        log.exception("Error during speech capture")
+        self.audio.end_capture()
+        self._post_capture_reset()
+        notify_dismiss()
+        return
+
+    final_audio = self.audio.end_capture()
+    if len(final_audio) < RATE * 0.3:
+        log.info("Audio too short (%.2fs), discarding", len(final_audio) / RATE)
+        self._post_capture_reset()
+        notify_dismiss()
+        return
+
+    final_text = transcribe(final_audio, self.whisper_config)
+    if skip_pre_roll:
+        final_text = _WAKE_WORD_RE.sub('', final_text).strip()
+    if final_text.strip():
+        notify_transcription(final_text.strip())
+        time.sleep(3)
+        notify_sending()
+        self._start_query_thread(final_text.strip(), conversation_id)
+    else:
+        log.info("Empty transcription, discarding")
+        notify_dismiss()
+    self._post_capture_reset()
+```
+
+**Step 4: Add query and cancel handlers to the control socket**
+
+In `handle_control_client`, add these branches after the existing `get-mute` handler:
+
+```python
+elif action == "query":
+    text = msg.get("text", "").strip()
+    if not text:
+        log.warning("Control socket: empty query text")
+    else:
+        raw_conv = msg.get("conversation_id")
+        if raw_conv == "__new__":
+            conv_id = NEW_CONVERSATION
+        else:
+            conv_id = raw_conv  # str or None
+        image = msg.get("image")
+        file = msg.get("file")
+        daemon._start_query_thread(text, conversation_id=conv_id,
+                                    image=image, file=file)
+        log.info("Control socket: query (conv=%s)", raw_conv or "auto")
+elif action == "cancel":
+    daemon.cancel_query()
+    log.info("Control socket: cancel")
+elif action == "stop_tts":
+    from query import _get_tts, _get_waybar
+    _get_tts().stop()
+    _get_waybar().set_status("idle")
+    log.info("Control socket: stop_tts")
+```
+
+**Step 5: Remove dead code from daemon.py**
+
+Remove these from daemon.py (no longer needed):
+- `LAST_STATE_FILE` and `AUTO_REPLY_THRESHOLD_SECS` constants
+- `_read_last_conversation()` function
+- `get_claude_ask_socket_path()` function
+- `send_to_claude_ask()` function
+- The `conversation_id` auto-resolution in `_capture_and_send` (the `if conversation_id is None:` check we added earlier)
+
+**Step 6: Test manually**
+
+```bash
+systemctl --user restart claude-voice
+# Say "ok computer, what time is it?" — should transcribe and respond via notification
+# Click mic button in notification — should continue conversation
+```
+
+**Step 7: Commit**
+
+```bash
+git add .local/share/claude-voice/daemon.py
+git commit -m "wire claude-voice to use query helpers directly"
+```
+
+---
+
+### Task 4: Update TUI to send to claude-voice socket
+
+Change `input.py` to send queries to claude-voice's control socket instead of claude-ask's.
+
+**Files:**
+- Modify: `.local/share/claude-ask/input.py`
+
+**Step 1: Change socket path function**
+
+Replace `get_socket_path()` (line 40-42):
+
+```python
+def get_socket_path():
+    runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
+    return os.path.join(runtime_dir, "claude-voice.sock")
+```
+
+**Step 2: Update send_message to use query action**
+
+Replace `send_message()` (line 92-109):
+
+```python
+def send_message(text, conversation_id, image=None, file=None):
+    """Send query to claude-voice control socket."""
+    sock_path = get_socket_path()
+    payload = {"action": "query", "text": text}
+    if conversation_id is not None:
+        payload["conversation_id"] = conversation_id
+    if image:
+        payload["image"] = image
+    if file:
+        payload["file"] = file
+    msg = json.dumps(payload)
+
+    try:
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.connect(sock_path)
+        sock.sendall(msg.encode("utf-8"))
+        sock.close()
+    except (ConnectionRefusedError, FileNotFoundError) as e:
+        print(f"Could not connect to claude-voice: {e}", file=sys.stderr)
+        sys.exit(1)
+```
+
+**Step 3: Handle explicit "new conversation" in submit**
+
+Update the submit logic at the bottom of `main()` (line 440-442). When the user deselected a conversation (Tab toggle), send `"__new__"`:
+
+```python
+if result["submitted"]:
+    conv_id = state["selected_conv_id"]
+    if conv_id is None and state.get("explicitly_deselected"):
+        conv_id = "__new__"
+    send_message(result["text"], conv_id, image=state["image"], file=state["file"])
+```
+
+Also add `"explicitly_deselected": False` to the initial state dict, and set it to `True` in the `toggle_reply` handler when deselecting:
+
+In `toggle_reply` (line 283-297), update the deselect branch:
+
+```python
+if state["selected_conv_id"] is not None:
+    state["selected_conv_id"] = None
+    state["explicitly_deselected"] = True
+```
+
+And when selecting:
+
+```python
+else:
+    idx = picker_index[0]
+    if 0 <= idx < len(conversations):
+        state["selected_conv_id"] = conversations[idx]["id"]
+        state["explicitly_deselected"] = False
+```
+
+**Step 4: Remove the conversation check from input.py**
+
+The `read_last_state()` function and `AUTO_REPLY_THRESHOLD_SECS` constant stay — they're still used for the UI hint (pre-selecting in the picker). The server-side check in `send_query()` is the authoritative one. The TUI hint is just cosmetic.
+
+**Step 5: Test manually**
+
+```bash
+claude-ask  # Opens TUI, type a question, press Enter
+# Should work — notification appears with Claude's response
+# Test Tab to deselect → should start new conversation
+# Test with --reply flag
+```
+
+**Step 6: Commit**
+
+```bash
+git add .local/share/claude-ask/input.py
+git commit -m "retarget TUI to send queries via claude-voice socket"
+```
+
+---
+
+### Task 5: Update control scripts
+
+Retarget `claude-ask-cancel` and `claude-ask-toggle-speak` to use claude-voice's socket.
+
+**Files:**
+- Modify: `.local/bin/claude-ask-cancel`
+- Modify: `.local/bin/claude-ask-toggle-speak`
+
+**Step 1: Update claude-ask-cancel**
+
+```bash
+#!/bin/bash
+# Cancel any running claude-ask query.
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-voice.sock"
+echo '{"action":"cancel"}' | socat - UNIX-CONNECT:"$SOCK"
+```
+
+**Step 2: Update claude-ask-toggle-speak**
+
+Change the socket path variable and the `stop_tts` call to use claude-voice's socket:
+
+```bash
+#!/bin/bash
+# Toggle claude-ask speak mode, or stop TTS if currently speaking
+
+STATE_FILE="$HOME/.local/state/claude-ask/waybar.json"
+CONFIG_FILE="$HOME/.config/claude-ask/config.toml"
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/claude-voice.sock"
+
+if [ ! -f "$STATE_FILE" ]; then
+    echo "claude-ask not running" >&2
+    exit 1
+fi
+
+# If currently speaking, stop TTS instead of toggling
+status=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('status',''))")
+if [ "$status" = "speaking" ]; then
+    echo '{"action":"stop_tts"}' | socat - UNIX-CONNECT:"$SOCK"
+    pkill -SIGRTMIN+12 waybar 2>/dev/null
+    exit 0
+fi
+
+# Toggle speak_enabled in state file
+python3 -c "
+import json
+path = '$STATE_FILE'
+with open(path) as f:
+    d = json.load(f)
+d['speak_enabled'] = not d.get('speak_enabled', False)
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+state = 'ON' if d['speak_enabled'] else 'OFF'
+print(f'Voice: {state}')
+"
+
+# Also persist to config file
+python3 -c "
+import re
+path = '$CONFIG_FILE'
+try:
+    with open(path) as f:
+        content = f.read()
+    if 'enabled = true' in content:
+        content = content.replace('enabled = true', 'enabled = false', 1)
+    else:
+        content = content.replace('enabled = false', 'enabled = true', 1)
+    with open(path, 'w') as f:
+        f.write(content)
+except FileNotFoundError:
+    pass
+"
+
+# Signal Waybar to refresh
+pkill -SIGRTMIN+12 waybar 2>/dev/null
+```
+
+**Step 3: Test**
+
+```bash
+# Trigger a query, then cancel it
+claude-ask-cancel
+# Toggle speak
+claude-ask-toggle-speak
+```
+
+**Step 4: Commit**
+
+```bash
+git add .local/bin/claude-ask-cancel .local/bin/claude-ask-toggle-speak
+git commit -m "retarget control scripts to claude-voice socket"
+```
+
+---
+
+### Task 6: Remove claude-ask daemon and update systemd
+
+Kill the claude-ask daemon. Update claude-voice's service to not depend on it.
+
+**Files:**
+- Modify: `.config/systemd/user/claude-voice.service`
+- Delete: `.config/systemd/user/claude-ask.service`
+- Modify: `.local/share/claude-ask/daemon.py` (gut it — keep only as a legacy reference or delete)
+
+**Step 1: Stop and disable claude-ask service**
+
+```bash
+systemctl --user stop claude-ask
+systemctl --user disable claude-ask
+```
+
+**Step 2: Update claude-voice.service**
+
+Remove the `After=claude-ask.service` dependency:
+
+```ini
+[Unit]
+Description=Claude Voice daemon (wake word + STT + query pipeline)
+
+[Service]
+Type=simple
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/.local/share/claude-voice/.venv/bin/python3 %h/.local/share/claude-voice/daemon.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+```
+
+**Step 3: Delete claude-ask.service**
+
+```bash
+rm .config/systemd/user/claude-ask.service
+```
+
+**Step 4: Gut claude-ask daemon.py**
+
+Delete the `Daemon` class, socket server, and `main()` from `daemon.py`. Keep only the module docstring as a tombstone, or delete the file entirely. The business logic now lives in `query.py`.
+
+Replace contents with:
+
+```python
+"""claude-ask daemon: REMOVED.
+
+Query pipeline has been consolidated into query.py.
+All queries now run through the claude-voice daemon.
+See docs/plans/2026-02-26-claude-pipeline-consolidation-design.md
+"""
+```
+
+**Step 5: Reload systemd and restart**
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart claude-voice
+```
+
+**Step 6: Full integration test**
+
+Test all paths:
+1. Say "ok computer, what time is it?" — wake word → transcribe → query
+2. Press HID button, speak — button → transcribe → query
+3. Open TUI (`claude-ask`), type, press Enter — TUI → query
+4. Click mic button in notification — mic → transcribe → query with conv_id
+5. Click reply button in notification — TUI with --reply → query with conv_id
+6. `claude-ask-cancel` during a query — cancel works
+7. `claude-ask-toggle-speak` — toggle and stop work
+
+**Step 7: Commit**
+
+```bash
+git add .config/systemd/user/claude-voice.service .local/share/claude-ask/daemon.py
+git rm .config/systemd/user/claude-ask.service
+git commit -m "remove claude-ask daemon, consolidate into claude-voice"
+```
+
+**Step 8: Stow**
+
+```bash
+cd ~/dotfiles && stow .
+```

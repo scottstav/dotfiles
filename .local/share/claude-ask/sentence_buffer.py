@@ -38,6 +38,39 @@ _MULTIPLE_SPACES = re.compile(r'  +')
 # Fenced code block detection
 _CODE_FENCE = re.compile(r'^```', re.MULTILINE)
 
+# Emoji characters: emoticons, dingbats, symbols, flags, skin tones, ZWJ sequences
+_EMOJI = re.compile(
+    '['
+    '\U0001F300-\U0001FAFF'  # Misc Symbols/Pictographs, Emoticons, Transport, etc.
+    '\U00002600-\U000027BF'  # Misc Symbols, Dingbats
+    '\U0000FE00-\U0000FE0F'  # Variation Selectors
+    '\U0000200D'             # Zero Width Joiner
+    '\U000020E3'             # Combining Enclosing Keycap
+    '\U0001F1E0-\U0001F1FF'  # Regional Indicator Symbols (flags)
+    ']+',
+    re.UNICODE,
+)
+
+# Decorative/symbolic Unicode that TTS should not pronounce
+_SYMBOLS = re.compile(
+    '['
+    '\u2190-\u21FF'  # Arrows (←↑→↓⇒⟹ etc.)
+    '\u2500-\u257F'  # Box Drawing
+    '\u2580-\u259F'  # Block Elements
+    '\u25A0-\u25FF'  # Geometric Shapes (▪▸◆◇ etc.)
+    '\u2700-\u27BF'  # Dingbats (✓✗✔✘ etc.)
+    '\u2022'         # Bullet •
+    '\u25E6'         # White bullet ◦
+    '\u2605\u2606'   # Stars ★☆
+    '\u00A9'         # ©
+    '\u00AE'         # ®
+    '\u2122'         # ™
+    '\u00B0'         # °
+    '\u27F9'         # ⟹
+    ']+',
+    re.UNICODE,
+)
+
 
 
 def _ends_with_abbreviation(text: str) -> bool:
@@ -125,7 +158,9 @@ class SentenceBuffer:
         return sentences
 
     def _clean(self, text: str) -> str:
-        """Strip markdown formatting, URLs, image refs from text."""
+        """Strip markdown formatting, URLs, image refs, emojis, symbols from text."""
+        text = _EMOJI.sub('', text)
+        text = _SYMBOLS.sub('', text)
         text = _MD_IMAGE.sub('', text)
         text = _MD_LINK.sub(r'\1', text)
         text = _BARE_URL.sub('', text)

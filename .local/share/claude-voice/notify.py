@@ -44,8 +44,8 @@ def notify_transcription(text: str | None) -> None:
 
 
 def notify_sending() -> None:
-    """Show a 'Sending to Claude...' notification."""
-    notify("Sending to Claude...")
+    """No-op — the overlay provides visual feedback now."""
+    pass
 
 
 def notify_dismiss() -> None:

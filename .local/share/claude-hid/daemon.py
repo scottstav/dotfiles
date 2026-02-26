@@ -96,10 +96,9 @@ def action_claude_voice_listen():
     sock_path = _get_voice_socket_path()
     payload = json.dumps({"action": "listen"})
     try:
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        sock.connect(sock_path)
-        sock.sendall(payload.encode("utf-8"))
-        sock.close()
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            sock.connect(sock_path)
+            sock.sendall(payload.encode("utf-8"))
         log.info("Sent listen request to claude-voice")
     except (ConnectionRefusedError, FileNotFoundError):
         log.warning("claude-voice not running, listen request dropped")

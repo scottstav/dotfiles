@@ -284,11 +284,16 @@ def run_tool(name: str, input_data: dict):
             spec = importlib.util.spec_from_file_location(path.stem, path)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
-            if mod.name == name:
-                result = mod.run(input_data)
-                if isinstance(result, dict) and result.get("type") == "image":
-                    return result
-                return str(result)
+        except Exception:
+            log.exception("Failed to import tool %s", path.name)
+            continue  # skip broken tools, don't abort the search
+        if getattr(mod, "name", None) != name:
+            continue
+        try:
+            result = mod.run(input_data)
+            if isinstance(result, dict) and result.get("type") == "image":
+                return result
+            return str(result)
         except Exception:
             log.exception("Error running tool %s", name)
             return f"Error: tool {name} raised an exception"
@@ -474,11 +479,13 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
     sentence_buf = SentenceBuffer()
     speak_on = waybar.speak_enabled
 
+    cancelled = False
     with client.messages.stream(**api_kwargs) as stream:
         for event in stream:
             if cancel_event and cancel_event.is_set():
                 _overlay_send(overlay_sock, {"cmd": "clear"})
                 stream.close()
+                cancelled = True
                 break
             if event.type == "content_block_delta":
                 if event.delta.type == "text_delta":
@@ -493,6 +500,8 @@ def stream_response(messages: list, tag: str, cancel_event: threading.Event | No
                         "data": event.delta.text,
                     })
 
+        if cancelled:
+            return None, accumulated_text
         response = stream.get_final_message()
 
     if speak_on:
@@ -549,8 +558,10 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
 
     # Start TTS if enabled
     waybar.reload_speak_enabled()
+    did_mute = False
     if waybar.speak_enabled:
         _voice_control("mute")
+        did_mute = True
         tts.start()
         waybar.set_status("speaking")
     else:
@@ -567,6 +578,8 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
                 conv["messages"], tag, cancel_event=cancel_event,
                 prior_text=full_text, overlay_sock=overlay_sock,
             )
+            if response is None:
+                break  # Cancelled during streaming
             _log_usage(response)
 
             # Update Waybar usage
@@ -638,7 +651,6 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
                 tts.finish()
                 tts.wait_done(120)
                 tts.stop()
-            _voice_control("unmute")
 
         log.info("Conversation %s complete (%d messages)", conv["id"][:8], len(conv["messages"]))
 
@@ -662,7 +674,6 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         _overlay_close(overlay_sock)
         notify(tag, f"API error: {e}")
         tts.stop()
-        _voice_control("unmute")
         _store.save(conv)
     except Exception:
         log.exception("Unexpected error during query")
@@ -670,7 +681,8 @@ def send_query(text: str, conversation_id=None, cancel_event: threading.Event | 
         _overlay_close(overlay_sock)
         notify(tag, "Unexpected error (check logs)")
         tts.stop()
-        _voice_control("unmute")
         _store.save(conv)
     finally:
+        if did_mute:
+            _voice_control("unmute")
         waybar.set_status("idle")

@@ -1,6 +1,5 @@
 [Unit]
-Description=Claude Voice daemon (wake word + STT for claude-ask)
-After=claude-ask.service
+Description=Claude Voice daemon (wake word + STT + query pipeline)
 
 [Service]
 Type=simple

@@ -13,7 +13,6 @@ Features:
 
 import argparse
 import numpy as np
-import pyaudio
 import webrtcvad
 import collections
 import subprocess
@@ -334,7 +333,6 @@ class VoiceTyping:
         self.sample_rate = 16000
         self.chunk_size = 320  # 20ms at 16kHz
         self.channels = 1
-        self.format = pyaudio.paInt16
 
         # Limits to avoid unbounded buffers under slow transcription
         self.max_recording_seconds = max_recording_seconds
@@ -344,12 +342,11 @@ class VoiceTyping:
         self.last_vad_update = 0.0
 
         # Initialize components
-        self.audio = None
-        self.stream = None
+        self._audio_process = None
+        self._reader_thread = None
         self.vad = None
         self.model = None
         self.running = False
-        self.input_device_index = None
 
         # Pause state (start paused; user activates with keybinding)
         self.is_paused = True
@@ -440,16 +437,12 @@ class VoiceTyping:
     def initialize(self):
         """Initialize all components"""
         try:
-            # Initialize PyAudio
-            self.audio = pyaudio.PyAudio()
-
-            # Resolve input device
-            self.input_device_index = self._resolve_input_device()
-            if self.input_device is not None and self.input_device_index is None:
+            # Resolve PipeWire input source
+            self._pw_source = self._resolve_input_device()
+            if self.input_device is not None and self._pw_source is None:
                 print(f"⚠️  Input device not found: {self.input_device} (using default)")
-            elif self.input_device_index is not None:
-                info = self.audio.get_device_info_by_index(self.input_device_index)
-                print(f"🎙️  Using input device [{self.input_device_index}]: {info.get('name', 'unknown')}")
+            elif self._pw_source is not None:
+                print(f"🎙️  Using input source: {self._pw_source}")
 
             # Calibrate ambient noise floor before VAD starts
             self._calibrate_noise_floor()
@@ -492,18 +485,9 @@ class VoiceTyping:
             list(self.model.transcribe(dummy_audio, language=self.language or "en"))
             print("Model warmed up!")
 
-            # Initialize audio stream
-            self.stream = self.audio.open(
-                format=self.format,
-                channels=self.channels,
-                rate=self.sample_rate,
-                input=True,
-                input_device_index=self.input_device_index,
-                frames_per_buffer=self.chunk_size,
-                stream_callback=self.audio_callback
-            )
-
-            print(f"Audio stream initialized (sample rate: {self.sample_rate} Hz)")
+            # Start PipeWire audio capture
+            self._start_audio_capture()
+            print(f"Audio capture initialized via PipeWire (sample rate: {self.sample_rate} Hz)")
 
             # Start audio visualizer if enabled
             if self.viz_enabled and VISUALIZER_AVAILABLE:
@@ -521,6 +505,42 @@ class VoiceTyping:
             print(f"Initialization error: {e}")
             self.cleanup()
             raise
+
+    def _build_parec_cmd(self):
+        """Build the parec command for PipeWire audio capture."""
+        cmd = [
+            'parec',
+            '--raw',
+            '--format=s16le',
+            f'--rate={self.sample_rate}',
+            f'--channels={self.channels}',
+            '--latency-msec=20',
+        ]
+        if self._pw_source:
+            cmd.extend(['--device', self._pw_source])
+        return cmd
+
+    def _start_audio_capture(self):
+        """Start audio capture via PipeWire (parec subprocess)."""
+        if self._audio_process:
+            try:
+                self._audio_process.kill()
+                self._audio_process.wait(timeout=2)
+            except Exception:
+                pass
+
+        cmd = self._build_parec_cmd()
+        try:
+            self._audio_process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        except FileNotFoundError:
+            raise RuntimeError(
+                "parec not found. Install pipewire-pulse (or pulseaudio-utils) "
+                "to enable PipeWire audio capture."
+            )
 
     def _toggle_pause(self):
         """Toggle pause state"""
@@ -771,45 +791,83 @@ class VoiceTyping:
         self.ptt_listener.start()
 
     def _resolve_input_device(self):
-        """Resolve input device index by id or name substring."""
+        """Resolve input device to a PipeWire/PulseAudio source name."""
         if self.input_device is None:
             return None
 
-        try:
-            device_count = self.audio.get_device_count()
-        except Exception:
-            return None
+        sources = self._list_pw_sources()
+        spec = str(self.input_device)
 
-        # Numeric index
-        if isinstance(self.input_device, int):
-            return self.input_device
-        if isinstance(self.input_device, str) and self.input_device.isdigit():
-            return int(self.input_device)
+        # Exact source name match
+        for name, desc in sources:
+            if spec == name:
+                return name
 
-        # Name substring match
-        needle = str(self.input_device).lower()
-        for idx in range(device_count):
-            info = self.audio.get_device_info_by_index(idx)
-            if info.get('maxInputChannels', 0) > 0 and needle in info.get('name', '').lower():
-                return idx
+        # Name substring match (case-insensitive) against source name or description
+        needle = spec.lower()
+        for name, desc in sources:
+            if needle in name.lower() or needle in desc.lower():
+                return name
 
         return None
 
     @staticmethod
-    def list_input_devices():
-        """List available input devices."""
-        audio = pyaudio.PyAudio()
+    def _list_pw_sources():
+        """List PipeWire/PulseAudio sources. Returns list of (name, description)."""
+        sources = []
         try:
-            device_count = audio.get_device_count()
-            print("Input devices:")
-            for idx in range(device_count):
-                info = audio.get_device_info_by_index(idx)
-                if info.get('maxInputChannels', 0) > 0:
-                    name = info.get('name', 'unknown')
-                    default_tag = " (default)" if info.get('defaultSampleRate') else ""
-                    print(f"  [{idx}] {name}{default_tag}")
-        finally:
-            audio.terminate()
+            result = subprocess.run(
+                ['pactl', 'list', 'sources', 'short'],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode != 0:
+                return sources
+            for line in result.stdout.strip().splitlines():
+                parts = line.split('\t')
+                if len(parts) >= 2:
+                    name = parts[1]
+                    # Skip monitor sources (they capture output, not input)
+                    if '.monitor' in name:
+                        continue
+                    sources.append((name, name))
+        except Exception:
+            pass
+
+        # Try to get descriptions via pactl list sources
+        try:
+            result = subprocess.run(
+                ['pactl', 'list', 'sources'],
+                capture_output=True, text=True, timeout=5,
+            )
+            if result.returncode == 0:
+                desc_map = {}
+                current_name = None
+                for line in result.stdout.splitlines():
+                    line = line.strip()
+                    if line.startswith('Name:'):
+                        current_name = line.split(':', 1)[1].strip()
+                    elif line.startswith('Description:') and current_name:
+                        desc_map[current_name] = line.split(':', 1)[1].strip()
+                        current_name = None
+                sources = [(name, desc_map.get(name, name)) for name, _ in sources]
+        except Exception:
+            pass
+
+        return sources
+
+    @staticmethod
+    def list_input_devices():
+        """List available input devices via PipeWire."""
+        sources = VoiceTyping._list_pw_sources()
+        if not sources:
+            print("No input sources found. Is PipeWire running?")
+            return
+        print("Input sources (PipeWire):")
+        for name, desc in sources:
+            label = f"{desc}" if desc != name else name
+            print(f"  {label}")
+            if desc != name:
+                print(f"    name: {name}")
 
     def _rms(self, audio_chunk: np.ndarray) -> float:
         """Compute RMS for an int16 audio chunk."""
@@ -883,22 +941,19 @@ class VoiceTyping:
             return
 
         try:
-            stream = self.audio.open(
-                format=self.format,
-                channels=self.channels,
-                rate=self.sample_rate,
-                input=True,
-                input_device_index=self.input_device_index,
-                frames_per_buffer=self.chunk_size,
-            )
+            cmd = self._build_parec_cmd()
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            chunk_bytes = self.chunk_size * 2  # 16-bit = 2 bytes/sample
             samples = int(self.sample_rate * self.calibration_seconds / self.chunk_size)
             rms_values = []
             for _ in range(samples):
-                data = stream.read(self.chunk_size, exception_on_overflow=False)
+                data = proc.stdout.read(chunk_bytes)
+                if not data or len(data) < chunk_bytes:
+                    break
                 chunk = np.frombuffer(data, dtype=np.int16)
                 rms_values.append(self._rms(chunk))
-            stream.stop_stream()
-            stream.close()
+            proc.kill()
+            proc.wait(timeout=2)
 
             if rms_values:
                 self.noise_floor_rms = max(50.0, float(np.median(rms_values)))
@@ -907,29 +962,31 @@ class VoiceTyping:
         except Exception as e:
             print(f"⚠️  Noise calibration failed: {e}")
 
-    def audio_callback(self, in_data, frame_count, time_info, status):
-        """Audio stream callback - MUST be fast, no blocking operations"""
-        if not self.running:
-            return (None, pyaudio.paComplete)
+    def _audio_reader(self):
+        """Read audio chunks from PipeWire subprocess and process them."""
+        chunk_bytes = self.chunk_size * 2  # 16-bit = 2 bytes/sample
+        while self.running:
+            proc = self._audio_process
+            if proc is None or proc.poll() is not None:
+                if self.running:
+                    time.sleep(0.1)
+                continue
 
-        # Skip all processing when paused
-        if self.is_paused:
-            return (None, pyaudio.paContinue)
+            data = proc.stdout.read(chunk_bytes)
+            if not data or len(data) < chunk_bytes:
+                if self.running:
+                    time.sleep(0.05)
+                continue
 
-        # Push-to-talk gate
-        if self.ptt_enabled and not self.ptt_active:
-            return (None, pyaudio.paContinue)
+            if self.is_paused:
+                continue
+            if self.ptt_enabled and not self.ptt_active:
+                continue
 
-        # Check for audio overflow
-        if status:
-            now = time.time()
-            if now - self.last_audio_status_log > 5:
-                if status & pyaudio.paInputOverflow:
-                    print("⚠️ Audio buffer overflow")
-                if status & pyaudio.paInputUnderflow:
-                    print("⚠️ Audio buffer underflow")
-                self.last_audio_status_log = now
+            self._process_audio_chunk(data)
 
+    def _process_audio_chunk(self, in_data):
+        """Process one audio chunk (VAD, buffering, enqueue for transcription)."""
         raw_chunk = np.frombuffer(in_data, dtype=np.int16)
         raw_rms = self._rms(raw_chunk)
 
@@ -999,8 +1056,6 @@ class VoiceTyping:
                     self.recording_buffer = []
 
             self.pre_buffer.append(raw_chunk.copy())
-
-        return (None, pyaudio.paContinue)
 
     def _enqueue_transcription(self, audio_to_process):
         """Queue audio for transcription without blocking the audio callback."""
@@ -1339,20 +1394,31 @@ class VoiceTyping:
                 )
                 self._preview_thread.start()
 
-            # Start audio stream
-            self.stream.start_stream()
+            # Start audio reader thread
+            self._reader_thread = threading.Thread(
+                target=self._audio_reader,
+                daemon=True,
+                name="AudioReader"
+            )
+            self._reader_thread.start()
 
             # Keep main thread alive
             while self.running:
-                if self.stream and not self.stream.is_active():
+                proc = self._audio_process
+                if proc and proc.poll() is not None:
                     now = time.time()
                     if now - self.last_stream_restart > 1.0:
                         self.last_stream_restart = now
-                        print("⚠️  Audio stream stopped, restarting...")
+                        stderr = ""
                         try:
-                            self._restart_audio_stream()
+                            stderr = proc.stderr.read().decode(errors='replace').strip()
+                        except Exception:
+                            pass
+                        print(f"⚠️  Audio capture stopped (exit {proc.returncode}){': ' + stderr if stderr else ''}, restarting...")
+                        try:
+                            self._start_audio_capture()
                         except Exception as e:
-                            print(f"⚠️  Audio stream restart failed: {e}")
+                            print(f"⚠️  Audio capture restart failed: {e}")
                 if self.status_interval and time.time() - self.last_status_log >= self.status_interval:
                     self.last_status_log = time.time()
                     status_line = self._status_snapshot()
@@ -1407,40 +1473,18 @@ class VoiceTyping:
         if self.transcription_thread and self.transcription_thread.is_alive():
             self.transcription_thread.join(timeout=2.0)
 
-        if self.stream:
+        if self._audio_process:
             try:
-                self.stream.stop_stream()
-                self.stream.close()
-            except:
-                pass
-
-        if self.audio:
-            try:
-                self.audio.terminate()
-            except:
+                self._audio_process.kill()
+                self._audio_process.wait(timeout=2)
+            except Exception:
                 pass
 
         print("✅ Cleanup complete")
 
     def _restart_audio_stream(self):
-        """Attempt to restart the audio stream."""
-        if self.stream:
-            try:
-                self.stream.stop_stream()
-                self.stream.close()
-            except:
-                pass
-
-        self.stream = self.audio.open(
-            format=self.format,
-            channels=self.channels,
-            rate=self.sample_rate,
-            input=True,
-            input_device_index=self.input_device_index,
-            frames_per_buffer=self.chunk_size,
-            stream_callback=self.audio_callback
-        )
-        self.stream.start_stream()
+        """Attempt to restart the audio capture subprocess."""
+        self._start_audio_capture()
 
 
 def _build_defaults(config: dict) -> dict:

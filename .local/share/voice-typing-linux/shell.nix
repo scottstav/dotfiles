@@ -15,8 +15,6 @@ pkgs.mkShell {
     wmctrl     # Window focus commands
     netcat     # Socket toggle (voice-toggle)
     xbindkeys  # Wayland hotkey fallback
-    portaudio  # For pyaudio
-    
     # For pyautogui
     scrot  # Screenshot tool
     xorg.libX11

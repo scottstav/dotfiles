@@ -11,7 +11,9 @@ PortAudio's ALSA backend doesn't reliably route through PipeWire.
 """
 
 import collections
+import fcntl
 import logging
+import os
 import subprocess
 
 import numpy as np
@@ -131,14 +133,18 @@ class AudioPipeline:
     # Speech capture phase
     # ------------------------------------------------------------------
 
-    def begin_capture(self) -> None:
+    def begin_capture(self, skip_pre_roll: bool = False) -> None:
         """Switch from listening mode to capture mode.
 
-        Copies the pre-roll buffer into the capture buffer so that
-        audio just before the wake word trigger is included in the
-        final recording.
+        Args:
+            skip_pre_roll: If True, discard pre-roll audio instead of
+                including it. Use for wake word triggers where the
+                pre-roll contains wake word audio (e.g. "computer").
         """
-        self._capture_buf = list(self._pre_roll)
+        if skip_pre_roll:
+            self._capture_buf = []
+        else:
+            self._capture_buf = list(self._pre_roll)
         self._pre_roll.clear()
         log.debug(
             "Capture started with %d pre-roll frames (%.0f ms)",
@@ -185,3 +191,31 @@ class AudioPipeline:
         )
         self._capture_buf.clear()
         return audio
+
+    def flush(self) -> None:
+        """Drain all buffered audio from the pw-record pipe.
+
+        Call after capture to discard stale audio that accumulated
+        while nobody was reading (during transcription, sleep, etc.).
+        This ensures the wake word model only sees fresh audio.
+        """
+        if self._proc is None or self._proc.stdout is None:
+            return
+        fd = self._proc.stdout.fileno()
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+        drained = 0
+        try:
+            while True:
+                try:
+                    chunk = self._proc.stdout.read1(65536)
+                    if not chunk:
+                        break
+                    drained += len(chunk)
+                except BlockingIOError:
+                    break
+        finally:
+            fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+        self._pre_roll.clear()
+        if drained:
+            log.debug("Flushed %d bytes of stale audio from pipe", drained)

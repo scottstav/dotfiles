@@ -302,19 +302,23 @@ class Daemon:
             stderr=subprocess.DEVNULL,
         )
 
-    def _trigger_voice_listen(self, conv_id):
-        """Send a listen command to the claude-voice daemon."""
+    def _voice_control(self, action, **extra):
+        """Send a control command to the claude-voice daemon."""
         runtime_dir = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
         sock_path = os.path.join(runtime_dir, "claude-voice.sock")
-        payload = json.dumps({"action": "listen", "conversation_id": conv_id})
+        payload = json.dumps({"action": action, **extra})
         try:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             sock.connect(sock_path)
             sock.sendall(payload.encode("utf-8"))
             sock.close()
-            log.info("Triggered claude-voice listen for conv %s", conv_id[:8])
         except (ConnectionRefusedError, FileNotFoundError):
-            log.warning("claude-voice not running, cannot trigger mic")
+            pass
+
+    def _trigger_voice_listen(self, conv_id):
+        """Send a listen command to the claude-voice daemon."""
+        self._voice_control("listen", conversation_id=conv_id)
+        log.info("Triggered claude-voice listen for conv %s", conv_id[:8])
 
     def _archive_conversation(self, conv, arch):
         """Write formatted transcript to Dropbox. Runs in executor thread."""
@@ -530,6 +534,7 @@ class Daemon:
             log.error("API error: %s", e)
             self._notify(tag, f"API error: {e}")
             self.tts.stop()
+            self._voice_control("unmute")
             self.waybar.set_status("idle")
             self.store.save(conv)
             return
@@ -537,6 +542,7 @@ class Daemon:
             log.exception("Unexpected error during API call")
             self._notify(tag, "Unexpected error (check logs)")
             self.tts.stop()
+            self._voice_control("unmute")
             self.waybar.set_status("idle")
             self.store.save(conv)
             return
@@ -546,6 +552,7 @@ class Daemon:
         # Start TTS once for the whole conversation (survives tool call loops)
         self.waybar.reload_speak_enabled()
         if self.waybar.speak_enabled:
+            self._voice_control("mute")
             self.tts.start()
             self.waybar.set_status("speaking")
         else:
@@ -644,6 +651,7 @@ class Daemon:
             self.tts.finish()
             await loop.run_in_executor(None, self.tts.wait_done, 120)
             self.tts.stop()
+            self._voice_control("unmute")
 
         self.waybar.set_status("idle")
 

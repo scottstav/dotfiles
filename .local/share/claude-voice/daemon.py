@@ -10,6 +10,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 import socket
 import threading
 import time
@@ -41,6 +42,9 @@ from wake_word import WakeWordListener
 
 LAST_STATE_FILE = Path.home() / ".local" / "state" / "claude-ask" / "last.json"
 AUTO_REPLY_THRESHOLD_SECS = 60
+
+# Strip wake word remnants ("ok computer", "computer") from transcription start
+_WAKE_WORD_RE = re.compile(r'^(ok\s+)?computer[.,!?\s:]*', re.IGNORECASE)
 
 
 def _read_last_conversation():
@@ -136,7 +140,13 @@ class Daemon:
     def set_muted(self, muted: bool):
         """Mute or unmute wake word detection."""
         with self._lock:
+            was_muted = self._muted
             self._muted = muted
+        if was_muted and not muted:
+            # Transitioning from muted → unmuted: reset model state and
+            # flush stale audio so the model starts clean
+            self.wake_word.reset()
+            self.audio.flush()
         log.info("Wake word %s", "muted" if muted else "unmuted")
 
     def _check_listen_request(self):
@@ -145,6 +155,23 @@ class Daemon:
             req = self._listen_request
             self._listen_request = None
             return req
+
+    # ------------------------------------------------------------------
+    # Post-capture cleanup
+    # ------------------------------------------------------------------
+
+    def _post_capture_reset(self):
+        """Flush stale pipe audio and reset the wake word model.
+
+        During transcription + sleep, pw-record keeps writing to the
+        pipe. This stale audio would be fed to the wake word model on
+        the next loop iteration, contaminating its state. Flushing the
+        pipe and resetting the model ensures immediate wake word
+        responsiveness after a capture cycle.
+        """
+        self.audio.flush()
+        self.wake_word.reset()
+        log.debug("Post-capture reset: flushed audio, reset wake word model")
 
     # ------------------------------------------------------------------
     # Main loop
@@ -169,7 +196,10 @@ class Daemon:
                     continue
                 if self.wake_word.detect(chunk):
                     notify_ack()
-                    self._capture_and_send(conversation_id=_read_last_conversation())
+                    self._capture_and_send(
+                        conversation_id=_read_last_conversation(),
+                        skip_pre_roll=True,
+                    )
         except KeyboardInterrupt:
             log.info("Interrupted")
         finally:
@@ -180,10 +210,10 @@ class Daemon:
     # Speech capture
     # ------------------------------------------------------------------
 
-    def _capture_and_send(self, conversation_id=None):
+    def _capture_and_send(self, conversation_id=None, skip_pre_roll=False):
         """Capture speech, transcribe, and send to claude-ask."""
         notify_listening()
-        self.audio.begin_capture()
+        self.audio.begin_capture(skip_pre_roll=skip_pre_roll)
         self.detector.on_speech_start()
         silence_start = None
         last_interim_time = 0
@@ -215,11 +245,14 @@ class Daemon:
                         final_audio = self.audio.end_capture()
                         final_text = transcribe(final_audio, self.whisper_config)
                         final_text = SpeechEndDetector.strip_force_phrase(final_text, phrase)
+                        if skip_pre_roll:
+                            final_text = _WAKE_WORD_RE.sub('', final_text).strip()
                         if final_text.strip():
                             notify_sending()
                             send_to_claude_ask(final_text.strip(), conversation_id)
                         else:
                             notify_dismiss()
+                        self._post_capture_reset()
                         return
 
                 # Check silence timeout
@@ -232,6 +265,7 @@ class Daemon:
         except Exception:
             log.exception("Error during speech capture")
             self.audio.end_capture()
+            self._post_capture_reset()
             notify_dismiss()
             return
 
@@ -239,10 +273,14 @@ class Daemon:
         final_audio = self.audio.end_capture()
         if len(final_audio) < RATE * 0.3:  # < 0.3s = probably false trigger
             log.info("Audio too short (%.2fs), discarding", len(final_audio) / RATE)
+            self._post_capture_reset()
             notify_dismiss()
             return
 
         final_text = transcribe(final_audio, self.whisper_config)
+        # Strip wake word remnants (e.g. "computer.") from transcription
+        if skip_pre_roll:
+            final_text = _WAKE_WORD_RE.sub('', final_text).strip()
         if final_text.strip():
             notify_transcription(final_text.strip())
             time.sleep(3)
@@ -251,6 +289,7 @@ class Daemon:
         else:
             log.info("Empty transcription, discarding")
             notify_dismiss()
+        self._post_capture_reset()
 
 
 # ---------------------------------------------------------------------------

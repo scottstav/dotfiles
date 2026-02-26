@@ -1,0 +1,4 @@
+[[binding]]
+device_match = "Hollyland.*Consumer Control"
+key = "KEY_VOLUMEDOWN"
+action = "claude-voice-listen"

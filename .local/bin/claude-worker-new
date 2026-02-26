@@ -20,9 +20,13 @@ echo "$dir" >> "$HISTORY_FILE"
 read -r -p "  Task: " task
 [[ -z "$task" ]] && exit 0
 
-# Generate unique ID and spawn background worker
+# Generate unique ID, write state file, launch via hyprctl (survives foot exit)
 ID=$(date +%s)
-setsid claude-worker-session "$ID" "$dir" "$task" </dev/null &>/dev/null &
+STATE_FILE="$STATE_DIR/$ID.json"
+jq -n --arg dir "$dir" --arg task "$task" \
+    '{"status": "pending", "directory": $dir, "task": $task}' > "$STATE_FILE"
+
+hyprctl dispatch exec "claude-worker-session '$ID'"
 
 echo "Worker $ID started in background."
-sleep 0.5
+sleep 0.3

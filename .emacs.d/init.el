@@ -774,7 +774,8 @@ Shows clean service names for completion (e.g., 'user-service')."
 
 (global-set-key (kbd "C-c t p") #'my/toggle-document-preview)
 
-(use-package tmr)
+(use-package tmr
+  :hook (tmr-tabulated-mode . (lambda () (setq-local mode-line-format nil))))
 
 (use-package vterm
     :hook (vterm-mode . (lambda () (setq-local mode-line-format nil))))

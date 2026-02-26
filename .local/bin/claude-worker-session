@@ -1,20 +1,28 @@
 #!/bin/bash
 # Claude Worker session — runs as background daemon (no terminal)
-# Usage: claude-worker-session <id> <dir> <task>
+# Usage: claude-worker-session <id> [<dir> <task>]
+#   With just <id>, reads directory and task from the state file.
 
 ID="$1"
-dir="$2"
-task="$3"
-
-if [[ -z "$ID" || -z "$dir" || -z "$task" ]]; then
-    echo "Usage: claude-worker-session <id> <dir> <task>" >&2
-    exit 1
-fi
+[[ -z "$ID" ]] && { echo "Usage: claude-worker-session <id> [<dir> <task>]" >&2; exit 1; }
 
 STATE_DIR="$HOME/.local/state/claude-worker"
 STATE_FILE="$STATE_DIR/$ID.json"
 LOG_FILE="$STATE_DIR/$ID.log"
 mkdir -p "$STATE_DIR"
+
+if [[ -n "$2" && -n "$3" ]]; then
+    dir="$2"
+    task="$3"
+elif [[ -f "$STATE_FILE" ]]; then
+    dir=$(jq -r '.directory' "$STATE_FILE")
+    task=$(jq -r '.task' "$STATE_FILE")
+else
+    echo "Error: no state file for worker $ID and no dir/task args" >&2
+    exit 1
+fi
+
+[[ -z "$dir" || -z "$task" ]] && { echo "Error: empty directory or task" >&2; exit 1; }
 
 # Prevent "nested session" error — workers are independent
 unset CLAUDECODE
@@ -63,7 +71,7 @@ action=$(notify-send -t 0 -a "Claude Worker" \
     "Worker Done" "$result_preview" 2>/dev/null)
 
 if [[ "$action" == "resume" ]]; then
-    setsid alacritty --working-directory "$dir" -e claude --dangerously-skip-permissions --resume "$SESSION_ID" </dev/null &>/dev/null &
+    hyprctl dispatch exec "env -u CLAUDECODE alacritty --working-directory '$dir' -e claude --dangerously-skip-permissions --resume '$SESSION_ID'"
 fi
 
 # Clean up state and log

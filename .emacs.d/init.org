@@ -875,7 +875,8 @@ Shows clean service names for completion (e.g., 'user-service')."
 
 * tmr
 #+begin_src emacs-lisp
-  (use-package tmr)
+  (use-package tmr
+    :hook (tmr-tabulated-mode . (lambda () (setq-local mode-line-format nil))))
 #+end_src
 
 * terminal

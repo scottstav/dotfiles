@@ -73,7 +73,6 @@ state_file="$STATE_DIR/$sel_id.json"
 case "$sel_status" in
     pending)
         claude-worker-manage "$sel_id"
-        sleep 0.1  # let setsid detach before foot closes pty
         ;;
     working|done)
         session_id=$(jq -r '.session_id // empty' "$state_file")
@@ -89,8 +88,7 @@ case "$sel_status" in
         pkill -SIGRTMIN+12 waybar
 
         if [[ -n "$session_id" ]]; then
-            setsid env -u CLAUDECODE alacritty --working-directory "$dir" -e claude --dangerously-skip-permissions --resume "$session_id" </dev/null &>/dev/null &
-            sleep 0.1  # let setsid detach before foot closes pty
+            hyprctl dispatch exec "env -u CLAUDECODE alacritty --working-directory '$dir' -e claude --dangerously-skip-permissions --resume '$session_id'"
         else
             echo "No session to resume. Cleaned up."
             sleep 1

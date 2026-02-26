@@ -43,11 +43,8 @@ if $DENY; then
     pkill -SIGRTMIN+12 waybar
     echo "Denied worker $ID"
 else
-    # Approve: read task details and launch session
-    dir=$(jq -r '.directory' "$STATE_FILE")
-    task=$(jq -r '.task' "$STATE_FILE")
+    # Approve: launch session (reads dir/task from state file)
+    hyprctl dispatch exec "claude-worker-session '$ID'"
 
-    setsid claude-worker-session "$ID" "$dir" "$task" </dev/null &>/dev/null &
-
-    echo "Approved worker $ID → $dir"
+    echo "Approved worker $ID → $(jq -r '.directory' "$STATE_FILE")"
 fi

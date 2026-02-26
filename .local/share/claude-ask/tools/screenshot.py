@@ -1,9 +1,12 @@
 """Capture a screenshot and return it as an image."""
 
 import base64
+import io
 import subprocess
 import tempfile
 import os
+
+MAX_BYTES = 5 * 1024 * 1024  # Anthropic API limit
 
 name = "screenshot"
 description = "Capture a screenshot of the screen or a selected region. Returns the image for analysis. Use when the user asks about something on their screen."
@@ -18,6 +21,26 @@ input_schema = {
     },
     "required": ["region"],
 }
+
+
+def _shrink_to_fit(png_path):
+    """Re-encode as JPEG at decreasing quality/size until under MAX_BYTES."""
+    from PIL import Image
+    img = Image.open(png_path)
+    if img.mode == "RGBA":
+        img = img.convert("RGB")
+
+    for quality in (85, 70, 50, 30):
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=quality)
+        if buf.tell() <= MAX_BYTES:
+            return buf.getvalue(), "image/jpeg"
+
+    # Still too big — scale down 50% at low quality
+    small = img.resize((img.width // 2, img.height // 2), Image.LANCZOS)
+    buf = io.BytesIO()
+    small.save(buf, format="JPEG", quality=40)
+    return buf.getvalue(), "image/jpeg"
 
 
 def run(input):
@@ -37,10 +60,15 @@ def run(input):
         else:
             subprocess.run(["grim", tmp_path], check=True)
 
-        with open(tmp_path, "rb") as f:
-            data = base64.b64encode(f.read()).decode("ascii")
+        if os.path.getsize(tmp_path) > MAX_BYTES:
+            img_bytes, media_type = _shrink_to_fit(tmp_path)
+        else:
+            with open(tmp_path, "rb") as f:
+                img_bytes = f.read()
+            media_type = "image/png"
 
-        return {"type": "image", "data": data, "media_type": "image/png"}
+        data = base64.b64encode(img_bytes).decode("ascii")
+        return {"type": "image", "data": data, "media_type": media_type}
     finally:
         if os.path.exists(tmp_path):
             os.unlink(tmp_path)

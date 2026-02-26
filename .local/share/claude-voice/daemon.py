@@ -142,7 +142,8 @@ class Daemon:
 
         thread = threading.Thread(target=_run, daemon=True)
         thread.start()
-        log.info("Query thread started (conv=%s)", conversation_id or "auto")
+        conv_label = "new" if conversation_id is NEW_CONVERSATION else (conversation_id or "auto")
+        log.info("Query thread started (conv=%s)", conv_label)
 
     def cancel_query(self):
         """Cancel the currently running query."""

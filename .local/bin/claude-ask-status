@@ -9,7 +9,7 @@ if [ ! -f "$STATE_FILE" ]; then
 fi
 
 python3 -c "
-import json, glob, os
+import json, subprocess, os
 from datetime import datetime
 
 d = json.load(open('$STATE_FILE'))
@@ -29,14 +29,14 @@ model_short = MODEL_NAMES.get(model_id, model_id)
 month = usage.get('month_cost', '\$0.00')
 last = usage.get('last_query_cost', '\$0.00')
 
-# Read worker state files
-worker_dir = os.path.expanduser('~/.local/state/claude-worker')
+# Read worker state from ccl
 workers = []
-for f in glob.glob(os.path.join(worker_dir, '*.json')):
-    try:
-        workers.append(json.load(open(f)))
-    except (json.JSONDecodeError, IOError):
-        pass
+try:
+    r = subprocess.run(['ccl', 'list', '--json'], capture_output=True, text=True, timeout=2)
+    if r.returncode == 0 and r.stdout.strip() and r.stdout.strip() != 'No workers.':
+        workers = json.loads(r.stdout.strip())
+except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+    pass
 
 worker_pending = sum(1 for w in workers if w.get('status') == 'pending')
 worker_working = sum(1 for w in workers if w.get('status') == 'working')

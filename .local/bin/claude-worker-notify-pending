@@ -1,15 +1,16 @@
 #!/bin/bash
-# Show pending worker notification and handle action
+# Show pending worker notification and handle action via ccl
 # Usage: claude-worker-notify-pending <id>
 
 id="$1"
-STATE_DIR="$HOME/.local/state/claude-worker"
-state_file="$STATE_DIR/$id.json"
+[[ -z "$id" ]] && exit 1
 
-[[ ! -f "$state_file" ]] && exit 1
+# Read worker info from ccl
+info=$(ccl status "$id" --json 2>/dev/null)
+[[ -z "$info" ]] && exit 1
 
-task=$(jq -r '.task' "$state_file" | head -c 200)
-dir=$(jq -r '.directory' "$state_file" | sed "s|$HOME|~|")
+task=$(echo "$info" | jq -r '.task' | head -c 200)
+dir=$(echo "$info" | jq -r '.directory' | sed "s|$HOME|~|")
 
 action=$(notify-send -t 0 -a "Claude Worker" \
     -A "approve=Start" -A "deny=Decline" \

@@ -1,8 +1,7 @@
-"""Queue a pending Claude Code worker session."""
+"""Queue a pending Claude Code worker session via ccl."""
 
 import json
 import subprocess
-from datetime import datetime, timezone
 from pathlib import Path
 
 name = "spawn_worker"
@@ -31,8 +30,6 @@ input_schema = {
     "required": ["directory", "task"],
 }
 
-STATE_DIR = Path.home() / ".local" / "state" / "claude-worker"
-
 
 def run(input_data):
     directory = input_data["directory"]
@@ -41,28 +38,19 @@ def run(input_data):
     if not Path(directory).is_dir():
         return f"Error: directory {directory} does not exist."
 
-    worker_id = str(int(datetime.now().timestamp()))
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    state_file = STATE_DIR / f"{worker_id}.json"
-    state = {
-        "status": "pending",
-        "directory": directory,
-        "task": task,
-        "created": datetime.now(timezone.utc).isoformat(),
-    }
-    state_file.write_text(json.dumps(state, indent=2))
-
-    # Signal waybar
-    subprocess.Popen(
-        ["pkill", "-SIGRTMIN+12", "waybar"],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    result = subprocess.run(
+        ["ccl", "new", "--pending", "--json", "--dir", directory, "--task", task],
+        capture_output=True, text=True,
     )
 
-    # Fire notification handler in background
-    subprocess.Popen(
-        ["claude-worker-notify-pending", worker_id],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    if result.returncode != 0:
+        return f"Error creating worker: {result.stderr.strip()}"
+
+    try:
+        data = json.loads(result.stdout.strip())
+        worker_id = data["id"]
+    except (json.JSONDecodeError, KeyError):
+        return f"Worker created but couldn't parse output: {result.stdout.strip()}"
 
     dir_short = directory.replace(str(Path.home()), "~")
     return (

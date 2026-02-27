@@ -80,7 +80,5 @@ action=$(notify-send -a "System" \
     "$running/$total running — failed: $names")
 
 if [ "$action" = "fix" ]; then
-    id=$(date +%s)
-    task="The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
-    setsid claude-worker-session "$id" "$HOME/dotfiles" "$task" </dev/null &>/dev/null &
+    ccl new --dir "$HOME/dotfiles" --task "The following services/processes failed on startup: ${names}. Fix this and ensure it doesnt happen again."
 fi

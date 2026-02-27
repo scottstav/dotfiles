@@ -1,4 +1,4 @@
-"""List, approve, or cancel Claude Code workers."""
+"""List, approve, or cancel Claude Code workers via ccl."""
 
 import json
 import subprocess
@@ -25,43 +25,33 @@ input_schema = {
         },
         "worker_id": {
             "type": "string",
-            "description": "Worker ID or partial match (required for approve/cancel).",
+            "description": "Worker ID (required for approve/cancel).",
         },
     },
     "required": ["action"],
 }
 
-STATE_DIR = Path.home() / ".local" / "state" / "claude-worker"
 
-
-def _load_workers():
-    """Load all worker state files."""
-    workers = []
-    for f in sorted(STATE_DIR.glob("*.json")):
-        try:
-            data = json.loads(f.read_text())
-            data["id"] = f.stem
-            workers.append(data)
-        except (json.JSONDecodeError, OSError):
-            pass
-    return workers
-
-
-def _find_worker(worker_id, workers):
-    """Find a worker by exact or partial ID match."""
-    for w in workers:
-        if w["id"] == worker_id or w["id"].startswith(worker_id):
-            return w
-    return None
+def _list_workers():
+    """Get all workers from ccl."""
+    result = subprocess.run(
+        ["ccl", "list", "--json"],
+        capture_output=True, text=True,
+    )
+    if result.returncode != 0 or not result.stdout.strip() or result.stdout.strip() == "No workers.":
+        return []
+    try:
+        return json.loads(result.stdout.strip())
+    except json.JSONDecodeError:
+        return []
 
 
 def run(input_data):
     action = input_data["action"]
     worker_id = input_data.get("worker_id", "")
 
-    workers = _load_workers()
-
     if action == "list":
+        workers = _list_workers()
         if not workers:
             return "No workers."
         lines = []
@@ -73,32 +63,29 @@ def run(input_data):
 
     if not worker_id:
         # If only one pending worker, auto-select it
+        workers = _list_workers()
         pending = [w for w in workers if w["status"] == "pending"]
         if len(pending) == 1:
             worker_id = pending[0]["id"]
         else:
             return "Multiple pending workers. Specify worker_id. Use action=list to see them."
 
-    worker = _find_worker(worker_id, workers)
-    if not worker:
-        return f"No worker found matching '{worker_id}'."
-
     if action == "approve":
-        if worker["status"] != "pending":
-            return f"Worker {worker['id']} is {worker['status']}, not pending."
         result = subprocess.run(
-            ["claude-worker-manage", worker["id"]],
+            ["ccl", "approve", worker_id],
             capture_output=True, text=True,
         )
-        return result.stdout.strip() or f"Worker {worker['id']} approved."
+        if result.returncode != 0:
+            return f"Error: {result.stderr.strip()}"
+        return result.stdout.strip() or f"Worker {worker_id} approved."
 
     if action == "cancel":
-        if worker["status"] != "pending":
-            return f"Worker {worker['id']} is {worker['status']}, not pending."
         result = subprocess.run(
-            ["claude-worker-manage", "--deny", worker["id"]],
+            ["ccl", "deny", worker_id],
             capture_output=True, text=True,
         )
-        return result.stdout.strip() or f"Worker {worker['id']} cancelled."
+        if result.returncode != 0:
+            return f"Error: {result.stderr.strip()}"
+        return result.stdout.strip() or f"Worker {worker_id} cancelled."
 
     return f"Unknown action: {action}"

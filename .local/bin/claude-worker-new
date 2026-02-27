@@ -1,10 +1,9 @@
 #!/bin/bash
 # Interactive new worker setup — runs inside foot (fzf-picker)
-# Picks a directory and task, then spawns a background worker
+# Picks a directory and task, then spawns a background worker via ccl
 
-STATE_DIR="$HOME/.local/state/claude-worker"
-HISTORY_FILE="$STATE_DIR/dir-history"
-mkdir -p "$STATE_DIR"
+HISTORY_FILE="$HOME/.local/state/ccl/dir-history"
+mkdir -p "$(dirname "$HISTORY_FILE")"
 
 # Pick directory with fzf (recent selections first)
 dir=$(
@@ -32,18 +31,14 @@ if [[ -n "$image_path" ]]; then
     fi
 fi
 
-# Generate unique ID, write state file, launch via hyprctl (survives foot exit)
-ID=$(date +%s)
-STATE_FILE="$STATE_DIR/$ID.json"
-if [[ -n "$image_path" ]]; then
-    jq -n --arg dir "$dir" --arg task "$task" --arg img "$image_path" \
-        '{"status": "pending", "directory": $dir, "task": $task, "image": $img}' > "$STATE_FILE"
+# Build ccl new command
+cmd=(ccl new --dir "$dir" --task "$task")
+[[ -n "$image_path" ]] && cmd+=(--image "$image_path")
+
+ID=$("${cmd[@]}")
+if [[ $? -eq 0 ]]; then
+    echo "Worker $ID started in background."
 else
-    jq -n --arg dir "$dir" --arg task "$task" \
-        '{"status": "pending", "directory": $dir, "task": $task}' > "$STATE_FILE"
+    echo "Failed to create worker."
 fi
-
-hyprctl dispatch exec "claude-worker-session '$ID'"
-
-echo "Worker $ID started in background."
 sleep 0.3

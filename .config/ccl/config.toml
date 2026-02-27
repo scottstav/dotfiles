@@ -1,0 +1,20 @@
+[claude]
+skip_permissions = true
+system_prompt = """You are the user's trusted programmer. Do not ask questions. Complete the entire task before stopping. If you encounter issues, debug and fix them. When finished, end with a 1-2 sentence summary."""
+extra_flags = []
+
+[hooks]
+on_start = ["pkill -SIGRTMIN+12 waybar"]
+on_done = [
+    "pkill -SIGRTMIN+12 waybar",
+    "claude-worker-done-notify {{.ID}} {{.SessionID}} {{.Dir}}"
+]
+on_pending = [
+    "pkill -SIGRTMIN+12 waybar",
+    "claude-worker-notify-pending {{.ID}}"
+]
+on_error = [
+    "pkill -SIGRTMIN+12 waybar",
+    "notify-send -u critical -a 'ccl' 'Worker Failed' '{{.Task}}'"
+]
+on_kill = ["pkill -SIGRTMIN+12 waybar"]

@@ -380,7 +380,11 @@ def notify_final(tag: str, text: str, conv_id: str,
     Runs in a background thread because --wait blocks.
     """
     def _run():
-        body = text
+        # Truncate to last ~2 sentences for the notification since the
+        # overlay UI shows the full response.
+        import re
+        sentences = re.split(r'(?<=[.!?])\s+', text.strip())
+        body = " ".join(sentences[-2:]) if len(sentences) > 2 else text.strip()
         if tools_used:
             body += "\n\n<small>" + " \u2192 ".join(tools_used) + "</small>"
         try:

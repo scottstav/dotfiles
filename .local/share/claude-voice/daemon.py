@@ -28,7 +28,7 @@ log = logging.getLogger("claude-voice")
 # Module imports (local)
 # ---------------------------------------------------------------------------
 
-from audio import RATE, AudioPipeline
+from audio import RATE, VAD_FRAME_MS, AudioPipeline
 from config import load_config, load_whisper_config
 from notify import notify_ack, notify_dismiss, notify_listening, notify_sending, notify_transcription
 from speech_detector import SpeechEndDetector
@@ -212,21 +212,35 @@ class Daemon:
         notify_listening()
         self.audio.begin_capture(skip_pre_roll=skip_pre_roll)
         self.detector.on_speech_start()
-        silence_start = None
+        # Track silence in audio time (frame count) instead of wall-clock
+        # time.  Transcription blocks the frame-reading loop for ~1s, so
+        # wall-clock elapsed time after a reset is near-zero when reading
+        # buffered frames — making silence detection impossible.
+        silence_frames = 0
+        consecutive_speech = 0  # debounce: require 2+ to reset silence
         last_interim_time = 0
         capture_start = time.monotonic()
         heard_speech = False
         no_speech_timeout = self.config["speech"]["no_speech_timeout"]
+        max_capture_seconds = self.config["speech"].get("max_capture_seconds", 60)
+        last_transcript = ""
+        transcript_stall_count = 0
 
         try:
             while True:
                 raw, is_speech = self.audio.read_vad_frame()
                 self.detector.on_voice_activity(is_speech)
 
+                # Debounced speech detection: require 2+ consecutive speech
+                # frames to reset silence counter.  A single noisy frame in
+                # ambient audio should not restart the timer.
                 if is_speech:
-                    silence_start = None
-                elif silence_start is None:
-                    silence_start = time.monotonic()
+                    consecutive_speech += 1
+                    if consecutive_speech >= 2:
+                        silence_frames = 0
+                else:
+                    consecutive_speech = 0
+                    silence_frames += 1
 
                 # Interim transcription every ~2 seconds
                 now = time.monotonic()
@@ -238,6 +252,20 @@ class Daemon:
                         notify_transcription(interim_text)
                         if interim_text.strip():
                             heard_speech = True
+
+                        # Transcript stall detection: if the transcript is
+                        # unchanged for 3+ consecutive transcriptions (~6s),
+                        # the user has stopped speaking even if VAD still
+                        # sees ambient noise.
+                        if heard_speech and interim_text.strip() == last_transcript:
+                            transcript_stall_count += 1
+                            if transcript_stall_count >= 3:
+                                log.info("Transcript unchanged for %d iterations, ending capture",
+                                         transcript_stall_count)
+                                break
+                        else:
+                            transcript_stall_count = 0
+                        last_transcript = interim_text.strip()
                     last_interim_time = now
 
                     # Bail if no words detected after timeout
@@ -266,12 +294,16 @@ class Daemon:
                         self._post_capture_reset()
                         return
 
-                # Check silence timeout
-                if silence_start is not None:
-                    elapsed = time.monotonic() - silence_start
-                    if self.detector.is_done(elapsed):
-                        log.info("Silence timeout reached (%.1fs)", elapsed)
-                        break
+                # Hard limit on capture duration
+                if (now - capture_start) >= max_capture_seconds:
+                    log.info("Max capture duration reached (%.0fs)", max_capture_seconds)
+                    break
+
+                # Check silence timeout (using audio time, not wall-clock)
+                silence_seconds = silence_frames * (VAD_FRAME_MS / 1000)
+                if silence_seconds > 0 and self.detector.is_done(silence_seconds):
+                    log.info("Silence timeout reached (%.1fs audio time)", silence_seconds)
+                    break
 
         except Exception:
             log.exception("Error during speech capture")

@@ -36,10 +36,17 @@ def _shrink_to_fit(png_path):
         if buf.tell() <= MAX_BYTES:
             return buf.getvalue(), "image/jpeg"
 
-    # Still too big — scale down 50% at low quality
-    small = img.resize((img.width // 2, img.height // 2), Image.LANCZOS)
-    buf = io.BytesIO()
-    small.save(buf, format="JPEG", quality=40)
+    # Still too big — progressively halve resolution until it fits
+    scaled = img
+    for _ in range(5):
+        scaled = scaled.resize(
+            (scaled.width // 2, scaled.height // 2), Image.LANCZOS
+        )
+        buf = io.BytesIO()
+        scaled.save(buf, format="JPEG", quality=40)
+        if buf.tell() <= MAX_BYTES:
+            return buf.getvalue(), "image/jpeg"
+
     return buf.getvalue(), "image/jpeg"
 
 

@@ -176,15 +176,58 @@ def _get_tools() -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def _load_api_key() -> str:
-    """Decrypt ~/.authinfo.gpg and extract the Anthropic API key."""
+    """Load the Anthropic API key, caching to runtime dir for resilience.
+
+    Strategy: try GPG decrypt first; on success, cache the key in
+    /run/user/$UID/claude-api-key (tmpfs, mode 0600, lost on reboot).
+    On GPG failure, fall back to the cached key.
+    """
+    runtime_dir = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
+    cache_file = runtime_dir / "claude-api-key"
+
+    # Try GPG decrypt first
+    key = _try_gpg_decrypt()
+    if key:
+        # Cache for future use (atomic write, user-only perms)
+        try:
+            tmp = cache_file.with_suffix(".tmp")
+            tmp.write_text(key)
+            tmp.chmod(0o600)
+            tmp.rename(cache_file)
+        except OSError:
+            pass  # non-fatal — we have the key in memory
+        return key
+
+    # GPG failed — try cached key
+    if cache_file.exists():
+        log.warning("GPG decrypt failed, using cached API key from %s", cache_file)
+        key = cache_file.read_text().strip()
+        if key:
+            return key
+
+    raise RuntimeError(
+        "Cannot load API key: GPG passphrase not cached and no runtime "
+        "key cache exists. Unlock GPG once (e.g. 'gpg --decrypt "
+        "~/.authinfo.gpg > /dev/null') to fix."
+    )
+
+
+def _try_gpg_decrypt() -> str | None:
+    """Attempt to decrypt ~/.authinfo.gpg and extract the Anthropic key.
+
+    Returns the key string on success, or None if GPG fails.
+    """
     authinfo = Path.home() / ".authinfo.gpg"
     if not authinfo.exists():
-        raise RuntimeError("~/.authinfo.gpg not found")
+        return None
 
-    result = subprocess.run(
-        ["gpg", "--batch", "--quiet", "--decrypt", str(authinfo)],
-        capture_output=True, text=True, check=True,
-    )
+    try:
+        result = subprocess.run(
+            ["gpg", "--batch", "--quiet", "--decrypt", str(authinfo)],
+            capture_output=True, text=True, check=True,
+        )
+    except subprocess.CalledProcessError:
+        return None
 
     for line in result.stdout.splitlines():
         parts = line.split()
@@ -199,7 +242,7 @@ def _load_api_key() -> str:
         except (ValueError, IndexError):
             continue
 
-    raise RuntimeError("No api.anthropic.com entry in ~/.authinfo.gpg")
+    return None
 
 
 def _load_model() -> str:

@@ -6,7 +6,8 @@ After=graphical-session.target
 Type=simple
 ExecStart=%h/.local/bin/claude-overlay
 Restart=always
-RestartSec=1
+RestartSec=3
+StartLimitIntervalSec=0
 
 [Install]
 WantedBy=graphical-session.target

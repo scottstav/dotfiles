@@ -1,5 +1,5 @@
 [model]
-name = "claude-sonnet-4-6"
+name = "claude-haiku-4-5"
 
 [voice]
 enabled = true

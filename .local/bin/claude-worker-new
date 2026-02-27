@@ -16,15 +16,32 @@ dir=$(
 [[ -z "$dir" ]] && exit 0
 echo "$dir" >> "$HISTORY_FILE"
 
-# Prompt for task
-read -r -p "  Task: " task
+# Prompt for task (readline enabled for arrow keys, ctrl+b/f, alt+f/b, etc.)
+read -e -r -p "  Task: " task
 [[ -z "$task" ]] && exit 0
+
+# Optional image path (tab-completes filenames via readline)
+read -e -r -p "  Image (optional): " image_path
+# Resolve relative paths and validate
+if [[ -n "$image_path" ]]; then
+    image_path=$(realpath -q "$image_path" 2>/dev/null || echo "$image_path")
+    if [[ ! -f "$image_path" ]]; then
+        echo "  Warning: file not found: $image_path"
+        read -r -p "  Continue anyway? [y/N] " yn
+        [[ "$yn" != [yY]* ]] && exit 0
+    fi
+fi
 
 # Generate unique ID, write state file, launch via hyprctl (survives foot exit)
 ID=$(date +%s)
 STATE_FILE="$STATE_DIR/$ID.json"
-jq -n --arg dir "$dir" --arg task "$task" \
-    '{"status": "pending", "directory": $dir, "task": $task}' > "$STATE_FILE"
+if [[ -n "$image_path" ]]; then
+    jq -n --arg dir "$dir" --arg task "$task" --arg img "$image_path" \
+        '{"status": "pending", "directory": $dir, "task": $task, "image": $img}' > "$STATE_FILE"
+else
+    jq -n --arg dir "$dir" --arg task "$task" \
+        '{"status": "pending", "directory": $dir, "task": $task}' > "$STATE_FILE"
+fi
 
 hyprctl dispatch exec "claude-worker-session '$ID'"
 

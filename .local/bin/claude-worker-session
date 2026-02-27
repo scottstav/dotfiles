@@ -17,12 +17,20 @@ if [[ -n "$2" && -n "$3" ]]; then
 elif [[ -f "$STATE_FILE" ]]; then
     dir=$(jq -r '.directory' "$STATE_FILE")
     task=$(jq -r '.task' "$STATE_FILE")
+    image=$(jq -r '.image // empty' "$STATE_FILE")
 else
     echo "Error: no state file for worker $ID and no dir/task args" >&2
     exit 1
 fi
 
 [[ -z "$dir" || -z "$task" ]] && { echo "Error: empty directory or task" >&2; exit 1; }
+
+# Prepend image path to task so Claude can read it
+if [[ -n "$image" ]]; then
+    task="Read and reference this image: $image
+
+$task"
+fi
 
 # Prevent "nested session" error — workers are independent
 unset CLAUDECODE

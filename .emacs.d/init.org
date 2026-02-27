@@ -137,6 +137,21 @@
 #+RESULTS:
 : t
 
+** modeline
+#+begin_src emacs-lisp
+  ;; Show line and column, drop the percentage
+  (line-number-mode 1)
+  (column-number-mode 1)
+  (setq mode-line-percent-position nil)
+
+  ;; Collapse minor modes into a menu, keep useful ones visible
+  (use-package minions
+    :custom
+    (minions-prominent-modes '(eglot--managed-mode flymake-mode))
+    :config
+    (minions-mode 1))
+#+end_src
+
 * which-key
 #+begin_src emacs-lisp
   (use-package which-key

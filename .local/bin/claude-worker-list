@@ -35,6 +35,9 @@ for f in "$STATE_DIR"/*.json; do
     status=$(jq -r '.status' "$f")
     dir=$(jq -r '.directory' "$f" | sed "s|$HOME|~|")
     task=$(jq -r '.task' "$f" | head -c 60)
+    image=$(jq -r '.image // empty' "$f")
+    img_tag=""
+    [[ -n "$image" ]] && img_tag=" 📎"
 
     case "$status" in
         pending) icon="⏳" ;;
@@ -42,7 +45,7 @@ for f in "$STATE_DIR"/*.json; do
         done)    icon="✅" ;;
         *)       icon="?" ;;
     esac
-    entries+=("$icon $status | $dir | $task")
+    entries+=("$icon $status | $dir | $task$img_tag")
     ids+=("$id:$status")
 done
 

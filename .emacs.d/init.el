@@ -103,6 +103,18 @@
 ;; Frame transparency (wallpaper shows through)
 (push '(alpha-background . 0.92) default-frame-alist)
 
+;; Show line and column, drop the percentage
+(line-number-mode 1)
+(column-number-mode 1)
+(setq mode-line-percent-position nil)
+
+;; Collapse minor modes into a menu, keep useful ones visible
+(use-package minions
+  :custom
+  (minions-prominent-modes '(eglot--managed-mode flymake-mode))
+  :config
+  (minions-mode 1))
+
 (use-package which-key
   :custom
   (which-key-idle-delay 0.5)

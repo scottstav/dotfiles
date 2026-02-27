@@ -13,38 +13,40 @@ red=$'\e[31m'
 cyan=$'\e[36m'
 yellow=$'\e[33m'
 
+# D-Bus helpers
+bt_prop() { busctl get-property org.bluez "$1" "$2" "$3" 2>/dev/null; }
+bt_call() { busctl call --timeout=15 org.bluez "$@" 2>&1; }
+
 # Check controller
-powered=$(busctl get-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Powered 2>/dev/null | awk '{print $2}')
+powered=$(bt_prop /org/bluez/hci0 org.bluez.Adapter1 Powered | awk '{print $2}')
 if [[ "$powered" != "true" ]]; then
     echo "${red}Bluetooth is off${reset}" | fzf \
         "${FZF_PICKER_OPTS[@]}" --ansi \
         --header="${bold}Bluetooth${reset}" \
-        --bind 'enter:execute-silent(busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 Set ss org.bluez.Adapter1 Powered vb true)+abort'
+        --bind 'enter:execute-silent(busctl set-property org.bluez /org/bluez/hci0 org.bluez.Adapter1 Powered b true)+abort'
     exit
 fi
 
 # List paired devices
 list_devices() {
     for devpath in $(busctl tree org.bluez 2>/dev/null | grep -oP '/org/bluez/hci0/dev_[A-F0-9_]+' | sort -u); do
-        name=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Alias 2>/dev/null | sed 's/^s "//;s/"$//')
+        name=$(bt_prop "$devpath" org.bluez.Device1 Alias | sed 's/^s "//;s/"$//')
         [[ -z "$name" ]] && continue
-        paired=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Paired 2>/dev/null | awk '{print $2}')
+        paired=$(bt_prop "$devpath" org.bluez.Device1 Paired | awk '{print $2}')
         [[ "$paired" != "true" ]] && continue
-        connected=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Connected 2>/dev/null | awk '{print $2}')
-        battery=$(busctl get-property org.bluez "$devpath" org.bluez.Battery1 Percentage 2>/dev/null | awk '{print $2}')
-        icon=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Icon 2>/dev/null | sed 's/^s "//;s/"$//')
+        connected=$(bt_prop "$devpath" org.bluez.Device1 Connected | awk '{print $2}')
+        battery=$(bt_prop "$devpath" org.bluez.Battery1 Percentage | awk '{print $2}')
+        icon=$(bt_prop "$devpath" org.bluez.Device1 Icon | sed 's/^s "//;s/"$//')
         mac=$(basename "$devpath" | sed 's/dev_//' | tr '_' ':')
 
-        # Status indicator
         if [[ "$connected" == "true" ]]; then
-            marker="${green}●${reset}"
+            marker="${green}*${reset}"
             status="${green}connected${reset}"
         else
-            marker="${dim}○${reset}"
+            marker="${dim}o${reset}"
             status="${dim}disconnected${reset}"
         fi
 
-        # Battery
         bat_str=""
         if [[ -n "$battery" ]]; then
             if (( battery <= 20 )); then
@@ -54,12 +56,11 @@ list_devices() {
             fi
         fi
 
-        # Device icon
         case "$icon" in
-            audio-headset|audio-headphones) dev_icon="🎧" ;;
-            input-mouse)                    dev_icon="🖱 " ;;
-            input-keyboard)                 dev_icon="⌨ " ;;
-            *)                              dev_icon="  " ;;
+            audio-headset|audio-headphones) dev_icon="H" ;;
+            input-mouse)                    dev_icon="M" ;;
+            input-keyboard)                 dev_icon="K" ;;
+            *)                              dev_icon=" " ;;
         esac
 
         printf "%s %s ${bold}%-24s${reset} %s%s\t%s\t%s\n" \
@@ -67,24 +68,26 @@ list_devices() {
     done
 }
 
-# Scan action — discover new devices for 10 seconds
-scan_for_devices() {
-    # Start scanning
-    busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 StartDiscovery 2>/dev/null
+# Scan and list unpaired devices (progress to stderr, devices to stdout)
+scan_and_list() {
+    echo "${cyan}Scanning for devices (8s)...${reset}" >&2
+    bt_call /org/bluez/hci0 org.bluez.Adapter1 StartDiscovery >/dev/null 2>&1
+    sleep 8
+    bt_call /org/bluez/hci0 org.bluez.Adapter1 StopDiscovery >/dev/null 2>&1
 
-    echo "${cyan}Scanning for 10 seconds...${reset}"
-    sleep 10
-
-    busctl call org.bluez /org/bluez/hci0 org.bluez.Adapter1 StopDiscovery 2>/dev/null
-
-    # Show discovered (unpaired) devices
     for devpath in $(busctl tree org.bluez 2>/dev/null | grep -oP '/org/bluez/hci0/dev_[A-F0-9_]+' | sort -u); do
-        name=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Alias 2>/dev/null | sed 's/^s "//;s/"$//')
+        name=$(bt_prop "$devpath" org.bluez.Device1 Alias | sed 's/^s "//;s/"$//')
         [[ -z "$name" ]] && continue
-        paired=$(busctl get-property org.bluez "$devpath" org.bluez.Device1 Paired 2>/dev/null | awk '{print $2}')
+        paired=$(bt_prop "$devpath" org.bluez.Device1 Paired | awk '{print $2}')
         [[ "$paired" == "true" ]] && continue
         mac=$(basename "$devpath" | sed 's/dev_//' | tr '_' ':')
-        printf "${dim}○${reset}   ${bold}%-24s${reset} ${dim}new${reset}\t%s\tnew\n" "$name" "$mac"
+        # Skip if name is just the MAC (no real name advertised)
+        [[ "$name" == "$mac" ]] && continue
+        # Skip names with non-printable junk
+        printable=$(echo "$name" | tr -cd '[:print:]')
+        (( ${#printable} < ${#name} / 2 )) && continue
+
+        printf "${dim}o${reset}  ${bold}%-24s${reset} ${dim}new${reset}\t%s\tnew\n" "$name" "$mac"
     done
 }
 
@@ -92,8 +95,7 @@ scan_for_devices() {
 while true; do
     devices=$(list_devices)
 
-    # Add scan option at the bottom
-    scan_line="${cyan}  Scan for new devices${reset}\t__scan__\tfalse"
+    scan_line="${cyan}~ Scan for new devices${reset}\t__scan__\tfalse"
     all_items="$devices"
     [[ -n "$all_items" ]] && all_items="$all_items"$'\n'"$scan_line" || all_items="$scan_line"
 
@@ -110,8 +112,8 @@ while true; do
     was_connected=$(printf '%s' "$selection" | awk -F'\t' '{print $3}')
 
     if [[ "$mac" == "__scan__" ]]; then
-        # Run scan and show results
-        new_devices=$(scan_for_devices)
+        new_devices=$(scan_and_list)
+
         if [[ -n "$new_devices" ]]; then
             pair_selection=$(echo "$new_devices" | fzf \
                 "${FZF_PICKER_OPTS[@]}" --ansi \
@@ -123,25 +125,36 @@ while true; do
             if [[ -n "$pair_selection" ]]; then
                 pair_mac=$(printf '%s' "$pair_selection" | awk -F'\t' '{print $2}')
                 devpath="/org/bluez/hci0/dev_${pair_mac//:/_}"
-                busctl call org.bluez "$devpath" org.bluez.Device1 Pair 2>/dev/null
-                busctl call org.bluez "$devpath" org.freedesktop.DBus.Properties Set ssv \
-                    org.bluez.Device1 Trusted vb true 2>/dev/null
-                busctl call org.bluez "$devpath" org.bluez.Device1 Connect 2>/dev/null
+                echo "${cyan}Pairing...${reset}"
+                bt_call "$devpath" org.bluez.Device1 Pair
+                busctl set-property org.bluez "$devpath" org.bluez.Device1 Trusted b true 2>/dev/null
+                echo "${cyan}Connecting...${reset}"
+                bt_call "$devpath" org.bluez.Device1 Connect
+                sleep 1
             fi
+        else
+            echo "${dim}No new devices found${reset}"
+            sleep 1
         fi
         pkill -RTMIN+15 waybar 2>/dev/null
         continue
     fi
 
-    # Toggle connect/disconnect
+    # Toggle connect/disconnect — synchronous, errors visible
     devpath="/org/bluez/hci0/dev_${mac//:/_}"
     if [[ "$was_connected" == "true" ]]; then
-        busctl call org.bluez "$devpath" org.bluez.Device1 Disconnect 2>/dev/null &
+        echo "${yellow}Disconnecting...${reset}"
+        result=$(bt_call "$devpath" org.bluez.Device1 Disconnect)
     else
-        busctl call org.bluez "$devpath" org.bluez.Device1 Connect 2>/dev/null &
+        echo "${cyan}Connecting...${reset}"
+        result=$(bt_call "$devpath" org.bluez.Device1 Connect)
     fi
 
-    # Brief wait for state change, then refresh
-    sleep 1
+    if [[ -n "$result" && ( "$result" == *"rror"* || "$result" == *"ailed"* || "$result" == *"imeout"* ) ]]; then
+        echo "${red}${result}${reset}"
+        sleep 2
+    else
+        sleep 1
+    fi
     pkill -RTMIN+15 waybar 2>/dev/null
 done

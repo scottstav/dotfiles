@@ -204,7 +204,7 @@
         "exec": "ccl-waybar-status",
         "return-type": "json",
         "interval": 2,
-        "on-click": "ccl-worker-list",
+        "on-click": "foot --app-id=fzf-picker -e ccl-worker-list",
         "on-click-right": "foot --app-id=fzf-picker -e ccl-worker-new",
         "signal": 12,
         "tooltip": true

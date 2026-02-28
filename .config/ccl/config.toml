@@ -4,17 +4,17 @@ system_prompt = """You are the user's trusted programmer. Do not ask questions. 
 extra_flags = []
 
 [hooks]
-on_start = ["pkill -SIGRTMIN+12 waybar"]
+on_start = ["pkill -SIGRTMIN+9 waybar"]
 on_done = [
-    "pkill -SIGRTMIN+12 waybar",
+    "pkill -SIGRTMIN+9 waybar",
     "ccl-done-notify {{.ID}} {{.SessionID}} {{.Dir}}"
 ]
 on_pending = [
-    "pkill -SIGRTMIN+12 waybar",
+    "pkill -SIGRTMIN+9 waybar",
     "ccl-pending-notify {{.ID}}"
 ]
 on_error = [
-    "pkill -SIGRTMIN+12 waybar",
+    "pkill -SIGRTMIN+9 waybar",
     "notify-send -u critical -a 'ccl' 'Worker Failed' '{{.Task}}'"
 ]
-on_kill = ["pkill -SIGRTMIN+12 waybar"]
+on_kill = ["pkill -SIGRTMIN+9 waybar"]

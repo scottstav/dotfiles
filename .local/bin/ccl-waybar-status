@@ -4,7 +4,7 @@
 ICON=$'\U000f0710' # 󰜐
 ts=$(date +%H:%M:%S)
 
-json=$(ccl list --json 2>/dev/null) || json=""
+json=$(timeout 1 ccl list --json 2>/dev/null) || json=""
 
 # If empty, non-JSON, or "No workers." text — idle
 if [[ -z "$json" ]] || ! echo "$json" | jq empty 2>/dev/null; then

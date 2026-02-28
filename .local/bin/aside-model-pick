@@ -1,0 +1,19 @@
+#!/bin/bash
+# Pick an aside model via fzf — runs inside foot (fzf-picker)
+# Uses: aside models, aside model set, aside status
+
+current=$(aside status 2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get('model',''))" 2>/dev/null)
+
+model=$(
+    aside models 2>/dev/null \
+        | grep -E '^\s+' \
+        | sed 's/^\s*\*\?\s*//' \
+        | fzf --prompt="  Model: " --height=100% --layout=reverse \
+              --query="${current##*/}" \
+              --header="Current: $current"
+)
+[[ -z "$model" ]] && exit 0
+
+# Use hyprctl dispatch exec so commands survive foot closing
+short="${model##*/}"
+hyprctl dispatch exec "bash -c 'aside model set \"$model\" && pkill -SIGRTMIN+12 waybar 2>/dev/null && notify-send -t 2000 -a Aside -h string:x-canonical-private-synchronous:aside-model \"Model: $short\" 2>/dev/null'"

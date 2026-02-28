@@ -194,9 +194,9 @@
         "interval": 2,
         "on-click": "aside query --mic",
         "on-click-right": "aside cancel",
-        "on-click-middle": "aside toggle-tts",
-        "on-scroll-up": "aside-model-cycle up",
-        "on-scroll-down": "aside-model-cycle down",
+        "on-click-middle": "foot --app-id=fzf-picker -e aside-model-pick",
+        "on-scroll-up": "aside toggle-tts",
+        "on-scroll-down": "aside toggle-tts",
         "signal": 12,
         "tooltip": true
     },

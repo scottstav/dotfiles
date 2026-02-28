@@ -125,8 +125,12 @@ python-pipx
 python-rich
 python-lsp-server
 clang
+go
 meson
+ninja
+json-c
 wlr-protocols
+wayland-protocols
 
 # CLI utilities
 fd

@@ -125,7 +125,7 @@ window#waybar {
 }
 
 #custom-bluetooth.on {
-    color: #6a7a6a;
+    color: #8a9a8a;
 }
 
 #custom-bluetooth.connected {
@@ -184,7 +184,7 @@ window#waybar {
 
 #custom-notification.dnd-notification,
 #custom-notification.dnd-none {
-    color: #6a7a6a;
+    color: #8a9a8a;
 }
 
 #custom-notification.inhibited-notification,
@@ -213,7 +213,7 @@ window#waybar {
 
 /* Voice typing module */
 #custom-voice-typing {
-    color: #6a7a6a;
+    color: #8a9a8a;
 }
 
 #custom-voice-typing.listening {
@@ -225,7 +225,7 @@ window#waybar {
 }
 
 #custom-voice-typing.paused {
-    color: #6a7a6a;
+    color: #8a9a8a;
 }
 
 #custom-voice-typing.off {
@@ -297,14 +297,14 @@ window#waybar {
 }
 
 #custom-gcal.idle {
-    color: #6a7a6a;
+    color: #8a9a8a;
 }
 
 #custom-gcal.none {
     color: #404040;
 }
 
-/* Smooth color glow animations for claude-ask states */
+/* Smooth color glow animations for aside states */
 @keyframes glow-blue {
     0% { color: #60b0a0; }
     50% { color: #c6e2dd; }
@@ -323,38 +323,47 @@ window#waybar {
     100% { color: #d4944a; }
 }
 
-/* Claude Ask module */
-#custom-claude-ask {
+/* Aside module */
+#custom-aside {
     color: #60b0a0;
 }
 
-#custom-claude-ask.thinking {
+#custom-aside.thinking {
     animation-name: glow-blue;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.tool_use {
+#custom-aside.tool_use {
     animation-name: glow-amber;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.speaking {
+#custom-aside.speaking {
     animation-name: glow-green;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.listening {
+#custom-aside.listening {
     color: #d4944a;
     animation-name: pulse;
     animation-duration: 0.8s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
+}
+
+/* CCL worker module */
+#custom-ccl {
+    color: #60b0a0;
+}
+
+#custom-ccl.idle {
+    color: #8a9a8a;
 }
 
 @keyframes glow-yellow {
@@ -363,7 +372,7 @@ window#waybar {
     100% { color: #c4b060; opacity: 1; }
 }
 
-#custom-claude-ask.worker-working {
+#custom-ccl.working {
     animation-name: glow-yellow;
     animation-duration: 2s;
     animation-timing-function: ease-in-out;
@@ -377,7 +386,7 @@ window#waybar {
     100% { color: #50c878; }
 }
 
-#custom-claude-ask.worker-done {
+#custom-ccl.done {
     color: #50c878;
     animation-name: arrive-green;
     animation-duration: 1.5s;
@@ -385,6 +394,6 @@ window#waybar {
     animation-iteration-count: 1;
 }
 
-#custom-claude-ask.worker-pending {
-    color: #6a7a6a;
+#custom-ccl.pending {
+    color: #8a9a8a;
 }

@@ -1,3 +1,0 @@
-#!/bin/bash
-# Right-click handler: open interactive worker setup in foot
-exec foot --app-id=fzf-picker -e claude-worker-new

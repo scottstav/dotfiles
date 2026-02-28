@@ -304,7 +304,7 @@ window#waybar {
     color: #404040;
 }
 
-/* Smooth color glow animations for claude-ask states */
+/* Smooth color glow animations for aside states */
 @keyframes glow-blue {
     0% { color: ${accent_bright}; }
     50% { color: ${accent_bright_light}; }
@@ -323,38 +323,47 @@ window#waybar {
     100% { color: ${warning}; }
 }
 
-/* Claude Ask module */
-#custom-claude-ask {
+/* Aside module */
+#custom-aside {
     color: ${accent_bright};
 }
 
-#custom-claude-ask.thinking {
+#custom-aside.thinking {
     animation-name: glow-blue;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.tool_use {
+#custom-aside.tool_use {
     animation-name: glow-amber;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.speaking {
+#custom-aside.speaking {
     animation-name: glow-green;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
 }
 
-#custom-claude-ask.listening {
+#custom-aside.listening {
     color: ${warning};
     animation-name: pulse;
     animation-duration: 0.8s;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
+}
+
+/* CCL worker module */
+#custom-ccl {
+    color: ${accent_bright};
+}
+
+#custom-ccl.idle {
+    color: ${dim};
 }
 
 @keyframes glow-yellow {
@@ -363,7 +372,7 @@ window#waybar {
     100% { color: ${terminal_yellow}; opacity: 1; }
 }
 
-#custom-claude-ask.worker-working {
+#custom-ccl.working {
     animation-name: glow-yellow;
     animation-duration: 2s;
     animation-timing-function: ease-in-out;
@@ -377,7 +386,7 @@ window#waybar {
     100% { color: ${success}; }
 }
 
-#custom-claude-ask.worker-done {
+#custom-ccl.done {
     color: ${success};
     animation-name: arrive-green;
     animation-duration: 1.5s;
@@ -385,6 +394,6 @@ window#waybar {
     animation-iteration-count: 1;
 }
 
-#custom-claude-ask.worker-pending {
+#custom-ccl.pending {
     color: ${dim};
 }

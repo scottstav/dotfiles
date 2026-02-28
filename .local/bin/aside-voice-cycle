@@ -1,0 +1,52 @@
+#!/bin/bash
+# Toggle aside TTS on/off, or stop TTS if currently speaking.
+# Middle-click waybar action.
+
+STATE_FILE="$HOME/.local/state/aside/status.json"
+CONFIG_FILE="$HOME/.config/aside/config.toml"
+SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aside.sock"
+
+if [ ! -f "$STATE_FILE" ]; then
+    exit 1
+fi
+
+# If currently speaking, stop TTS instead of toggling
+status=$(python3 -c "import json; print(json.load(open('$STATE_FILE')).get('status',''))")
+if [ "$status" = "speaking" ]; then
+    echo '{"action":"stop_tts"}' | socat - UNIX-CONNECT:"$SOCK"
+    pkill -SIGRTMIN+12 waybar 2>/dev/null
+    exit 0
+fi
+
+# Toggle speak_enabled in state file
+python3 -c "
+import json
+path = '$STATE_FILE'
+with open(path) as f:
+    d = json.load(f)
+d['speak_enabled'] = not d.get('speak_enabled', False)
+with open(path, 'w') as f:
+    json.dump(d, f, indent=2)
+state = 'ON' if d['speak_enabled'] else 'OFF'
+print(f'Voice: {state}')
+"
+
+# Also persist to config file
+python3 -c "
+import re
+path = '$CONFIG_FILE'
+try:
+    with open(path) as f:
+        content = f.read()
+    if 'enabled = true' in content:
+        content = content.replace('enabled = true', 'enabled = false', 1)
+    else:
+        content = content.replace('enabled = false', 'enabled = true', 1)
+    with open(path, 'w') as f:
+        f.write(content)
+except FileNotFoundError:
+    pass
+"
+
+# Signal Waybar to refresh
+pkill -SIGRTMIN+12 waybar 2>/dev/null

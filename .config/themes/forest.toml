@@ -7,7 +7,7 @@ wallpaper = "~/Dropbox/Images/wallpapers/pixel-balcony.png"
 background    = "#1a1c1e"
 surface       = "#2a2e2a"
 foreground    = "#d4d4d4"
-dim           = "#6a7a6a"
+dim           = "#8a9a8a"
 border        = "#3a4a3a"
 
 [hues]

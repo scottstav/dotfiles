@@ -1,0 +1,45 @@
+#!/bin/bash
+# Waybar module for ccl (wreccless) worker status
+
+python3 -c "
+import json, subprocess
+
+# Read worker state from ccl
+workers = []
+try:
+    r = subprocess.run(['ccl', 'list', '--json'], capture_output=True, text=True, timeout=2)
+    if r.returncode == 0 and r.stdout.strip() and r.stdout.strip() != 'No workers.':
+        workers = json.loads(r.stdout.strip())
+except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
+    pass
+
+worker_pending = sum(1 for w in workers if w.get('status') == 'pending')
+worker_working = sum(1 for w in workers if w.get('status') == 'working')
+worker_done = sum(1 for w in workers if w.get('status') == 'done')
+worker_total = worker_pending + worker_working + worker_done
+
+SHOVEL = '\U000f0710'  # 󰜐
+
+if worker_total == 0:
+    print(json.dumps({'text': SHOVEL, 'tooltip': 'No workers', 'class': 'idle'}, ensure_ascii=False))
+else:
+    count_str = f' {worker_total}' if worker_total > 1 else ''
+    icon = f'{SHOVEL}{count_str}'
+
+    if worker_working > 0:
+        css = 'working'
+    elif worker_done > 0:
+        css = 'done'
+    elif worker_pending > 0:
+        css = 'pending'
+    else:
+        css = 'idle'
+
+    parts = []
+    if worker_pending: parts.append(f'{worker_pending} pending')
+    if worker_working: parts.append(f'{worker_working} working')
+    if worker_done: parts.append(f'{worker_done} done')
+    tip = 'Workers: ' + ', '.join(parts)
+
+    print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
+"

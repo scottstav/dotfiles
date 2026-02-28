@@ -1,0 +1,32 @@
+[model]
+name = "anthropic/claude-haiku-4-5"
+
+[voice]
+enabled = false
+stt_model = "base"
+stt_device = "cpu"
+smart_silence = true
+silence_timeout = 2.5
+no_speech_timeout = 3.0
+
+[tts]
+enabled = false
+model = "af_heart"
+speed = 1.0
+lang = "a"
+
+[tts.filter]
+skip_code_blocks = true
+skip_urls = true
+
+[storage]
+archive_dir = "~/Dropbox/LLM/Chats"
+
+[plugins]
+dirs = ["~/.local/lib/aside/plugins", "~/.local/share/aside/plugins"]
+
+[overlay.colors]
+accent = "#D4714Aff"
+
+[status]
+signal = 12

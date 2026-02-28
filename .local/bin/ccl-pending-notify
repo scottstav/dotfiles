@@ -1,0 +1,23 @@
+#!/bin/bash
+# Show pending worker notification and handle action via ccl
+# Usage: ccl-pending-notify <id>
+
+id="$1"
+[[ -z "$id" ]] && exit 1
+
+# Read worker info from ccl
+info=$(ccl status "$id" --json 2>/dev/null)
+[[ -z "$info" ]] && exit 1
+
+task=$(echo "$info" | jq -r '.task' | head -c 200)
+dir=$(echo "$info" | jq -r '.directory' | sed "s|$HOME|~|")
+
+action=$(notify-send -t 0 -a "ccl" \
+    -A "approve=Start" -A "deny=Decline" \
+    --wait \
+    "Pending Worker ($dir)" "$task" 2>/dev/null)
+
+case "$action" in
+    approve) ccl approve "$id" ;;
+    deny) ccl deny "$id" ;;
+esac

@@ -1,0 +1,77 @@
+#!/bin/bash
+# Cycle aside model via scroll wheel on waybar.
+# Usage: aside-model-cycle up|down
+
+CONFIG_FILE="$HOME/.config/aside/config.toml"
+STATE_FILE="$HOME/.local/state/aside/status.json"
+
+# Ordered cheapest to most powerful (LiteLLM format)
+MODELS=("anthropic/claude-haiku-4-5" "anthropic/claude-sonnet-4-6" "anthropic/claude-opus-4-6")
+NAMES=("Haiku 4.5" "Sonnet 4.6" "Opus 4.6")
+
+direction="${1:-up}"
+
+# Read current model from config
+current=""
+if [[ -f "$CONFIG_FILE" ]]; then
+    current=$(python3 -c "
+import tomllib
+with open('$CONFIG_FILE', 'rb') as f:
+    c = tomllib.load(f)
+print(c.get('model', {}).get('name', 'anthropic/claude-sonnet-4-6'))
+" 2>/dev/null)
+fi
+current="${current:-anthropic/claude-sonnet-4-6}"
+
+# Find current index
+idx=1  # default to sonnet
+for i in "${!MODELS[@]}"; do
+    if [[ "${MODELS[$i]}" == "$current" ]]; then
+        idx=$i
+        break
+    fi
+done
+
+# Cycle
+if [[ "$direction" == "up" ]]; then
+    idx=$(( (idx + 1) % ${#MODELS[@]} ))
+else
+    idx=$(( (idx - 1 + ${#MODELS[@]}) % ${#MODELS[@]} ))
+fi
+
+new_model="${MODELS[$idx]}"
+new_name="${NAMES[$idx]}"
+
+# Write to config.toml
+python3 -c "
+import re
+path = '$CONFIG_FILE'
+with open(path) as f:
+    text = f.read()
+if '[model]' in text:
+    text = re.sub(r'(\[model\]\s*\n\s*name\s*=\s*)\"[^\"]*\"', r'\1\"$new_model\"', text)
+else:
+    text = '[model]\nname = \"$new_model\"\n\n' + text
+with open(path, 'w') as f:
+    f.write(text)
+"
+
+# Update status file so tooltip refreshes immediately
+if [[ -f "$STATE_FILE" ]]; then
+    python3 -c "
+import json
+with open('$STATE_FILE') as f:
+    d = json.load(f)
+d['model'] = '$new_model'
+with open('$STATE_FILE', 'w') as f:
+    json.dump(d, f, indent=2)
+"
+fi
+
+# Signal waybar to refresh
+pkill -SIGRTMIN+12 waybar 2>/dev/null
+
+# Notify
+notify-send -t 2000 -a "Aside" \
+    -h "string:x-canonical-private-synchronous:aside-model" \
+    "Model: $new_name" 2>/dev/null

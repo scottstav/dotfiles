@@ -473,11 +473,11 @@ else
 fi
 
 # ------------------------------------------------------------------
-# 9. Claude Voice / Claude HID
+# 9. Aside (LLM desktop assistant)
 # ------------------------------------------------------------------
-step "Claude Voice / Claude HID"
+step "Aside (LLM desktop assistant)"
 
-CV_DIR="$HOME/.local/share/claude-voice"
+ASIDE_SRC="$HOME/projects/aside"
 
 # kokoro/faster-whisper need Python <3.13 — ensure python3.11 is installed
 if ! command -v python3.11 &>/dev/null; then
@@ -485,59 +485,56 @@ if ! command -v python3.11 &>/dev/null; then
     ok "python3.11 installed"
 fi
 
-# claude-voice venv + deps (includes query pipeline deps from claude-ask)
-ensure_venv "$CV_DIR" python3.11 "claude-voice"
-"$CV_DIR/.venv/bin/pip" install -q -r "$CV_DIR/requirements.txt"
-ok "claude-voice dependencies installed"
+if [ -d "$ASIDE_SRC" ]; then
+    # Full install from source (creates venv, builds C overlay, installs services)
+    PYTHON=python3.11 make -C "$ASIDE_SRC" install
+    ok "aside installed"
 
-# claude-hid venv + deps
-CH_DIR="$HOME/.local/share/claude-hid"
-ensure_venv "$CH_DIR" python3.11 "claude-hid"
-"$CH_DIR/.venv/bin/pip" install -q -r "$CH_DIR/requirements.txt"
-ok "claude-hid dependencies installed"
+    # Install all optional extras
+    make -C "$ASIDE_SRC" install-extras-tts
+    ok "aside TTS extras installed"
+    make -C "$ASIDE_SRC" install-extras-voice
+    ok "aside voice extras installed"
 
-# Archive directory for conversation transcripts
-mkdir -p "$HOME/Dropbox/LLM/Chats"
-ok "Conversation archive directory ready"
+    # Archive directory for conversation transcripts
+    mkdir -p "$HOME/Dropbox/LLM/Chats"
+    ok "Conversation archive directory ready"
 
-# Enable services
-for svc in claude-voice.service claude-hid.service; do
-    if systemctl --user is-enabled "$svc" &>/dev/null; then
-        ok "$svc already enabled"
-    else
-        systemctl --user enable "$svc"
-        ok "$svc enabled"
-    fi
-done
-
-# ------------------------------------------------------------------
-# 9b. Claude Overlay (Wayland streaming text overlay)
-# ------------------------------------------------------------------
-step "Claude Overlay"
-
-OVERLAY_DIR="$HOME/.local/share/claude-overlay"
-OVERLAY_BIN="$HOME/.local/bin/claude-overlay"
-
-if [ -f "$OVERLAY_DIR/meson.build" ]; then
-    if [ ! -d "$OVERLAY_DIR/build" ]; then
-        meson setup "$OVERLAY_DIR/build" "$OVERLAY_DIR"
-        ok "meson configured"
-    else
-        skip "meson already configured"
-    fi
-
-    ninja -C "$OVERLAY_DIR/build"
-    cp "$OVERLAY_DIR/build/claude-overlay" "$OVERLAY_BIN"
-    ok "claude-overlay built and installed"
-
-    if systemctl --user is-enabled claude-overlay.service &>/dev/null; then
-        ok "claude-overlay.service already enabled"
-    else
-        systemctl --user enable claude-overlay.service
-        ok "claude-overlay.service enabled"
-    fi
+    # Enable services
+    systemctl --user daemon-reload
+    for svc in aside-daemon.service aside-overlay.service; do
+        if systemctl --user is-enabled "$svc" &>/dev/null; then
+            ok "$svc already enabled"
+        else
+            systemctl --user enable "$svc"
+            ok "$svc enabled"
+        fi
+    done
 else
-    warn "claude-overlay source not found"
+    warn "aside source not found at $ASIDE_SRC — clone it first"
+fi
+
+# ------------------------------------------------------------------
+# 9b. Wreccless (Claude Code worker manager)
+# ------------------------------------------------------------------
+step "Wreccless (ccl)"
+
+WRECCLESS_SRC="$HOME/projects/wreccless"
+
+if [ -d "$WRECCLESS_SRC" ]; then
+    if ! command -v go &>/dev/null; then
+        yay -S --needed --noconfirm go
+        ok "go installed"
+    fi
+
+    make -C "$WRECCLESS_SRC" install
+    ok "ccl installed"
+
+    # State directory
+    mkdir -p "$HOME/.local/state/ccl"
+    ok "ccl state directory ready"
+else
+    warn "wreccless source not found at $WRECCLESS_SRC — clone it first"
 fi
 
 # ------------------------------------------------------------------

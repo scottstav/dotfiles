@@ -7,11 +7,11 @@ extra_flags = []
 on_start = ["pkill -SIGRTMIN+12 waybar"]
 on_done = [
     "pkill -SIGRTMIN+12 waybar",
-    "claude-worker-done-notify {{.ID}} {{.SessionID}} {{.Dir}}"
+    "ccl-done-notify {{.ID}} {{.SessionID}} {{.Dir}}"
 ]
 on_pending = [
     "pkill -SIGRTMIN+12 waybar",
-    "claude-worker-notify-pending {{.ID}}"
+    "ccl-pending-notify {{.ID}}"
 ]
 on_error = [
     "pkill -SIGRTMIN+12 waybar",

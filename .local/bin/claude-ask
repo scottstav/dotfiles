@@ -1,4 +1,0 @@
-#!/bin/bash
-# Open floating input for Claude Ask. Passes args through to input.py.
-CLAUDE_ASK_DIR="$HOME/.local/share/claude-ask"
-exec foot --app-id=claude-ask -e "$CLAUDE_ASK_DIR/.venv/bin/python3" "$CLAUDE_ASK_DIR/input.py" "$@"

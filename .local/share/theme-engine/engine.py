@@ -37,7 +37,7 @@ TEMPLATE_MAP = {
     "fzf-theme.sh.tmpl":          "~/.local/share/fzf-picker/theme.sh",
     "fuzzel.ini.tmpl":            "~/.config/fuzzel/fuzzel.ini",
     "hyprpaper.conf.tmpl":        "~/.config/hypr/hyprpaper.conf",
-    "claude-overlay-config.tmpl": "~/.config/claude-overlay/config",
+    "aside-overlay-config.tmpl": "~/.config/aside/overlay.conf",
 }
 
 RELOAD_COMMANDS = [
@@ -45,8 +45,8 @@ RELOAD_COMMANDS = [
     ["killall", "-SIGUSR2", "waybar"],
     ["swaync-client", "-rs"],
     ["emacsclient", "--eval", '(load "~/.emacs.d/theme.el" nil t)'],
-    ["systemctl", "--user", "restart", "claude-ask"],
-    ["systemctl", "--user", "restart", "claude-overlay"],
+    ["systemctl", "--user", "restart", "aside-daemon"],
+    ["systemctl", "--user", "restart", "aside-overlay"],
 ]
 
 HYPRPAPER_RELOAD = ["killall", "hyprpaper"]

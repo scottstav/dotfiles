@@ -3,7 +3,7 @@
     "height": 30, // Waybar height (to be removed for auto height)
     "spacing": 4, // Gaps between modules (4px)
     "modules-left": ["hyprland/workspaces", "custom/waybarstatus"],
-    "modules-center": ["custom/claude-ask", "custom/recording", "custom/external-drive", "custom/bluetooth", "custom/audio", "custom/voice-typing"],
+    "modules-center": ["custom/aside", "custom/ccl", "custom/recording", "custom/external-drive", "custom/bluetooth", "custom/audio", "custom/voice-typing"],
     "modules-right": ["custom/emacs-daemon", "custom/notification", "tray", "custom/sysinfo", "network", "battery", "custom/system-freshness", "custom/gcal", "clock", "custom/swaync-open"],
     "keyboard-state": {
         "numlock": true,
@@ -188,15 +188,24 @@
         "interval": 5,
         "tooltip": true
     },
-    "custom/claude-ask": {
-        "exec": "claude-ask-status",
+    "custom/aside": {
+        "exec": "aside-waybar-status",
         "return-type": "json",
         "interval": 2,
-        "on-click": "foot --app-id=fzf-picker -e claude-worker-list",
-        "on-click-middle": "claude-voice-cycle",
-        "on-click-right": "claude-worker-toggle",
-        "on-scroll-up": "claude-model-cycle up",
-        "on-scroll-down": "claude-model-cycle down",
+        "on-click": "aside query --mic",
+        "on-click-right": "aside-input",
+        "on-click-middle": "aside speak",
+        "on-scroll-up": "aside-model-cycle up",
+        "on-scroll-down": "aside-model-cycle down",
+        "signal": 12,
+        "tooltip": true
+    },
+    "custom/ccl": {
+        "exec": "ccl-waybar-status",
+        "return-type": "json",
+        "interval": 2,
+        "on-click": "ccl-worker-list",
+        "on-click-right": "foot --app-id=fzf-picker -e ccl-worker-new",
         "signal": 12,
         "tooltip": true
     },

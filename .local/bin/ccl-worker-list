@@ -1,0 +1,76 @@
+#!/bin/bash
+# Show fzf picker of workers. Runs inside foot (launched by waybar).
+
+# Guard: if no TTY, re-exec inside foot
+if [[ ! -t 0 ]]; then
+    exec foot --app-id=fzf-picker -e "$0" "$@"
+fi
+
+# Get worker list from ccl
+workers_json=$(ccl list --json 2>/dev/null)
+
+if [[ -z "$workers_json" || "$workers_json" == "No workers." ]]; then
+    echo "No workers."
+    sleep 2
+    exit 0
+fi
+
+# Parse JSON into arrays
+mapfile -t ids < <(echo "$workers_json" | jq -r '.[].id')
+mapfile -t statuses < <(echo "$workers_json" | jq -r '.[].status')
+mapfile -t dirs < <(echo "$workers_json" | jq -r '.[].directory' | sed "s|$HOME|~|g")
+mapfile -t tasks < <(echo "$workers_json" | jq -r '.[].task' | cut -c1-60)
+mapfile -t images < <(echo "$workers_json" | jq -r '.[].image // ""')
+
+if [[ ${#ids[@]} -eq 0 ]]; then
+    echo "No workers."
+    sleep 2
+    exit 0
+fi
+
+# Build display entries
+entries=()
+id_status=()
+for i in "${!ids[@]}"; do
+    status="${statuses[$i]}"
+    case "$status" in
+        pending) icon="⏳" ;;
+        working) icon="⚒️" ;;
+        done)    icon="✅" ;;
+        error)   icon="❌" ;;
+        *)       icon="?" ;;
+    esac
+    img_tag=""
+    [[ -n "${images[$i]}" ]] && img_tag=" 📎"
+    entries+=("$icon $status | ${dirs[$i]} | ${tasks[$i]}$img_tag")
+    id_status+=("${ids[$i]}:${statuses[$i]}")
+done
+
+# Show fzf picker
+selected=$(printf '%s\n' "${entries[@]}" | fzf \
+    --ansi --height=100% --layout=reverse \
+    --header="⏳ approve  ⚒️/✅ resume in alacritty" \
+    --no-info --pointer=">" --no-scrollbar)
+[[ -z "$selected" ]] && exit 0
+
+# Find which entry was selected
+for i in "${!entries[@]}"; do
+    if [[ "${entries[$i]}" == "$selected" ]]; then
+        IFS=: read -r sel_id sel_status <<< "${id_status[$i]}"
+        break
+    fi
+done
+
+case "$sel_status" in
+    pending)
+        ccl approve "$sel_id"
+        ;;
+    working|done)
+        dir=$(ccl status "$sel_id" --json 2>/dev/null | jq -r '.directory')
+        hyprctl dispatch exec "alacritty --working-directory '$dir' -e ccl resume '$sel_id'"
+        ;;
+    error)
+        ccl logs "$sel_id" | tail -30
+        sleep 3
+        ;;
+esac

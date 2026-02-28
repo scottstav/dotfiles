@@ -19,4 +19,10 @@ This symlinks files from the dotfiles repo structure to their corresponding loca
 
 **Foot + fzf picker scripts:** Scripts launched via `foot --app-id=fzf-picker -e <script>` run inside a foot terminal that closes when the script exits. To launch external processes (apps, commands), use `hyprctl dispatch exec "..."` — NOT `nohup ... &` or bare backgrounding. Subprocesses of foot die when foot exits.
 
+**Waybar:** After modifying waybar config or styles, always restart waybar so changes take effect:
+
+```bash
+killall waybar && hyprctl dispatch exec waybar
+```
+
 **Android scripts:** After modifying files under `android/`, push them to the phone by running `./android/push-to-phone.sh` (requires phone connected via USB with ADB enabled).

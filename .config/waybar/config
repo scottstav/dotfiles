@@ -193,8 +193,8 @@
         "return-type": "json",
         "interval": 2,
         "on-click": "aside query --mic",
-        "on-click-right": "aside-input",
-        "on-click-middle": "aside speak",
+        "on-click-right": "aside cancel",
+        "on-click-middle": "aside toggle-tts",
         "on-scroll-up": "aside-model-cycle up",
         "on-scroll-down": "aside-model-cycle down",
         "signal": 12,
@@ -206,7 +206,7 @@
         "interval": 2,
         "on-click": "foot --app-id=fzf-picker -e ccl ui",
         "on-click-right": "foot --app-id=fzf-picker -e ccl-worker-new",
-        "signal": 12,
+        "signal": 9,
         "tooltip": true
     },
     "custom/system-freshness": {

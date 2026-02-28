@@ -29,6 +29,8 @@ def model_short(mid):
         fam = names.get(m.group(1).lower())
         if fam:
             return f'{fam} {m.group(2).replace(\"-\", \".\")}'
+    if mid.startswith('gpt-'):
+        return 'GPT-' + mid[4:]
     return mid
 
 model = model_short(model_id)
@@ -55,13 +57,15 @@ activity_icons = {
 
 is_active = status != 'idle' and status in activity_icons
 
+tts_dot = '<span font_size=\"x-small\" rise=\"6000\"> ●</span>' if speak else ''
+
 if is_active:
     activity = activity_icons[status]
     if status == 'tool_use' and tool_name:
         activity += f' {tool_name}'
-    icon = f'<span foreground=\"{LAVENDER}\">{mode_icon} \ue0b0</span> {activity}'
+    icon = f'<span foreground=\"{LAVENDER}\">{mode_icon}{tts_dot} \ue0b0</span> {activity}'
 else:
-    icon = mode_icon
+    icon = f'{mode_icon}{tts_dot}'
 
 css = status
 

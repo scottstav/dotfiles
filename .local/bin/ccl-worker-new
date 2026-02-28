@@ -38,6 +38,7 @@ cmd=(ccl new --dir "$dir" --task "$task")
 ID=$("${cmd[@]}")
 if [[ $? -eq 0 ]]; then
     echo "Worker $ID started in background."
+    pkill -SIGRTMIN+9 waybar
 else
     echo "Failed to create worker."
 fi

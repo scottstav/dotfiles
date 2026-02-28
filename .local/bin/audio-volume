@@ -2,22 +2,19 @@
 
 direction="$1"
 
-# Get the sink ID that the first active stream is using
+# Get the sink ID that the first active stream is using; if an active stream
+# exists, switch the default sink to match it.
 sink_id=$(pactl list sink-inputs short | head -1 | awk '{print $2}')
 
-[ -z "$sink_id" ] && exit 0
+if [ -n "$sink_id" ]; then
+    sink_name=$(pactl list sinks short | awk -v id="$sink_id" '$1 == id {print $2}')
+    [ -n "$sink_name" ] && pactl set-default-sink "$sink_name"
+fi
 
-# Get the sink name from the ID
-sink_name=$(pactl list sinks short | awk -v id="$sink_id" '$1 == id {print $2}')
-
-[ -z "$sink_name" ] && exit 0
-
-# Set it as default so waybar reflects it
-pactl set-default-sink "$sink_name"
-
+# Always adjust volume on the default sink (whether we just set it or not)
 case "$direction" in
-    up)   pactl set-sink-volume "$sink_name" +5% ;;
-    down) pactl set-sink-volume "$sink_name" -5% ;;
+    up)   pactl set-sink-volume @DEFAULT_SINK@ +5% ;;
+    down) pactl set-sink-volume @DEFAULT_SINK@ -5% ;;
 esac
 
 pkill -RTMIN+14 waybar 2>/dev/null

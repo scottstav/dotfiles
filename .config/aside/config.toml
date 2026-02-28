@@ -19,6 +19,9 @@ lang = "a"
 skip_code_blocks = true
 skip_urls = true
 
+[input]
+font = "Iosevka 11"
+
 [storage]
 archive_dir = "~/Dropbox/LLM/Chats"
 

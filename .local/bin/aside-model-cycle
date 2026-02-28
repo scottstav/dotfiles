@@ -6,8 +6,26 @@ CONFIG_FILE="$HOME/.config/aside/config.toml"
 STATE_FILE="$HOME/.local/state/aside/status.json"
 
 # Ordered cheapest to most powerful (LiteLLM format)
-MODELS=("anthropic/claude-haiku-4-5" "anthropic/claude-sonnet-4-6" "anthropic/claude-opus-4-6")
-NAMES=("Haiku 4.5" "Sonnet 4.6" "Opus 4.6")
+MODELS=(
+    "anthropic/claude-haiku-4-5"
+    "anthropic/claude-sonnet-4-6"
+    "anthropic/claude-opus-4-6"
+    "openai/gpt-4o-mini"
+    "openai/gpt-4o"
+    "openai/o4-mini"
+    "openai/o3"
+    "openai/gpt-5.3-codex"
+)
+NAMES=(
+    "Haiku 4.5"
+    "Sonnet 4.6"
+    "Opus 4.6"
+    "GPT-4o Mini"
+    "GPT-4o"
+    "o4-mini"
+    "o3"
+    "GPT-5.3 Codex"
+)
 
 direction="${1:-up}"
 

@@ -1,45 +1,45 @@
 #!/bin/bash
-# Waybar module for ccl (wreccless) worker status
+# Waybar module for ccl worker status
 
-python3 -c "
-import json, subprocess
+ICON=$'\U000f0710' # 󰜐
+ts=$(date +%H:%M:%S)
 
-# Read worker state from ccl
-workers = []
-try:
-    r = subprocess.run(['ccl', 'list', '--json'], capture_output=True, text=True, timeout=2)
-    if r.returncode == 0 and r.stdout.strip() and r.stdout.strip() != 'No workers.':
-        workers = json.loads(r.stdout.strip())
-except (subprocess.TimeoutExpired, json.JSONDecodeError, FileNotFoundError):
-    pass
+json=$(ccl list --json 2>/dev/null) || json=""
 
-worker_pending = sum(1 for w in workers if w.get('status') == 'pending')
-worker_working = sum(1 for w in workers if w.get('status') == 'working')
-worker_done = sum(1 for w in workers if w.get('status') == 'done')
-worker_total = worker_pending + worker_working + worker_done
+# If empty, non-JSON, or "No workers." text — idle
+if [[ -z "$json" ]] || ! echo "$json" | jq empty 2>/dev/null; then
+    echo "{\"text\": \"$ICON\", \"tooltip\": \"No workers ($ts)\", \"class\": \"idle\"}"
+    exit 0
+fi
 
-SHOVEL = '\U000f0710'  # 󰜐
+read -r total pending working done_count error_count css < <(
+    echo "$json" | jq -r '
+        . as $w |
+        ($w | length) as $total |
+        ([$w[] | select(.status=="pending")] | length) as $pending |
+        ([$w[] | select(.status=="working")] | length) as $working |
+        ([$w[] | select(.status=="done")] | length) as $done |
+        ([$w[] | select(.status=="error")] | length) as $error |
+        (if $working > 0 then "working"
+         elif $error > 0 then "error"
+         elif $done > 0 then "done"
+         elif $pending > 0 then "pending"
+         else "idle" end) as $css |
+        "\($total) \($pending) \($working) \($done) \($error) \($css)"
+    '
+)
 
-if worker_total == 0:
-    print(json.dumps({'text': SHOVEL, 'tooltip': 'No workers', 'class': 'idle'}, ensure_ascii=False))
-else:
-    count_str = f' {worker_total}' if worker_total > 1 else ''
-    icon = f'{SHOVEL}{count_str}'
+if [[ "$total" -eq 0 ]]; then
+    echo "{\"text\": \"$ICON\", \"tooltip\": \"No workers ($ts)\", \"class\": \"idle\"}"
+    exit 0
+fi
 
-    if worker_working > 0:
-        css = 'working'
-    elif worker_done > 0:
-        css = 'done'
-    elif worker_pending > 0:
-        css = 'pending'
-    else:
-        css = 'idle'
+# Build tooltip
+parts=()
+[[ "$pending" -gt 0 ]] && parts+=("$pending pending")
+[[ "$working" -gt 0 ]] && parts+=("$working working")
+[[ "$done_count" -gt 0 ]] && parts+=("$done_count done")
+[[ "$error_count" -gt 0 ]] && parts+=("$error_count error")
+tooltip="Workers: $(IFS=', '; echo "${parts[*]}") ($ts)"
 
-    parts = []
-    if worker_pending: parts.append(f'{worker_pending} pending')
-    if worker_working: parts.append(f'{worker_working} working')
-    if worker_done: parts.append(f'{worker_done} done')
-    tip = 'Workers: ' + ', '.join(parts)
-
-    print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
-"
+echo "{\"text\": \"$ICON $total\", \"tooltip\": \"$tooltip\", \"class\": \"$css\"}"

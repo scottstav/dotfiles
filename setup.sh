@@ -485,6 +485,12 @@ if ! command -v python3.11 &>/dev/null; then
     ok "python3.11 installed"
 fi
 
+if [ ! -d "$ASIDE_SRC" ]; then
+    mkdir -p "$HOME/projects"
+    git clone git@github.com:scottstav/aside.git "$ASIDE_SRC"
+    ok "aside cloned"
+fi
+
 if [ -d "$ASIDE_SRC" ]; then
     # Full install from source (creates venv, builds C overlay, installs services)
     PYTHON=python3.11 make -C "$ASIDE_SRC" install
@@ -500,15 +506,11 @@ if [ -d "$ASIDE_SRC" ]; then
     mkdir -p "$HOME/Dropbox/LLM/Chats"
     ok "Conversation archive directory ready"
 
-    # Enable services
+    # Enable and start services
     systemctl --user daemon-reload
     for svc in aside-daemon.service aside-overlay.service; do
-        if systemctl --user is-enabled "$svc" &>/dev/null; then
-            ok "$svc already enabled"
-        else
-            systemctl --user enable "$svc"
-            ok "$svc enabled"
-        fi
+        systemctl --user enable --now "$svc"
+        ok "$svc enabled and started"
     done
 else
     warn "aside source not found at $ASIDE_SRC — clone it first"
@@ -520,6 +522,12 @@ fi
 step "Wreccless (ccl)"
 
 WRECCLESS_SRC="$HOME/projects/wreccless"
+
+if [ ! -d "$WRECCLESS_SRC" ]; then
+    mkdir -p "$HOME/projects"
+    git clone git@github.com:scottstav/wreccless.git "$WRECCLESS_SRC"
+    ok "wreccless cloned"
+fi
 
 if [ -d "$WRECCLESS_SRC" ]; then
     if ! command -v go &>/dev/null; then

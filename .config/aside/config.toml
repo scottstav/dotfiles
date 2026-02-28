@@ -1,3 +1,4 @@
+
 [model]
 name = "anthropic/claude-haiku-4-5"
 
@@ -14,10 +15,7 @@ enabled = false
 model = "af_heart"
 speed = 1.0
 lang = "a"
-
-[tts.filter]
-skip_code_blocks = true
-skip_urls = true
+filter = {skip_code_blocks = true, skip_urls = true}
 
 [input]
 font = "Iosevka 11"
@@ -28,8 +26,8 @@ archive_dir = "~/Dropbox/LLM/Chats"
 [plugins]
 dirs = ["~/.local/lib/aside/plugins", "~/.local/share/aside/plugins"]
 
-[overlay.colors]
-accent = "#D4714Aff"
+[overlay]
+colors = {accent = "#D4714Aff"}
 
 [status]
 signal = 12

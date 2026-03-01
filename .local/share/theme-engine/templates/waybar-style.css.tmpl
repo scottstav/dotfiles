@@ -8,12 +8,10 @@
 
 window#waybar {
     min-height: 24px;
-}
-window#waybar {
     color: ${foreground};
-    background-color: transparent;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(${background_rgba}, 0.6), rgba(${background_rgba}, 0.4));
+    border-bottom: 1px solid rgba(${accent_rgba}, 0.25);
+    border-radius: 0;
 }
 
 #window {
@@ -23,16 +21,18 @@ window#waybar {
 
 #workspaces button {
     color: ${foreground};
-    /* round the edges */
-    border-radius: 100px;
+    padding: 0 4px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
 }
 
 #workspaces button:hover {
+    color: ${terminal_bright_white};
 }
 
 #workspaces button.active {
-    background-color: rgba(100, 100, 100, 0.5);
-    color: ${terminal_bright_white};
+    color: ${accent};
+    border-bottom: 2px solid ${accent};
 }
 
 #workspaces button.urgent {
@@ -41,8 +41,8 @@ window#waybar {
 }
 
 #mode {
-    background: rgba(80, 80, 80, 0.5);
-    border-bottom: 3px solid #a0a0a0;
+    background: rgba(${surface_rgba}, 0.5);
+    border-bottom: 3px solid ${dim};
 }
 
 #custom-waybarstatus {
@@ -50,8 +50,6 @@ window#waybar {
 }
 
 .modules-center {
-    border-radius: 100px;
-    background-color: rgba(${background_rgba}, 0.7);
 }
 
 .modules-center * {
@@ -67,7 +65,7 @@ window#waybar {
 #custom-waybarstatus {
     padding: 2px 4px;
     color: ${terminal_white};
-    background-color: rgba(50, 50, 50, 0.7);
+    background-color: rgba(${surface_rgba}, 0.5);
 }
 
 #battery icon {
@@ -81,7 +79,7 @@ window#waybar {
 @keyframes blink {
     to {
 	background-color: ${accent_bright};
-	color: #003366;
+	color: ${background};
     }
 }
 

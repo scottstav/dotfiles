@@ -193,7 +193,7 @@
         "return-type": "json",
         "interval": 2,
         "on-click": "aside query --mic",
-        "on-click-right": "aside cancel",
+        "on-click-right": "aside toggle-tts",
         "on-click-middle": "foot --app-id=fzf-picker -e aside-model-pick",
         "on-scroll-up": "aside toggle-tts",
         "on-scroll-down": "aside toggle-tts",

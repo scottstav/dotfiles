@@ -18,7 +18,7 @@ lang = "a"
 filter = {skip_code_blocks = true, skip_urls = true}
 
 [input]
-font = "Iosevka 11"
+font = "Iosevka 12"
 
 [storage]
 archive_dir = "~/Dropbox/LLM/Chats"
@@ -27,7 +27,31 @@ archive_dir = "~/Dropbox/LLM/Chats"
 dirs = ["~/.local/lib/aside/plugins", "~/.local/share/aside/plugins"]
 
 [overlay]
-colors = {accent = "#D4714Aff"}
+font = "Iosevka 12"
+max_lines = 5
+corner_radius = 8
+border_width = 1
+accent_height = 4
+scroll_duration = 200
+fade_duration = 400
+position = "top-center"
+width = 450
+margin_top = 5
+margin_right = 5
+margin_left = 5
+margin_bottom = 5
+padding_top = 2.5
+padding_right = 2.5
+padding_left = 2.5
+padding_bottom = 2.5
+
+[overlay.colors]
+background = "#1a1b26e6"
+foreground = "#c0caf5ff"
+border = "#414868ff"
+accent = "#a85f32"
+user_accent = "#5e32a8"
+
 
 [status]
 signal = 12

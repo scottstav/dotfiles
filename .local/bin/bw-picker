@@ -1,0 +1,312 @@
+#!/bin/bash
+# Bitwarden vault picker — foot + fzf TUI
+# enter: copy password | alt-u: username | alt-l: URI | alt-t: TOTP
+# alt-n: notes | ctrl-r: refresh vault
+
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
+SELF=$(realpath "$0")
+CACHE_DIR="$HOME/.cache/bw-picker"
+VAULT_FILE="$CACHE_DIR/vault.json"
+FOLDERS_FILE="$CACHE_DIR/folders.json"
+SESSION_FILE="$CACHE_DIR/session"
+LOCK_FILE="$CACHE_DIR/unlock.lock"
+SYNC_INTERVAL=900  # re-sync every 15 minutes
+
+mkdir -p "$CACHE_DIR"
+chmod 700 "$CACHE_DIR"
+
+# ── Helpers ──────────────────────────────────────────────
+
+get_session() {
+    [[ -f "$SESSION_FILE" ]] && cat "$SESSION_FILE"
+}
+
+save_session() {
+    echo "$1" > "$SESSION_FILE"
+    chmod 600 "$SESSION_FILE"
+}
+
+session_valid() {
+    local session
+    session=$(get_session)
+    [[ -n "$session" ]] && BW_SESSION="$session" bw unlock --check &>/dev/null
+}
+
+unlock_vault() {
+    exec 9>"$LOCK_FILE"
+    flock -n 9 || return 1
+
+    local clientid clientsecret password
+    clientid=$(kwallet-query -r BW_CLIENTID -f Bitwarden kdewallet 2>/dev/null)
+    clientsecret=$(kwallet-query -r BW_CLIENTSECRET -f Bitwarden kdewallet 2>/dev/null)
+    password=$(kwallet-query -r BW_PASSWORD -f Bitwarden kdewallet 2>/dev/null)
+
+    [[ -z "$clientid" || -z "$clientsecret" || -z "$password" ]] && return 1
+
+    export BW_CLIENTID="$clientid" BW_CLIENTSECRET="$clientsecret"
+    local status
+    status=$(bw status 2>/dev/null | grep -oP '"status":"\K[^"]+')
+
+    if [[ "$status" == "unauthenticated" ]]; then
+        bw login --apikey &>/dev/null || return 1
+    fi
+
+    export BW_PASSWORD="$password"
+    local output session
+    output=$(bw unlock --passwordenv BW_PASSWORD 2>&1)
+    unset BW_PASSWORD BW_CLIENTID BW_CLIENTSECRET
+
+    session=$(echo "$output" | grep -oP 'export\s+\w+="[^"]*"' | cut -d'"' -f2)
+    [[ -z "$session" ]] && return 1
+
+    save_session "$session"
+    echo "$session"
+}
+
+ensure_session() {
+    if session_valid; then
+        get_session
+    else
+        unlock_vault
+    fi
+}
+
+sync_vault() {
+    local session="$1"
+    BW_SESSION="$session" bw sync &>/dev/null
+    BW_SESSION="$session" bw list items 2>/dev/null > "$VAULT_FILE.tmp" \
+        && mv "$VAULT_FILE.tmp" "$VAULT_FILE"
+    BW_SESSION="$session" bw list folders 2>/dev/null > "$FOLDERS_FILE.tmp" \
+        && mv "$FOLDERS_FILE.tmp" "$FOLDERS_FILE"
+}
+
+ensure_cache() {
+    local session="$1"
+    if [[ ! -f "$VAULT_FILE" ]] || \
+       [[ $(( $(date +%s) - $(stat -c %Y "$VAULT_FILE" 2>/dev/null || echo 0) )) -gt $SYNC_INTERVAL ]]; then
+        sync_vault "$session"
+    fi
+}
+
+# ── Subcommands (called by fzf binds) ───────────────────
+
+case "$1" in
+    --list)
+        # Output: display_and_search \t item_id
+        # fzf --with-nth=1 restricts BOTH display and search to field 1,
+        # so all searchable text (URIs, notes, fields) must live in field 1.
+        # Searchable extras are appended dim so they're visually subtle but
+        # still matched by fzf (which strips ANSI before matching).
+        [[ ! -f "$VAULT_FILE" ]] && exit 1
+
+        folder_json="{}"
+        [[ -f "$FOLDERS_FILE" ]] && folder_json=$(jq -c 'map(select(.id) | {(.id): .name}) | add // {}' "$FOLDERS_FILE" 2>/dev/null)
+
+        jq -r --argjson folders "$folder_json" '
+            .[] | select(.type == 1 or .type == 2 or .type == 3) |
+
+            .id as $item_id |
+
+            # icon
+            (if .type == 1 then "🔑"
+             elif .type == 2 then "📝"
+             elif .type == 3 then "💳"
+             else "📦" end) as $icon |
+
+            # username
+            (if .login then (.login.username // "") else "" end) as $user |
+
+            # folder name
+            (if .folderId and $folders[.folderId] then $folders[.folderId] else "" end) as $folder |
+
+            # URI domains (strip protocol/path for cleaner display)
+            (if .login.uris then
+                [.login.uris[].uri | capture("://(?<h>[^/]+)").h // .] | unique | join(" ")
+            else "" end) as $domains |
+
+            # full URIs for search (hidden)
+            (if .login.uris then [.login.uris[].uri] | join(" ") else "" end) as $uris |
+
+            # notes snippet (strip newlines/tabs, cap at 100 chars)
+            (if .notes then (.notes | gsub("[\\n\\t\\r]"; " ") | .[0:100]) else "" end) as $notes |
+
+            # custom fields (skip hidden type=1)
+            (if .fields then
+                [.fields[] | select(.type != 1) | "\(.name // "") \(.value // "")"] | join(" ")
+            else "" end) as $fields |
+
+            # card info
+            (if .card then "\(.card.brand // "") \(.card.number // "" | .[-4:])" else "" end) as $card |
+
+            # ── build display line ──
+            # Visible: icon  Name  username  (folder)  domains
+            (if $user != "" then
+                "\($icon)  \(.name)  \u001b[2m\($user)\u001b[0m"
+            else
+                "\($icon)  \(.name)"
+            end) as $d |
+            (if $folder != "" then
+                "\($d)  \u001b[2m(\($folder))\u001b[0m"
+            else $d end) as $d2 |
+            (if $domains != "" then
+                "\($d2)  \u001b[2m\($domains)\u001b[0m"
+            else $d2 end) as $visible |
+
+            # Append hidden searchable text (full URIs, notes, fields)
+            # Very dim — scrolled off-screen on most lines, but fzf still searches it
+            [($uris), ($notes), ($fields), ($card)] | map(select(. != "")) | join("  ") |
+            if . != "" then "\($visible)  \u001b[2m\(.)\u001b[0m" else $visible end |
+
+            # Final: display \t item_id
+            "\(.)\t\($item_id)"
+        ' "$VAULT_FILE" 2>/dev/null
+        exit
+        ;;
+
+    --preview)
+        [[ ! -f "$VAULT_FILE" || -z "$2" ]] && exit 1
+
+        jq -r --arg id "$2" '
+            .[] | select(.id == $id) |
+
+            "\u001b[1m\(.name)\u001b[0m",
+            "",
+
+            (if .type == 1 then
+                (if .login.username then "\u001b[2muser\u001b[0m  \(.login.username)" else empty end),
+                (if .login.password then "\u001b[2mpass\u001b[0m  \u001b[2m••••••••\u001b[0m" else empty end),
+                (if .login.uris and (.login.uris | length) > 0 then
+                    "",
+                    "\u001b[2murls\u001b[0m",
+                    (.login.uris[] | "  \u001b[36m\(.uri)\u001b[0m")
+                else empty end),
+                (if .login.totp then "", "\u001b[32m✓ TOTP enabled\u001b[0m" else empty end)
+
+            elif .type == 2 then
+                "\u001b[2mSecure Note\u001b[0m",
+                (if .notes then "", (.notes | split("\n")[0:20] | .[]) else empty end)
+
+            elif .type == 3 then
+                (if .card then
+                    "\u001b[2mcard\u001b[0m  \(.card.brand // "Card") ••••\(.card.number // "" | .[-4:])",
+                    (if .card.expMonth and .card.expYear then
+                        "\u001b[2mexp \u001b[0m  \(.card.expMonth)/\(.card.expYear)"
+                    else empty end)
+                else empty end)
+            else empty end),
+
+            (if .notes and .type != 2 then
+                "", "\u001b[2mnotes\u001b[0m", (.notes | split("\n")[0:10] | .[])
+            else empty end),
+
+            (if .fields and (.fields | length) > 0 then
+                "", "\u001b[2mfields\u001b[0m",
+                (.fields[] |
+                    if .type == 1 then "  \(.name // "?"): \u001b[2m••••••••\u001b[0m"
+                    else "  \(.name // "?"): \(.value // "")"
+                    end)
+            else empty end)
+        ' "$VAULT_FILE" 2>/dev/null
+        exit
+        ;;
+
+    --copy-password)
+        [[ ! -f "$VAULT_FILE" || -z "$2" ]] && exit 1
+        pw=$(jq -r --arg id "$2" '.[] | select(.id == $id) | .login.password // empty' "$VAULT_FILE")
+        if [[ -n "$pw" ]]; then
+            printf '%s' "$pw" | wl-copy
+            ( sleep 30 && wl-copy --clear ) &>/dev/null &
+            disown
+        fi
+        exit
+        ;;
+
+    --copy-username)
+        [[ ! -f "$VAULT_FILE" || -z "$2" ]] && exit 1
+        user=$(jq -r --arg id "$2" '.[] | select(.id == $id) | .login.username // empty' "$VAULT_FILE")
+        [[ -n "$user" ]] && printf '%s' "$user" | wl-copy
+        exit
+        ;;
+
+    --copy-uri)
+        [[ ! -f "$VAULT_FILE" || -z "$2" ]] && exit 1
+        uri=$(jq -r --arg id "$2" '.[] | select(.id == $id) | .login.uris[0].uri // empty' "$VAULT_FILE")
+        [[ -n "$uri" ]] && printf '%s' "$uri" | wl-copy
+        exit
+        ;;
+
+    --copy-totp)
+        # TOTP is time-based — must call bw CLI live
+        session=$(get_session)
+        [[ -z "$session" || -z "$2" ]] && exit 1
+        totp=$(BW_SESSION="$session" bw get totp "$2" 2>/dev/null)
+        if [[ -n "$totp" ]]; then
+            printf '%s' "$totp" | wl-copy
+            ( sleep 30 && wl-copy --clear ) &>/dev/null &
+            disown
+        fi
+        exit
+        ;;
+
+    --copy-notes)
+        [[ ! -f "$VAULT_FILE" || -z "$2" ]] && exit 1
+        notes=$(jq -r --arg id "$2" '.[] | select(.id == $id) | .notes // empty' "$VAULT_FILE")
+        [[ -n "$notes" ]] && printf '%s' "$notes" | wl-copy
+        exit
+        ;;
+
+    --refresh)
+        session=$(get_session)
+        [[ -z "$session" ]] && exit 1
+        sync_vault "$session"
+        "$SELF" --list
+        exit
+        ;;
+
+    --lock)
+        bw lock &>/dev/null
+        rm -f "$SESSION_FILE" "$VAULT_FILE" "$FOLDERS_FILE"
+        exit
+        ;;
+esac
+
+# ── Main ─────────────────────────────────────────────────
+
+printf '\e[2mUnlocking vault...\e[0m\n'
+session=$(ensure_session)
+if [[ -z "$session" ]]; then
+    printf '\e[31mCould not unlock vault. Press any key to exit.\e[0m\n'
+    read -rsn1
+    exit 1
+fi
+
+printf '\e[2mSyncing...\e[0m\n'
+ensure_cache "$session"
+
+# 2-column tab-delimited: display_and_search \t item_id
+# --with-nth=1  →  show display only (field 1 includes all searchable text)
+# {2}           →  item_id for subcommand calls
+
+header=$'\e[1mBitwarden\e[0m  \e[2menter: pass · alt-u: user · alt-l: url · alt-t: totp · alt-n: notes · ^r: sync\e[0m'
+
+selection=$("$SELF" --list | fzf \
+    "${FZF_PICKER_OPTS[@]}" --ansi \
+    --header="$header" \
+    --delimiter=$'\t' --with-nth=1 \
+    --preview="$SELF --preview {2}" \
+    --preview-window=right:45%:wrap \
+    --bind "alt-u:execute-silent($SELF --copy-username {2})+abort" \
+    --bind "alt-l:execute-silent($SELF --copy-uri {2})+abort" \
+    --bind "alt-t:execute-silent($SELF --copy-totp {2})+abort" \
+    --bind "alt-n:execute-silent($SELF --copy-notes {2})+abort" \
+    --bind "ctrl-r:reload($SELF --refresh)" \
+    --bind 'left-click:accept')
+
+[[ -z "$selection" ]] && exit 0
+
+item_id=$(printf '%s' "$selection" | awk -F'\t' '{print $NF}')
+[[ -z "$item_id" ]] && exit 1
+
+# Default enter → copy password
+"$SELF" --copy-password "$item_id"

@@ -12,9 +12,7 @@ no_speech_timeout = 3.0
 
 [tts]
 enabled = false
-model = "af_heart"
 speed = 1.0
-lang = "a"
 filter = {skip_code_blocks = true, skip_urls = true}
 
 [input]
@@ -23,8 +21,8 @@ font = "Iosevka 12"
 [storage]
 archive_dir = "~/Dropbox/LLM/Chats"
 
-[plugins]
-dirs = ["~/.local/lib/aside/plugins", "~/.local/share/aside/plugins"]
+[tools]
+dirs = []
 
 [overlay]
 font = "Iosevka 12"
@@ -50,7 +48,7 @@ background = "#1a1c1ee6"
 foreground = "#d4d4d4ff"
 border = "#5a4a3aff"
 accent = "#5b9a6a"
-user_accent = "#8b7355"
+user_accent = "#a07048"
 
 
 [status]

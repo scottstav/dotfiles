@@ -6,9 +6,10 @@ PIDFILE="/tmp/caffeine-inhibitor.pid"
 
 case "$1" in
     on)
-        if [ ! -f "$PIDFILE" ]; then
-            # Use systemd-inhibit to prevent idle
-            systemd-inhibit --what=idle --who="Caffeine" --why="User requested" --mode=block sleep infinity &
+        if [ ! -f "$PIDFILE" ] || ! kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
+            rm -f "$PIDFILE"
+            # Use setsid so the process survives the parent shell exiting
+            setsid systemd-inhibit --what=idle --who="Caffeine" --why="User requested" --mode=block sleep infinity &
             echo $! > "$PIDFILE"
             notify-send -t 2000 "Caffeine" "Keep awake enabled"
         fi

@@ -7,7 +7,7 @@ This is a dotfiles tracking repo managed with GNU Stow.
 **When creating new files:** Any new file created in this repo must be stowed to its respective place in the home directory. After creating a file, run:
 
 ```bash
-cd /home/ifit/dotfiles && stow .
+cd ~/dotfiles && stow --no-folding .
 ```
 
 This symlinks files from the dotfiles repo structure to their corresponding locations under `$HOME`. Do NOT run stow when editing existing files — they are already symlinked, so changes are reflected immediately.

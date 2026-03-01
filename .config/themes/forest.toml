@@ -23,7 +23,7 @@ magenta       = "#a070b0"
 [roles]
 accent        = "green"
 accent_bright = "cyan"
-secondary     = "#8b7355"
+secondary     = "#a07048"
 error         = "red"
 warning       = "orange"
 success       = "green"

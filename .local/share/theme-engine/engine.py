@@ -304,7 +304,7 @@ def update_aside_config(ns: dict, theme: dict) -> None:
         "foreground":   f'"#{ns["foreground_bare"]}ff"',
         "border":       f'"#{ns["border_bare"]}ff"',
         "accent":       f'"#{ns["accent_bare"]}"',
-        "user_accent":  f'"#{ns["magenta_bare"]}"',
+        "user_accent":  f'"#{ns["secondary_bare"]}"',
     }
 
     for key, value in color_map.items():

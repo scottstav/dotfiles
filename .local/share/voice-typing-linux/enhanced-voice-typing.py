@@ -515,9 +515,8 @@ class VoiceTyping:
             f'--rate={self.sample_rate}',
             f'--channels={self.channels}',
             '--latency-msec=20',
+            '--device', self._pw_source or '@DEFAULT_SOURCE@',
         ]
-        if self._pw_source:
-            cmd.extend(['--device', self._pw_source])
         return cmd
 
     def _start_audio_capture(self):

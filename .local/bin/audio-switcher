@@ -82,8 +82,6 @@ elif [[ "$mode" == *"Input"* ]]; then
         pactl list source-outputs short | awk '{print $1}' | while read -r output; do
             pactl move-source-output "$output" "$source"
         done
-        # Restart voice typing daemon so it picks up the new source
-        systemctl --user restart voice-typing 2>/dev/null &
         desc=$(pactl list sources | grep -A1 "Name: $source" | grep "Description:" | sed 's/.*Description: //')
         log_message "  $desc" && sleep 3 && log_message ""
     fi

@@ -75,12 +75,12 @@ window#waybar {
 }
 
 #battery.charging {
-    color: #50c878;
+    color: #5b9a6a;
 }
 
 @keyframes blink {
     to {
-	background-color: #60b0a0;
+	background-color: #6a9e8e;
 	color: #003366;
     }
 }
@@ -129,7 +129,7 @@ window#waybar {
 }
 
 #custom-bluetooth.connected {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-bluetooth.low-battery {
@@ -141,15 +141,15 @@ window#waybar {
 }
 
 #custom-spotify {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #tray {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-sysinfo {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-sysinfo.warning {
@@ -166,11 +166,11 @@ window#waybar {
 }
 
 #custom-external-drive {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-external-drive.mounted {
-    color: #50c878;
+    color: #5b9a6a;
 }
 
 /* Notification module */
@@ -179,7 +179,7 @@ window#waybar {
 }
 
 #custom-notification.notification {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-notification.dnd-notification,
@@ -217,7 +217,7 @@ window#waybar {
 }
 
 #custom-voice-typing.listening {
-    color: #50c878;
+    color: #5b9a6a;
     animation-name: pulse;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -246,11 +246,11 @@ window#waybar {
 
 /* System freshness module */
 #custom-system-freshness.fresh {
-    color: #50c878;
+    color: #5b9a6a;
 }
 
 #custom-system-freshness.healthy {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-system-freshness.aging {
@@ -272,7 +272,7 @@ window#waybar {
 
 /* Google Calendar module */
 #custom-gcal.active {
-    color: #50c878;
+    color: #5b9a6a;
 }
 
 #custom-gcal.urgent {
@@ -289,7 +289,7 @@ window#waybar {
 }
 
 #custom-gcal.upcoming {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-gcal.later {
@@ -306,15 +306,15 @@ window#waybar {
 
 /* Smooth color glow animations for aside states */
 @keyframes glow-blue {
-    0% { color: #60b0a0; }
-    50% { color: #c6e2dd; }
-    100% { color: #60b0a0; }
+    0% { color: #6a9e8e; }
+    50% { color: #c6dad4; }
+    100% { color: #6a9e8e; }
 }
 
 @keyframes glow-green {
-    0% { color: #50c878; }
-    50% { color: #c4ecd1; }
-    100% { color: #50c878; }
+    0% { color: #5b9a6a; }
+    50% { color: #b8d5bf; }
+    100% { color: #5b9a6a; }
 }
 
 @keyframes glow-amber {
@@ -325,7 +325,7 @@ window#waybar {
 
 /* Aside module */
 #custom-aside {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-aside.thinking {
@@ -359,7 +359,7 @@ window#waybar {
 
 /* CCL worker module */
 #custom-ccl {
-    color: #60b0a0;
+    color: #6a9e8e;
 }
 
 #custom-ccl.idle {
@@ -381,13 +381,13 @@ window#waybar {
 
 @keyframes arrive-green {
     0% { color: #ffffff; }
-    30% { color: #50c878; }
+    30% { color: #5b9a6a; }
     60% { color: #ffffff; }
-    100% { color: #50c878; }
+    100% { color: #5b9a6a; }
 }
 
 #custom-ccl.done {
-    color: #50c878;
+    color: #5b9a6a;
     animation-name: arrive-green;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;

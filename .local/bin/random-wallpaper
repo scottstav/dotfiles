@@ -1,5 +1,20 @@
 #!/bin/bash
-WALLPAPER_DIR=~/Dropbox/Images/wallpapers/
-WALLPAPER=$(find "$WALLPAPER_DIR" -type f | shuf -n 1)
+# Pick a random wallpaper and apply it by rewriting hyprpaper.conf + restarting.
+# (hyprctl hyprpaper IPC is broken with current hyprland/hyprpaper versions)
 
-hyprctl hyprpaper wallpaper ",$WALLPAPER"
+WALLPAPER_DIR=~/Dropbox/Images/wallpapers
+WALLPAPER=$(find "$WALLPAPER_DIR" -type f \( -name '*.png' -o -name '*.jpg' -o -name '*.jpeg' -o -name '*.webp' \) | shuf -n 1)
+
+[ -z "$WALLPAPER" ] && echo "No wallpapers found" >&2 && exit 1
+
+CONFIG=~/.config/hypr/hyprpaper.conf
+cat > "$CONFIG" <<EOF
+wallpaper {
+    monitor =
+    path = $WALLPAPER
+}
+EOF
+
+killall hyprpaper 2>/dev/null
+sleep 0.3
+hyprctl dispatch exec hyprpaper

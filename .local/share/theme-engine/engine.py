@@ -49,9 +49,6 @@ RELOAD_COMMANDS = [
     ["systemctl", "--user", "restart", "aside-overlay"],
 ]
 
-HYPRPAPER_RELOAD = ["killall", "hyprpaper"]
-HYPRPAPER_START = ["hyprctl", "dispatch", "exec", "hyprpaper"]
-
 # The six chromatic terminal color names and their hue counterparts.
 TERMINAL_HUES = {
     "red":     "red",
@@ -191,7 +188,7 @@ def build_namespace(theme: dict) -> dict:
     # Non-color values from [meta]
     meta = theme.get("meta", {})
     if "wallpaper" in meta:
-        ns["wallpaper"] = meta["wallpaper"]
+        ns["wallpaper"] = os.path.expanduser(meta["wallpaper"])
 
     return ns
 
@@ -217,6 +214,9 @@ def render_templates(ns: dict) -> None:
 
         target = os.path.expanduser(target_path)
         os.makedirs(os.path.dirname(target), exist_ok=True)
+        # Remove read-only files before overwriting (e.g. aside overlay.conf)
+        if os.path.exists(target) and not os.access(target, os.W_OK):
+            os.chmod(target, 0o644)
         with open(target, "w") as f:
             f.write(rendered)
 
@@ -302,20 +302,21 @@ def update_current_symlink(name: str) -> None:
 # ---------------------------------------------------------------------------
 
 def reload_services() -> None:
-    """Run reload commands for each app. Ignore failures."""
+    """Run reload commands for each app. Log failures to stderr."""
     for cmd in RELOAD_COMMANDS:
         try:
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                print(f"  warn: {cmd[0]} failed (exit {r.returncode})", file=sys.stderr)
         except FileNotFoundError:
             pass
 
     # Hyprpaper needs kill + restart (no reload signal)
-    try:
-        subprocess.run(HYPRPAPER_RELOAD, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(0.5)
-        subprocess.run(HYPRPAPER_START, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except FileNotFoundError:
-        pass
+    subprocess.run(["killall", "hyprpaper"], capture_output=True)
+    time.sleep(0.5)
+    r = subprocess.run(["hyprctl", "dispatch", "exec", "hyprpaper"], capture_output=True, text=True)
+    if r.returncode != 0:
+        print(f"  warn: hyprpaper restart failed: {r.stderr.strip()}", file=sys.stderr)
 
 
 # ---------------------------------------------------------------------------

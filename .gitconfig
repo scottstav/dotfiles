@@ -1,0 +1,10 @@
+[user]
+	email = scottstavinoha@gmail.com
+	name = scottstav
+	signingkey = B22E59FC3E226CCE
+[github]
+	user = scottstav
+[gpg]
+	format = openpgp
+[commit]
+	gpgsign = true

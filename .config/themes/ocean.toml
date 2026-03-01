@@ -1,6 +1,7 @@
 [meta]
 name = "Ocean"
 style = "dark"
+font = "Iosevka 12"
 wallpaper = "~/Dropbox/Images/wallpapers/spirited-away-ocean-dark.jpg"
 
 [palette]
@@ -22,6 +23,7 @@ magenta       = "#9370db"
 [roles]
 accent        = "blue"
 accent_bright = "cyan"
+secondary     = "#4a5568"
 error         = "red"
 warning       = "orange"
 success       = "green"

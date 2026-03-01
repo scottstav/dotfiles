@@ -12,11 +12,11 @@ FZF_PICKER_OPTS=(
     --pointer='▸'
     --marker='●'
     --separator='─'
-    --color='bg:-1,bg+:#1a2a40,fg:#8a9a8a,fg+:#d4d4d4'
+    --color='bg:-1,bg+:#252a24,fg:#8a8070,fg+:#d4d4d4'
     --color='hl:#60b0a0,hl+:#60b0a0'
     --color='info:#404040,marker:#50c878,spinner:#60b0a0'
     --color='prompt:#50c878,pointer:#50c878'
     --color='header:#60b0a0,header:bold'
     --color='border:#50c878,label:#60b0a0,query:#d4d4d4'
-    --color='separator:#303050'
+    --color='separator:#5a4a3a'
 )

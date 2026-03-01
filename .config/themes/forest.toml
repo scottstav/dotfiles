@@ -1,14 +1,15 @@
 [meta]
 name = "Forest"
 style = "dark"
+font = "Iosevka 12"
 wallpaper = "~/Dropbox/Images/wallpapers/pixel-balcony.png"
 
 [palette]
 background    = "#1a1c1e"
-surface       = "#2a2e2a"
+surface       = "#252a24"
 foreground    = "#d4d4d4"
-dim           = "#8a9a8a"
-border        = "#3a4a3a"
+dim           = "#8a8070"
+border        = "#5a4a3a"
 
 [hues]
 red           = "#e06060"
@@ -22,6 +23,7 @@ magenta       = "#a070b0"
 [roles]
 accent        = "green"
 accent_bright = "cyan"
+secondary     = "#8b7355"
 error         = "red"
 warning       = "orange"
 success       = "green"
@@ -32,5 +34,5 @@ theme = "wheatgrass"
 [emacs.faces]
 mode-line-active-bg   = "#2a3a2a"
 mode-line-active-fg   = "#b0c0b0"
-mode-line-inactive-bg = "#1e2e1e"
-mode-line-inactive-fg = "#6a7a6a"
+mode-line-inactive-bg = "#2a2520"
+mode-line-inactive-fg = "#7a7060"

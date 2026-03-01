@@ -51,7 +51,7 @@ window#waybar {
 
 .modules-center {
     border-radius: 100px;
-    background-color: rgba(80, 80, 80, 0.5);
+    background-color: rgba(26, 28, 30, 0.7);
 }
 
 .modules-center * {
@@ -121,11 +121,11 @@ window#waybar {
 }
 
 #custom-bluetooth.off {
-    color: #3a4a3a;
+    color: #5a4a3a;
 }
 
 #custom-bluetooth.on {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 #custom-bluetooth.connected {
@@ -184,7 +184,7 @@ window#waybar {
 
 #custom-notification.dnd-notification,
 #custom-notification.dnd-none {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 #custom-notification.inhibited-notification,
@@ -213,7 +213,7 @@ window#waybar {
 
 /* Voice typing module */
 #custom-voice-typing {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 #custom-voice-typing.listening {
@@ -225,11 +225,11 @@ window#waybar {
 }
 
 #custom-voice-typing.paused {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 #custom-voice-typing.off {
-    color: #3a4a3a;
+    color: #5a4a3a;
 }
 
 @keyframes pulse {
@@ -297,7 +297,7 @@ window#waybar {
 }
 
 #custom-gcal.idle {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 #custom-gcal.none {
@@ -363,7 +363,7 @@ window#waybar {
 }
 
 #custom-ccl.idle {
-    color: #8a9a8a;
+    color: #8a8070;
 }
 
 @keyframes glow-yellow {
@@ -395,5 +395,5 @@ window#waybar {
 }
 
 #custom-ccl.pending {
-    color: #8a9a8a;
+    color: #8a8070;
 }

@@ -11,6 +11,7 @@ Usage:
 
 import colorsys
 import os
+import re
 import string
 import subprocess
 import sys
@@ -37,8 +38,9 @@ TEMPLATE_MAP = {
     "fzf-theme.sh.tmpl":          "~/.local/share/fzf-picker/theme.sh",
     "fuzzel.ini.tmpl":            "~/.config/fuzzel/fuzzel.ini",
     "hyprpaper.conf.tmpl":        "~/.config/hypr/hyprpaper.conf",
-    "aside-overlay-config.tmpl": "~/.config/aside/overlay.conf",
 }
+
+ASIDE_CONFIG = os.path.expanduser("~/.config/aside/config.toml")
 
 RELOAD_COMMANDS = [
     ["hyprctl", "reload"],
@@ -284,6 +286,48 @@ def generate_emacs_theme(theme_data: dict) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 6b. Update aside config.toml colors/font in-place
+# ---------------------------------------------------------------------------
+
+def update_aside_config(ns: dict, theme: dict) -> None:
+    """Patch [overlay.colors] and fonts in aside's config.toml."""
+    if not os.path.isfile(ASIDE_CONFIG):
+        return
+
+    with open(ASIDE_CONFIG, "r") as f:
+        text = f.read()
+
+    # Map: config.toml key -> themed value
+    font = theme.get("meta", {}).get("font", "Iosevka 12")
+    color_map = {
+        "background":   f'"#{ns["background_bare"]}e6"',
+        "foreground":   f'"#{ns["foreground_bare"]}ff"',
+        "border":       f'"#{ns["border_bare"]}ff"',
+        "accent":       f'"#{ns["accent_bare"]}"',
+        "user_accent":  f'"#{ns["magenta_bare"]}"',
+    }
+
+    for key, value in color_map.items():
+        text = re.sub(
+            rf'^(\s*{key}\s*=\s*)(".*?")',
+            rf'\g<1>{value}',
+            text,
+            flags=re.MULTILINE,
+        )
+
+    # Update fonts (input and overlay sections both have font =)
+    text = re.sub(
+        r'^(\s*font\s*=\s*)(".*?")',
+        rf'\1"{font}"',
+        text,
+        flags=re.MULTILINE,
+    )
+
+    with open(ASIDE_CONFIG, "w") as f:
+        f.write(text)
+
+
+# ---------------------------------------------------------------------------
 # 7. Update current symlink
 # ---------------------------------------------------------------------------
 
@@ -330,6 +374,7 @@ def apply_theme(name: str) -> None:
 
     render_templates(ns)
     generate_emacs_theme(theme)
+    update_aside_config(ns, theme)
     update_current_symlink(name)
     reload_services()
 

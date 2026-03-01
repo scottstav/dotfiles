@@ -1,4 +1,0 @@
-#!/bin/bash
-# Cancel any running aside query.
-SOCK="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/aside.sock"
-echo '{"action":"cancel"}' | socat - UNIX-CONNECT:"$SOCK"

@@ -1,0 +1,86 @@
+#!/bin/bash
+# Waybar module for aside status
+
+STATE_FILE="$HOME/.local/state/aside/status.json"
+
+if [ ! -f "$STATE_FILE" ]; then
+    echo '{"text": "\uee0d", "class": "idle", "tooltip": "Aside (not running)"}'
+    exit 0
+fi
+
+python3 -c "
+import json, os
+
+d = json.load(open('$STATE_FILE'))
+status = d.get('status', 'idle')
+speak = d.get('speak_enabled', False)
+tool_name = d.get('tool_name', '')
+model_id = d.get('model', 'anthropic/claude-sonnet-4-6')
+usage = d.get('usage', {})
+
+# Model display name
+import re
+def model_short(mid):
+    if '/' in mid:
+        mid = mid.split('/', 1)[1]
+    m = re.match(r'claude-(\w+?)-([\d].*)', mid)
+    if m:
+        names = {'sonnet': 'Sonnet', 'opus': 'Opus', 'haiku': 'Haiku'}
+        fam = names.get(m.group(1).lower())
+        if fam:
+            return f'{fam} {m.group(2).replace(\"-\", \".\")}'
+    if mid.startswith('gpt-'):
+        return 'GPT-' + mid[4:]
+    return mid
+
+model = model_short(model_id)
+total_tokens = usage.get('total_tokens', 0)
+
+def fmt_tokens(n):
+    if n >= 1_000_000:
+        return f'{n/1_000_000:.1f}M'
+    if n >= 1_000:
+        return f'{n/1_000:.1f}k'
+    return str(n)
+
+# Persistent icon
+mode_icon = '\uee0d'  #  claude
+LAVENDER = '#b4befe'
+
+# Activity indicator: only when not idle
+activity_icons = {
+    'thinking':  '\U000f0674',  # 󰙴 creation (sparkle)
+    'tool_use':  '\U000f0493',  # 󰒓 cog
+    'speaking':  '\U000f057e',  # 󰕾 volume_high
+    'listening': '\U000f036c',  # 󰍬 microphone
+}
+
+is_active = status != 'idle' and status in activity_icons
+
+tts_dot = '<span font_size=\"x-small\" rise=\"6000\"> ●</span>' if speak else ''
+
+if is_active:
+    activity = activity_icons[status]
+    if status == 'tool_use' and tool_name:
+        activity += f' {tool_name}'
+    icon = f'<span foreground=\"{LAVENDER}\">{mode_icon}{tts_dot} \ue0b0</span> {activity}'
+else:
+    icon = f'{mode_icon}{tts_dot}'
+
+css = status
+
+# Tooltip
+if status == 'tool_use' and tool_name:
+    tip = f'Running: {tool_name}'
+elif status == 'thinking':
+    tip = 'Thinking...'
+elif status == 'speaking':
+    tip = 'Speaking... (mid-click to stop)'
+elif status == 'listening':
+    tip = 'Listening...'
+else:
+    tip = f'{model} | Tokens: {fmt_tokens(total_tokens)}'
+    tip += ' | Speak: ON' if speak else ' | Speak: OFF'
+
+print(json.dumps({'text': icon, 'tooltip': tip, 'class': css}, ensure_ascii=False))
+"

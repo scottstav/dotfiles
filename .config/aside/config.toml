@@ -22,7 +22,7 @@ font = "Iosevka 12"
 archive_dir = "~/Dropbox/LLM/Chats"
 
 [tools]
-dirs = []
+dirs = ["~/.config/aside/tools"]
 
 [overlay]
 font = "Iosevka 12"

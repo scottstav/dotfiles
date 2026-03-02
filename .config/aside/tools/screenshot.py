@@ -35,13 +35,14 @@ def run() -> dict:
         # as a child of the aside daemon (Wayland screencopy contention).
         subprocess.run(
             ["hyprctl", "dispatch", "exec",
-             f"grim -t jpeg -q 80 {tmp}"],
+             f"bash -c 'grim -t jpeg -q 80 {tmp}'"],
             capture_output=True, timeout=5,
         )
         # Wait for grim to write the file (it runs asynchronously).
         for _ in range(40):
             try:
                 if os.path.getsize(tmp) > 1000:
+                    time.sleep(0.1)  # let grim finish writing
                     break
             except OSError:
                 pass

@@ -1,17 +1,17 @@
-"""Capture a screenshot of all monitors for visual context."""
+"""Capture a screenshot of the focused monitor for visual context."""
 
 import base64
+import json
 import os
 import subprocess
 import tempfile
-import time
 
 TOOL_SPEC = {
     "name": "screenshot",
     "description": (
-        "Capture a screenshot of the user's screen. The image will include all "
-        "monitors. After receiving the image, determine which monitor is relevant "
-        "to the conversation and focus your answer on that monitor's content.\n\n"
+        "Capture a screenshot of the user's currently focused monitor. "
+        "After receiving the image, analyze what's on screen and help "
+        "the user with what they're looking at.\n\n"
         "IMPORTANT: Always ask the user for permission before calling this tool. "
         "When the user seems to be referring to something on their screen without "
         "providing visual context (e.g. 'help me with this', 'what am I doing wrong', "
@@ -25,33 +25,40 @@ TOOL_SPEC = {
 }
 
 
+def _focused_output() -> str:
+    """Return the wlr output name (e.g. 'eDP-1') of the focused monitor."""
+    active = json.loads(subprocess.check_output(
+        ["hyprctl", "activewindow", "-j"]))
+    mon_id = active.get("monitor", 0)
+    monitors = json.loads(subprocess.check_output(
+        ["hyprctl", "monitors", "-j"]))
+    for m in monitors:
+        if m["id"] == mon_id:
+            return m["name"]
+    # Fallback: first monitor
+    return monitors[0]["name"] if monitors else "eDP-1"
+
+
 def run() -> dict:
-    """Capture full screen via grim, return base64 JPEG."""
+    """Capture focused monitor via grim, return base64 JPEG."""
+    output = _focused_output()
     fd, tmp = tempfile.mkstemp(suffix=".jpg")
     os.close(fd)
+    os.unlink(tmp)  # grim needs to create the file fresh
     try:
-        # Run grim via hyprctl dispatch exec so it runs detached from
-        # the daemon's process tree.  grim hangs when spawned directly
-        # as a child of the aside daemon (Wayland screencopy contention).
-        subprocess.run(
-            ["hyprctl", "dispatch", "exec",
-             f"bash -c 'grim -t jpeg -q 80 {tmp}'"],
-            capture_output=True, timeout=5,
+        result = subprocess.run(
+            ["grim", "-o", output, "-t", "jpeg", "-q", "80", tmp],
+            capture_output=True, timeout=10,
+            start_new_session=True,
         )
-        # Wait for grim to write the file (it runs asynchronously).
-        for _ in range(40):
-            try:
-                if os.path.getsize(tmp) > 1000:
-                    time.sleep(0.1)  # let grim finish writing
-                    break
-            except OSError:
-                pass
-            time.sleep(0.25)
-        else:
-            return "Error: grim did not produce output within 10 seconds"
+        if result.returncode != 0:
+            return f"Error capturing screenshot: {result.stderr.decode()}"
         with open(tmp, "rb") as f:
             encoded = base64.b64encode(f.read()).decode()
         return {"type": "image", "media_type": "image/jpeg", "base64": encoded}
+    except subprocess.TimeoutExpired:
+        subprocess.run(["pkill", "-9", "grim"], capture_output=True)
+        return "Error: grim timed out"
     finally:
         try:
             os.unlink(tmp)

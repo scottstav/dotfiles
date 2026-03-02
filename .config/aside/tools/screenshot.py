@@ -1,7 +1,10 @@
 """Capture a screenshot of all monitors for visual context."""
 
 import base64
+import os
 import subprocess
+import tempfile
+import time
 
 TOOL_SPEC = {
     "name": "screenshot",
@@ -23,12 +26,33 @@ TOOL_SPEC = {
 
 
 def run() -> dict:
-    """Capture full screen via grim, return base64 PNG."""
-    result = subprocess.run(
-        ["grim", "-t", "png", "-"],
-        capture_output=True,
-    )
-    if result.returncode != 0:
-        return f"Error capturing screenshot: {result.stderr.decode()}"
-    encoded = base64.b64encode(result.stdout).decode()
-    return {"type": "image", "base64": encoded}
+    """Capture full screen via grim, return base64 JPEG."""
+    fd, tmp = tempfile.mkstemp(suffix=".jpg")
+    os.close(fd)
+    try:
+        # Run grim via hyprctl dispatch exec so it runs detached from
+        # the daemon's process tree.  grim hangs when spawned directly
+        # as a child of the aside daemon (Wayland screencopy contention).
+        subprocess.run(
+            ["hyprctl", "dispatch", "exec",
+             f"grim -t jpeg -q 80 {tmp}"],
+            capture_output=True, timeout=5,
+        )
+        # Wait for grim to write the file (it runs asynchronously).
+        for _ in range(40):
+            try:
+                if os.path.getsize(tmp) > 1000:
+                    break
+            except OSError:
+                pass
+            time.sleep(0.25)
+        else:
+            return "Error: grim did not produce output within 10 seconds"
+        with open(tmp, "rb") as f:
+            encoded = base64.b64encode(f.read()).decode()
+        return {"type": "image", "media_type": "image/jpeg", "base64": encoded}
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass

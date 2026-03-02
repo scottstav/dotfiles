@@ -12,12 +12,17 @@ info=$(ccl status "$id" --json 2>/dev/null)
 task=$(echo "$info" | jq -r '.task' | head -c 200)
 dir=$(echo "$info" | jq -r '.directory' | sed "s|$HOME|~|")
 
-action=$(notify-send -t 0 -a "ccl" \
-    -A "approve=Start" -A "deny=Decline" \
-    --wait \
-    "Pending Worker ($dir)" "$task" 2>/dev/null)
+# Run notification in the background so the hook returns immediately.
+# The notification stays up; approve/deny still works when the user clicks.
+(
+    action=$(notify-send -t 0 -a "ccl" \
+        -A "approve=Start" -A "deny=Decline" \
+        --wait \
+        "Pending Worker ($dir)" "$task" 2>/dev/null)
 
-case "$action" in
-    approve) ccl approve "$id" ;;
-    deny) ccl deny "$id" ;;
-esac
+    case "$action" in
+        approve) ccl approve "$id" ;;
+        deny) ccl deny "$id" ;;
+    esac
+) &
+disown

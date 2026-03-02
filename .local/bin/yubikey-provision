@@ -1,0 +1,90 @@
+#!/bin/bash
+# Provision a new YubiKey with GPG keys (signing, encryption, auth).
+# Plug in the new YubiKey first, then run this script.
+#
+# Requires: ~/.gnupg/backup-20260301/secret-subkeys.asc
+
+set -euo pipefail
+
+KEY_FP="ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE"
+BACKUP="$HOME/.gnupg/backup-20260301/secret-subkeys.asc"
+
+if [[ ! -f "$BACKUP" ]]; then
+    echo "ERROR: Backup not found at $BACKUP"
+    exit 1
+fi
+
+# Check a YubiKey is plugged in
+if ! gpg --card-status &>/dev/null; then
+    echo "ERROR: No YubiKey detected"
+    exit 1
+fi
+
+serial=$(gpg --card-status 2>/dev/null | grep "Serial number" | awk '{print $NF}')
+echo "Detected YubiKey serial: $serial"
+read -rp "Provision this YubiKey? [y/N] " confirm
+[[ "$confirm" =~ ^[Yy]$ ]] || exit 0
+
+# Step 1: Set FIDO2 PIN
+echo ""
+echo "=== Setting FIDO2 PIN ==="
+ykman fido access change-pin
+
+# Step 2: Delete existing stubs and re-import from backup
+echo ""
+echo "=== Importing GPG keys from backup ==="
+gpg --batch --yes --delete-secret-keys "$KEY_FP" 2>/dev/null || true
+gpg --batch --import "$BACKUP"
+
+# Restore trust
+echo "${KEY_FP}:6:" | gpg --import-ownertrust
+
+# Step 3: Move keys to card
+# This requires the card's admin PIN (default: 12345678 on a new YubiKey).
+echo ""
+echo "=== Moving keys to YubiKey ==="
+echo "You'll be prompted for the card's Admin PIN."
+echo "(Default for a new YubiKey is 12345678)"
+echo ""
+
+# Move primary (signing) key to slot 1
+gpg --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_FP" <<'CMDS'
+keytocard
+1
+y
+CMDS
+
+# Re-import (keytocard deletes local copy)
+gpg --batch --yes --delete-secret-keys "$KEY_FP" 2>/dev/null || true
+gpg --batch --import "$BACKUP"
+echo "${KEY_FP}:6:" | gpg --import-ownertrust
+
+# Move subkey 1 (encryption) to slot 2
+gpg --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_FP" <<'CMDS'
+key 1
+keytocard
+2
+y
+CMDS
+
+# Re-import again
+gpg --batch --yes --delete-secret-keys "$KEY_FP" 2>/dev/null || true
+gpg --batch --import "$BACKUP"
+echo "${KEY_FP}:6:" | gpg --import-ownertrust
+
+# Move subkey 2 (auth) to slot 3
+gpg --command-fd 0 --pinentry-mode loopback --edit-key "$KEY_FP" <<'CMDS'
+key 2
+keytocard
+3
+y
+CMDS
+
+# Step 4: Verify
+echo ""
+echo "=== Verifying ==="
+gpg --card-status | grep -E "Signature key|Encryption key|Authentication key"
+
+echo ""
+echo "Done! YubiKey $serial is provisioned."
+echo "Run 'gpg-connect-agent \"scd serialno\" \"learn --force\" /bye' if switching between YubiKeys."

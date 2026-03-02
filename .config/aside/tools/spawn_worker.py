@@ -13,11 +13,20 @@ TOOL_SPEC = {
         "The worker runs autonomously in its own terminal with full codebase access, "
         "file editing, git, and multi-file reasoning. Use this when the task requires "
         "changes across multiple files or deep codebase understanding. "
-        "The user must approve the worker before it starts.\n\n"
-        "For 'directory': pass the project name as the user said it — does NOT need "
-        "to be an absolute path. Fuzzy matching resolves names like 'dotfiles', "
-        "'dot files', 'aside', 'wreccless' to actual repos under ~/projects, ~, "
-        "or ~/Dropbox. Absolute paths still work too."
+        "The worker starts in a pending state — the user will get a desktop notification "
+        "to approve or decline it. If the user tells you to start it, use manage_workers "
+        "to approve it.\n\n"
+        "CRITICAL — 'directory' resolution: NEVER ask the user to clarify the directory. "
+        "Extract the project/service/repo name from the user's message and pass it "
+        "directly. Fuzzy matching on the backend handles the rest. Examples:\n"
+        "  'do X in test-service' → directory='test-service'\n"
+        "  'fix the bug in my dotfiles' → directory='dotfiles'\n"
+        "  'update the aside project' → directory='aside'\n"
+        "  'change something in user equipment svc' → directory='user-equipment-svc'\n"
+        "If the message contains ANY plausible project/service/repo name, pass it. "
+        "The backend does fuzzy matching against all git repos on disk and will return "
+        "a helpful error with available repos if nothing matches — that is always better "
+        "than asking the user."
     ),
     "parameters": {
         "type": "object",
@@ -25,8 +34,10 @@ TOOL_SPEC = {
             "directory": {
                 "type": "string",
                 "description": (
-                    "Project name or absolute path. Can be fuzzy — e.g. 'dotfiles', "
-                    "'dot files', 'my aside project'. Resolved against git repos on disk."
+                    "Project name or absolute path. ALWAYS extract this from the user's "
+                    "message — never ask. Can be fuzzy: 'dotfiles', 'test-service', "
+                    "'user equipment svc' all work. The backend resolves against git repos "
+                    "on disk and returns a useful error if no match is found."
                 ),
             },
             "task": {
@@ -137,5 +148,6 @@ def run(directory: str, task: str) -> str:
     return (
         f"Worker queued as pending (id: {worker_id}).\n"
         f"Directory: {dir_short}\n"
-        f"The user will see a notification to approve or decline."
+        f"The user has been notified. They can approve from the notification, "
+        f"or tell you to start it and you can use manage_workers to approve it."
     )

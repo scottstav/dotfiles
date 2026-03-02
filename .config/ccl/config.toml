@@ -9,10 +9,7 @@ on_done = [
     "pkill -SIGRTMIN+9 waybar",
     "ccl-done-notify {{.ID}} {{.SessionID}} {{.Dir}}"
 ]
-on_pending = [
-    "pkill -SIGRTMIN+9 waybar",
-    "ccl-pending-notify {{.ID}}"
-]
+on_pending = ["pkill -SIGRTMIN+9 waybar"]
 on_error = [
     "pkill -SIGRTMIN+9 waybar",
     "notify-send -u critical -a 'ccl' 'Worker Failed' '{{.Task}}'"

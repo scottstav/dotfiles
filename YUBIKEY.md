@@ -66,6 +66,59 @@ Both users on this machine sign commits with the GPG signing key:
 4. Stow dotfiles — this sets up `gpg-agent.conf` (SSH support), `.profile` (SSH_AUTH_SOCK), `.gitconfig` (signing)
 5. Add SSH public key to any new remote hosts
 
+## Loading Keys onto a New YubiKey
+
+If you get a new YubiKey and want it to work identically to the existing ones:
+
+### Prerequisites
+
+- The new YubiKey must be a YubiKey 5 series (supports OpenPGP 3.4)
+- You need the secret subkey backup at `~/.gnupg/backup-20260301/`
+
+### Steps
+
+1. **Set a FIDO2 PIN** (for WebAuthn/passkeys):
+   ```
+   ykman fido access change-pin
+   ```
+
+2. **Delete the current GPG secret key stubs** (they point to whichever card was last used):
+   ```
+   gpg --batch --yes --delete-secret-keys ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE
+   ```
+
+3. **Re-import the secret subkeys from backup**:
+   ```
+   gpg --batch --import ~/.gnupg/backup-20260301/secret-subkeys.asc
+   ```
+
+4. **Restore trust on the key** (import wipes it):
+   ```
+   gpg --edit-key ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE
+   # type: trust → 5 (ultimate) → y → quit
+   ```
+
+5. **Move each subkey to the new card** — plug in the new YubiKey, then:
+   ```
+   gpg --edit-key ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE
+   ```
+   For each subkey (encryption, auth), select it and move to card:
+   - `key 1` → `keytocard` → choose **(2) Encryption key** → `key 1` (deselect)
+   - `key 2` → `keytocard` → choose **(3) Authentication key** → `key 2` (deselect)
+
+   For the primary signing key (no `key N` selection needed):
+   - `keytocard` → choose **(1) Signature key**
+
+   Then `save`.
+
+6. **Verify** — `gpg --card-status` should show all three slots populated with the correct key IDs.
+
+### Important notes
+
+- `keytocard` **deletes the local copy** of the subkey each time. That's why you must re-import from the backup before loading each new card.
+- Keep the backup (`~/.gnupg/backup-20260301/`) safe — without it you cannot provision new YubiKeys. Consider storing a copy on an encrypted USB drive.
+- After loading, `gpg --card-status` will bind the stubs to the most recently used card. Switching YubiKeys may require `gpg-connect-agent "scd serialno" "learn --force" /bye` to re-bind.
+
 ## FIDO2 PINs
 
 Both YubiKeys have FIDO2 PINs set (used for WebAuthn, passkeys, etc). These are separate from the GPG card PIN.

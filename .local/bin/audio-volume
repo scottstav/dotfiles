@@ -17,4 +17,6 @@ case "$direction" in
     down) pactl set-sink-volume @DEFAULT_SINK@ -5% ;;
 esac
 
+paplay ~/.local/share/sounds/volume-boop.ogg &
+
 pkill -RTMIN+14 waybar 2>/dev/null

@@ -51,11 +51,11 @@ padding_left = 2.5
 padding_bottom = 2.5
 
 [overlay.colors]
-background = "#1a1c1ee6"
-foreground = "#d4d4d4ff"
-border = "#5a4a3aff"
-accent = "#5b9a6a"
-user_accent = "#a07048"
+background = "#12101ae6"
+foreground = "#d0ccd5ff"
+border = "#383344ff"
+accent = "#9a7098"
+user_accent = "#4a4555"
 
 
 [status]

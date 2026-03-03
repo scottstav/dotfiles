@@ -659,7 +659,7 @@
          (current-base (file-name-nondirectory current-file))
          (_ (unless (string-match "\\`\\([0-9]\\{8\\}\\)T" current-base)
               (user-error "Not in a denote journal file")))
-         (journal-dir (expand-file-name "~/Dropbox/org/denote/journal"))
+         (journal-dir (file-name-directory current-file))
          ;; Collect all journal files sorted oldest-first
          (all-entries
           (sort

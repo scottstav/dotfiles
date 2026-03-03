@@ -8,19 +8,19 @@
 
 window#waybar {
     min-height: 24px;
-    color: #d4d4d4;
-    background: linear-gradient(180deg, rgba(26, 28, 30, 0.6), rgba(26, 28, 30, 0.4));
-    border-bottom: 1px solid rgba(91, 154, 106, 0.25);
+    color: #d0ccd5;
+    background: linear-gradient(180deg, rgba(18, 16, 26, 0.6), rgba(18, 16, 26, 0.4));
+    border-bottom: 1px solid rgba(154, 112, 152, 0.25);
     border-radius: 0;
 }
 
 #window {
     font-family: "Iosevka";
-    color: #d4d4d4;
+    color: #d0ccd5;
 }
 
 #workspaces button {
-    color: #d4d4d4;
+    color: #d0ccd5;
     padding: 0 4px;
     border-bottom: 2px solid transparent;
     transition: all 0.2s ease;
@@ -31,8 +31,8 @@ window#waybar {
 }
 
 #workspaces button.active {
-    color: #5b9a6a;
-    border-bottom: 2px solid #5b9a6a;
+    color: #9a7098;
+    border-bottom: 2px solid #9a7098;
 }
 
 #workspaces button.urgent {
@@ -41,8 +41,8 @@ window#waybar {
 }
 
 #mode {
-    background: rgba(37, 42, 36, 0.5);
-    border-bottom: 3px solid #8a8070;
+    background: rgba(28, 25, 38, 0.5);
+    border-bottom: 3px solid #706b7a;
 }
 
 #custom-waybarstatus {
@@ -64,27 +64,27 @@ window#waybar {
 
 #custom-waybarstatus {
     padding: 2px 4px;
-    color: #d4d4d4;
-    background-color: rgba(37, 42, 36, 0.5);
+    color: #d0ccd5;
+    background-color: rgba(28, 25, 38, 0.5);
 }
 
 #battery icon {
-    color: #e06060;
+    color: #c45c6a;
 }
 
 #battery.charging {
-    color: #5b9a6a;
+    color: #6a9a74;
 }
 
 @keyframes blink {
     to {
-	background-color: #6a9e8e;
-	color: #1a1c1e;
+	background-color: #6a8a9a;
+	color: #12101a;
     }
 }
 
 #battery.warning:not(.charging) {
-    color: #e06060;
+    color: #c45c6a;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -93,45 +93,45 @@ window#waybar {
 }
 
 #network.disconnected {
-    background: #e06060;
+    background: #c45c6a;
 }
 
 /* Audio module */
 #custom-audio {
-    color: #d4d4d4;
+    color: #d0ccd5;
 }
 
 #custom-audio.muted {
-    color: #e06060;
+    color: #c45c6a;
 }
 
 #custom-audio.source-muted {
-    color: #e06060;
+    color: #c45c6a;
 }
 
 #custom-audio.high {
-    color: #d4944a;
+    color: #b87a5a;
 }
 
 /* Bluetooth module */
 #custom-bluetooth {
-    color: #d4d4d4;
+    color: #d0ccd5;
 }
 
 #custom-bluetooth.off {
-    color: #5a4a3a;
+    color: #383344;
 }
 
 #custom-bluetooth.on {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 #custom-bluetooth.connected {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-bluetooth.low-battery {
-    color: #d4944a;
+    color: #b87a5a;
     animation-name: pulse;
     animation-duration: 2s;
     animation-timing-function: ease-in-out;
@@ -139,23 +139,23 @@ window#waybar {
 }
 
 #custom-spotify {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #tray {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-sysinfo {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-sysinfo.warning {
-    color: #d4944a;
+    color: #b87a5a;
 }
 
 #custom-sysinfo.critical {
-    color: #e06060;
+    color: #c45c6a;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -164,30 +164,30 @@ window#waybar {
 }
 
 #custom-external-drive {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-external-drive.mounted {
-    color: #5b9a6a;
+    color: #6a9a74;
 }
 
 /* Notification module */
 #custom-notification {
-    color: #d4d4d4;
+    color: #d0ccd5;
 }
 
 #custom-notification.notification {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-notification.dnd-notification,
 #custom-notification.dnd-none {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 #custom-notification.inhibited-notification,
 #custom-notification.inhibited-none {
-    color: #d4944a;
+    color: #b87a5a;
 }
 
 /* Recording module */
@@ -196,7 +196,7 @@ window#waybar {
 }
 
 #custom-recording.recording {
-    color: #e06060;
+    color: #c45c6a;
     animation-name: pulse;
     animation-duration: 1s;
     animation-timing-function: ease-in-out;
@@ -211,11 +211,11 @@ window#waybar {
 
 /* Voice typing module */
 #custom-voice-typing {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 #custom-voice-typing.listening {
-    color: #5b9a6a;
+    color: #6a9a74;
     animation-name: pulse;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -223,11 +223,11 @@ window#waybar {
 }
 
 #custom-voice-typing.paused {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 #custom-voice-typing.off {
-    color: #5a4a3a;
+    color: #383344;
 }
 
 @keyframes pulse {
@@ -244,23 +244,23 @@ window#waybar {
 
 /* System freshness module */
 #custom-system-freshness.fresh {
-    color: #5b9a6a;
+    color: #6a9a74;
 }
 
 #custom-system-freshness.healthy {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-system-freshness.aging {
-    color: #d4944a;
+    color: #b87a5a;
 }
 
 #custom-system-freshness.wilting {
-    color: #e06060;
+    color: #c45c6a;
 }
 
 #custom-system-freshness.dead {
-    color: #e06060;
+    color: #c45c6a;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -270,11 +270,11 @@ window#waybar {
 
 /* Google Calendar module */
 #custom-gcal.active {
-    color: #5b9a6a;
+    color: #6a9a74;
 }
 
 #custom-gcal.urgent {
-    color: #e06060;
+    color: #c45c6a;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -283,19 +283,19 @@ window#waybar {
 }
 
 #custom-gcal.soon {
-    color: #d4944a;
+    color: #b87a5a;
 }
 
 #custom-gcal.upcoming {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-gcal.later {
-    color: #d4d4d4;
+    color: #d0ccd5;
 }
 
 #custom-gcal.idle {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 #custom-gcal.none {
@@ -304,26 +304,26 @@ window#waybar {
 
 /* Smooth color glow animations for aside states */
 @keyframes glow-blue {
-    0% { color: #6a9e8e; }
-    50% { color: #c6dad4; }
-    100% { color: #6a9e8e; }
+    0% { color: #6a8a9a; }
+    50% { color: #c5d1d7; }
+    100% { color: #6a8a9a; }
 }
 
 @keyframes glow-green {
-    0% { color: #5b9a6a; }
-    50% { color: #b8d5bf; }
-    100% { color: #5b9a6a; }
+    0% { color: #6a9a74; }
+    50% { color: #c5d7c9; }
+    100% { color: #6a9a74; }
 }
 
 @keyframes glow-amber {
-    0% { color: #d4944a; }
-    50% { color: #f1ddc5; }
-    100% { color: #d4944a; }
+    0% { color: #b87a5a; }
+    50% { color: #e6d0c4; }
+    100% { color: #b87a5a; }
 }
 
 /* Aside module */
 #custom-aside {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-aside.thinking {
@@ -348,7 +348,7 @@ window#waybar {
 }
 
 #custom-aside.listening {
-    color: #d4944a;
+    color: #b87a5a;
     animation-name: pulse;
     animation-duration: 0.8s;
     animation-timing-function: ease-in-out;
@@ -357,17 +357,17 @@ window#waybar {
 
 /* CCL worker module */
 #custom-ccl {
-    color: #6a9e8e;
+    color: #6a8a9a;
 }
 
 #custom-ccl.idle {
-    color: #8a8070;
+    color: #706b7a;
 }
 
 @keyframes glow-yellow {
-    0% { color: #c4b060; opacity: 1; }
+    0% { color: #c4a86a; opacity: 1; }
     50% { color: #7c6f3e; opacity: 0.5; }
-    100% { color: #c4b060; opacity: 1; }
+    100% { color: #c4a86a; opacity: 1; }
 }
 
 #custom-ccl.working {
@@ -379,13 +379,13 @@ window#waybar {
 
 @keyframes arrive-green {
     0% { color: #ffffff; }
-    30% { color: #5b9a6a; }
+    30% { color: #6a9a74; }
     60% { color: #ffffff; }
-    100% { color: #5b9a6a; }
+    100% { color: #6a9a74; }
 }
 
 #custom-ccl.done {
-    color: #5b9a6a;
+    color: #6a9a74;
     animation-name: arrive-green;
     animation-duration: 1.5s;
     animation-timing-function: ease-in-out;
@@ -393,5 +393,5 @@ window#waybar {
 }
 
 #custom-ccl.pending {
-    color: #8a8070;
+    color: #706b7a;
 }

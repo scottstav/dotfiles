@@ -48,6 +48,7 @@ RELOAD_COMMANDS = [
     ["swaync-client", "-rs"],
     ["emacsclient", "--eval", '(load "~/.emacs.d/theme.el" nil t)'],
     ["systemctl", "--user", "restart", "aside-daemon"],
+    ["sleep", "1"],
     ["systemctl", "--user", "restart", "aside-overlay"],
 ]
 

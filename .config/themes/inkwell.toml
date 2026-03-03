@@ -30,9 +30,3 @@ success       = "green"
 
 [emacs]
 theme = "wombat"
-
-[emacs.faces]
-mode-line-active-bg   = "#2a2535"
-mode-line-active-fg   = "#c0b8c5"
-mode-line-inactive-bg = "#1c1926"
-mode-line-inactive-fg = "#605a6a"

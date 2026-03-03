@@ -31,12 +31,6 @@ success       = "green"
 [emacs]
 theme = "deeper-blue"
 
-[emacs.faces]
-mode-line-active-bg   = "#353550"
-mode-line-active-fg   = "#b0b0c0"
-mode-line-inactive-bg = "#2a2a3a"
-mode-line-inactive-fg = "#7a7a8a"
-
 [terminal]
 black          = "#0a0e14"
 white          = "#c0c0c0"

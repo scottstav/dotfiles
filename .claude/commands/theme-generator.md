@@ -71,12 +71,6 @@ success       = "green"         # always green
 
 [emacs]
 theme = "<theme-name>"
-
-[emacs.faces]
-mode-line-active-bg   = "#xxxxxx"   # tinted surface matching accent
-mode-line-active-fg   = "#xxxxxx"   # readable text on active mode-line
-mode-line-inactive-bg = "#xxxxxx"   # muted surface
-mode-line-inactive-fg = "#xxxxxx"   # dim text
 ```
 
 ### Color rules
@@ -110,12 +104,6 @@ Choose from this curated list based on the mood:
 - Light + any → `"modus-operandi"`
 - Light + warm → `"adwaita"`
 - Light + retro → `"tango"`
-
-**Emacs faces:**
-- `mode-line-active-bg`: Tint the surface color toward the accent. Should feel like a colored status bar.
-- `mode-line-active-fg`: Readable text on that background.
-- `mode-line-inactive-bg`: Near the surface color, slightly muted.
-- `mode-line-inactive-fg`: Near the dim color.
 
 ### Terminal palette (optional)
 

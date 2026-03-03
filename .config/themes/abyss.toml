@@ -29,10 +29,4 @@ warning       = "orange"
 success       = "green"
 
 [emacs]
-theme = "deeper-blue"
-
-[emacs.faces]
-mode-line-active-bg   = "#182040"
-mode-line-active-fg   = "#c0c0d8"
-mode-line-inactive-bg = "#121220"
-mode-line-inactive-fg = "#505068"
+theme = "tango-dark"

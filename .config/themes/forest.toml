@@ -30,9 +30,3 @@ success       = "green"
 
 [emacs]
 theme = "wheatgrass"
-
-[emacs.faces]
-mode-line-active-bg   = "#2a3a2a"
-mode-line-active-fg   = "#b0c0b0"
-mode-line-inactive-bg = "#2a2520"
-mode-line-inactive-fg = "#7a7060"

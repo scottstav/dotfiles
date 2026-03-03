@@ -1,14 +1,26 @@
 """Search contacts stored as vCard files."""
 
+import importlib.util
 import os
 import re
 from pathlib import Path
+
+# Load via importlib — can't add tools dir to sys.path because sibling
+# email.py would shadow stdlib email and break.
+_nv_spec = importlib.util.spec_from_file_location(
+    "_name_variants", str(Path(__file__).parent / "_name_variants.py")
+)
+_nv_mod = importlib.util.module_from_spec(_nv_spec)
+_nv_spec.loader.exec_module(_nv_mod)
+get_variants = _nv_mod.get_variants
 
 TOOL_SPEC = {
     "name": "contacts",
     "description": (
         "Search the user's contacts by name, phone number, email, or other info. "
-        "Returns matching contact details including phone, email, address, organization, etc."
+        "Returns matching contact details including phone, email, address, organization, etc. "
+        "Name searches automatically consider alternate spellings (e.g. Stephanie/Stefanie, "
+        "Sean/Shawn) so STT-transcribed names find the right contact."
     ),
     "parameters": {
         "type": "object",
@@ -71,22 +83,29 @@ def _parse_vcard(text):
 
 
 def _score_contact(query_terms, text):
-    """Score a contact by how well it matches the query terms."""
+    """Score a contact by how well it matches the query terms.
+
+    Each query term is expanded with spelling variants (e.g. Stephanie →
+    Stefanie) so that STT-transcribed names match contacts stored under
+    alternative spellings.
+    """
     text_lower = text.lower()
     words = set(re.findall(r"[a-z]{2,}", text_lower))
     score = 0
     for term in query_terms:
-        if term in text_lower:
-            score += 10  # exact substring match
-        else:
-            # prefix match: require at least 3 chars of overlap
-            best = 0
-            for word in words:
-                overlap = min(len(term), len(word))
-                if overlap >= 3 and (word.startswith(term[:overlap]) or term.startswith(word[:overlap])):
-                    best = max(best, overlap)
-            if best:
-                score += best  # longer overlap = better match
+        variants = get_variants(term)
+        best_variant_score = 0
+        for v in variants:
+            if v in text_lower:
+                best_variant_score = max(best_variant_score, 10)
+            else:
+                best = 0
+                for word in words:
+                    overlap = min(len(v), len(word))
+                    if overlap >= 3 and (word.startswith(v[:overlap]) or v.startswith(word[:overlap])):
+                        best = max(best, overlap)
+                best_variant_score = max(best_variant_score, best)
+        score += best_variant_score
     return score
 
 

@@ -461,6 +461,12 @@
 (use-package git-gutter
   :config (global-git-gutter-mode +1))
 
+(define-key my/git-map (kbd "n") #'git-gutter:next-hunk)
+(define-key my/git-map (kbd "p") #'git-gutter:previous-hunk)
+(define-key my/git-map (kbd "r") #'git-gutter:revert-hunk)
+(define-key my/git-map (kbd "s") #'git-gutter:stage-hunk)
+(define-key my/git-map (kbd "d") #'git-gutter:popup-hunk)
+
 (use-package treesit-auto
   :custom
   (treesit-auto-install 'prompt)  ; or t for automatic

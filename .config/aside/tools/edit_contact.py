@@ -1,9 +1,19 @@
 """Add or update fields on contacts stored as vCard files."""
 
+import importlib.util
 import re
 import shutil
 from datetime import datetime
 from pathlib import Path
+
+# Load via importlib — can't add tools dir to sys.path because sibling
+# email.py would shadow stdlib email and break.
+_nv_spec = importlib.util.spec_from_file_location(
+    "_name_variants", str(Path(__file__).parent / "_name_variants.py")
+)
+_nv_mod = importlib.util.module_from_spec(_nv_spec)
+_nv_spec.loader.exec_module(_nv_mod)
+get_variants = _nv_mod.get_variants
 
 TOOL_SPEC = {
     "name": "edit_contact",
@@ -117,12 +127,19 @@ def _parse_birthday(value):
 
 
 def _find_contact(name_query):
-    """Find a contact by name. Returns (path, display_name, alternatives)."""
+    """Find a contact by name. Returns (path, display_name, alternatives).
+
+    Expands each query term with spelling variants (e.g. Stephanie →
+    Stefanie) so STT-transcribed names match contacts stored under
+    alternative spellings.
+    """
     if not CONTACTS_DIR.is_dir():
         return None, "", []
 
     query_lower = name_query.lower()
     query_terms = query_lower.split()
+    # Build variant sets for each term once
+    term_variants = [set(get_variants(t)) for t in query_terms]
     candidates = []
 
     for vcf_path in CONTACTS_DIR.glob("*.vcf"):
@@ -145,8 +162,11 @@ def _find_contact(name_query):
         if fn_lower == query_lower:
             return vcf_path, fn, []
 
-        # All query terms present as substrings
-        if all(term in fn_lower for term in query_terms):
+        # All query terms (or a variant) present as substrings
+        if all(
+            any(v in fn_lower for v in variants)
+            for variants in term_variants
+        ):
             candidates.append((vcf_path, fn))
 
     if not candidates:

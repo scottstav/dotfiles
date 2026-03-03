@@ -1,5 +1,6 @@
 """Search and read emails from the local Maildir store via mu."""
 
+import importlib.util
 import json
 import re
 import subprocess
@@ -7,12 +8,23 @@ from email import policy
 from email.parser import BytesParser
 from pathlib import Path
 
+# Load _name_variants via importlib — can't use sys.path because this file
+# is named email.py and adding tools dir to sys.path shadows stdlib email.
+_nv_spec = importlib.util.spec_from_file_location(
+    "_name_variants", str(Path(__file__).parent / "_name_variants.py")
+)
+_nv_mod = importlib.util.module_from_spec(_nv_spec)
+_nv_spec.loader.exec_module(_nv_mod)
+get_variants = _nv_mod.get_variants
+
 TOOL_SPEC = {
     "name": "email",
     "description": (
         "Search and read emails from the user's local mailbox. Two modes:\n\n"
         "**Search mode** — provide any combination of sender, recipient, subject, keywords, "
-        "date_range, unread_only, or folder to find matching emails. Returns a list with date, "
+        "date_range, unread_only, or folder to find matching emails. Sender/recipient name "
+        "searches automatically consider alternate spellings (e.g. Stephanie/Stefanie, "
+        "Sean/Shawn) so STT-transcribed names find the right emails. Returns a list with date, "
         "sender, subject, flags, and file path for each match (up to 10).\n\n"
         "**Read mode** — provide read_path (a file path from search results) to read the full "
         "email content including headers and body.\n\n"
@@ -73,13 +85,28 @@ MAX_RESULTS = 10
 
 
 def _fuzzy_field(field, value):
-    """Build fuzzy mu query clauses for a field from a natural language value."""
+    """Build fuzzy mu query clauses for a field from a natural language value.
+
+    For person-name fields (from/to), each token is expanded with spelling
+    variants (e.g. Stephanie → Stefanie) so STT-transcribed names match
+    emails stored under alternative spellings.
+    """
     tokens = value.split()
+    is_person_field = field in ("from", "to")
     clauses = []
     for token in tokens:
-        # Strip punctuation, lowercase
         clean = re.sub(r"[^\w@.\-]", "", token.lower())
-        if clean:
+        if not clean:
+            continue
+        if is_person_field and "@" not in clean:
+            # Expand name token into spelling variants
+            variants = get_variants(clean)
+            if len(variants) > 1:
+                or_parts = [f"{field}:{v}*" for v in variants]
+                clauses.append(f"({' OR '.join(or_parts)})")
+            else:
+                clauses.append(f"{field}:{clean}*")
+        else:
             clauses.append(f"{field}:{clean}*")
     return clauses
 

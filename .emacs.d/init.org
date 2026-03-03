@@ -747,6 +747,37 @@
     ;; Daily journal (could be 'weekly or 'monthly)
     (setq denote-journal-frequency 'daily))
 
+  (defun my/denote-journal-previous-entry ()
+    "From a denote journal file, jump to the previous journal entry."
+    (interactive)
+    (let* ((current-file (buffer-file-name))
+           (_ (unless current-file
+                (user-error "Buffer is not visiting a file")))
+           (current-base (file-name-nondirectory current-file))
+           (_ (unless (string-match "\\`\\([0-9]\\{8\\}\\)T" current-base)
+                (user-error "Not in a denote journal file")))
+           (journal-dir (expand-file-name "~/Dropbox/org/denote/journal"))
+           ;; Collect all journal files sorted oldest-first
+           (all-entries
+            (sort
+             (seq-filter
+              (lambda (f) (string-match "\\`[0-9]\\{8\\}T.*__journal\.org\\'" f))
+              (directory-files journal-dir nil nil t))
+             #'string<))
+           ;; Find entries strictly before the current one (by full timestamp for tie-breaking)
+           (current-ts (substring current-base 0 15)) ; YYYYMMDDThhmmss
+           (previous-entries
+            (seq-filter
+             (lambda (f) (string< (substring f 0 15) current-ts))
+             all-entries))
+           (previous-file (car (last previous-entries))))
+      (if previous-file
+          (find-file (expand-file-name previous-file journal-dir))
+        (message "No previous journal entry found."))))
+
+  (with-eval-after-load 'denote-journal
+    (define-key global-map (kbd "C-c n p") #'my/denote-journal-previous-entry))
+
 
   (defun my/shred-quicknote ()
     "Shred quicknote.org into a denote note tagged inbox, then clear the file."
@@ -806,7 +837,7 @@
   ;; Quick access to iFIT work service files
   (defun my/find-ifit-service ()
     "Find and open an iFIT service file from denote/work.
-Shows clean service names for completion (e.g., 'user-service')."
+  Shows clean service names for completion (e.g., 'user-service')."
     (interactive)
     (let* ((work-dir (expand-file-name "~/Dropbox/org/denote/work"))
            (files (directory-files work-dir t "\\.org$"))

@@ -604,137 +604,168 @@
                                          "~/Dropbox/org/denote/work/journal/"))))))))
 
 (use-package denote
-    :straight t
-    :bind (("C-c n n" . denote)              ; Create new note
-           ("C-c n f" . denote-open-or-create) ; Find/create note
-           ("C-c n l" . denote-link)           ; Insert link
-           ("C-c n L" . denote-backlinks)      ; Show backlinks
-           ("C-c n r" . denote-rename-file)    ; Rename with new title/keywords
-           ("C-c n R" . denote-rename-file-using-front-matter))
-    :config
-    ;; Main notes directory (keeping separate from journal)
-    (setq denote-directory (expand-file-name "~/Dropbox/org/denote"))
+  :straight t
+  :bind (("C-c n n" . denote)              ; Create new note
+         ("C-c n f" . denote-open-or-create) ; Find/create note
+         ("C-c n l" . denote-link)           ; Insert link
+         ("C-c n L" . denote-backlinks)      ; Show backlinks
+         ("C-c n r" . denote-rename-file)    ; Rename with new title/keywords
+         ("C-c n R" . denote-rename-file-using-front-matter))
+  :config
+  ;; Main notes directory (keeping separate from journal)
+  (setq denote-directory (expand-file-name "~/Dropbox/org/denote"))
 
-    ;; File naming
-    (setq denote-file-type 'org)           ; Use org format
-    (setq denote-known-keywords '("project" "ifit" "work" "personal"))
-    (setq denote-infer-keywords t)         ; Suggest keywords from existing files
-    (setq denote-prompts '(title keywords)) ; What to ask for when creating
-
-
-    ;; Allow subdirectories
-    (setq denote-allow-subdirectories t)
-
-    ;; History
-    (add-to-list 'savehist-additional-variables 'denote-history))
+  ;; File naming
+  (setq denote-file-type 'org)           ; Use org format
+  (setq denote-known-keywords '("project" "ifit" "work" "personal"))
+  (setq denote-infer-keywords t)         ; Suggest keywords from existing files
+  (setq denote-prompts '(title keywords)) ; What to ask for when creating
 
 
-  ;; Work notes
-  (defun my/denote-work ()
-    "Create a new work note."
+  ;; Allow subdirectories
+  (setq denote-allow-subdirectories t)
+
+  ;; History
+  (add-to-list 'savehist-additional-variables 'denote-history))
+
+
+;; Work notes
+(defun my/denote-work ()
+  "Create a new work note."
+  (interactive)
+  (let ((denote-directory (expand-file-name "~/Dropbox/org/denote/work")))
+    (call-interactively #'denote)))
+
+(use-package denote-journal
+  :straight t
+  :bind (("C-c n J" . denote-journal-new-entry)     ; Today's journal
+         ("C-c n j" . denote-journal-new-or-existing-entry)) ; Find journal entry
+  :config
+  ;; Journal lives in separate directory
+  (setq denote-journal-directory (expand-file-name "~/Dropbox/org/denote/journal"))
+
+  ;; Simpler journal file names (no signature, no keywords by default)
+  (setq denote-journal-file-name-title "journal")
+
+  ;; Daily journal (could be 'weekly or 'monthly)
+  (setq denote-journal-frequency 'daily))
+
+(defun my/denote-journal-previous-entry ()
+  "From a denote journal file, jump to the previous journal entry."
+  (interactive)
+  (let* ((current-file (buffer-file-name))
+         (_ (unless current-file
+              (user-error "Buffer is not visiting a file")))
+         (current-base (file-name-nondirectory current-file))
+         (_ (unless (string-match "\\`\\([0-9]\\{8\\}\\)T" current-base)
+              (user-error "Not in a denote journal file")))
+         (journal-dir (expand-file-name "~/Dropbox/org/denote/journal"))
+         ;; Collect all journal files sorted oldest-first
+         (all-entries
+          (sort
+           (seq-filter
+            (lambda (f) (string-match "\\`[0-9]\\{8\\}T.*__journal\.org\\'" f))
+            (directory-files journal-dir nil nil t))
+           #'string<))
+         ;; Find entries strictly before the current one (by full timestamp for tie-breaking)
+         (current-ts (substring current-base 0 15)) ; YYYYMMDDThhmmss
+         (previous-entries
+          (seq-filter
+           (lambda (f) (string< (substring f 0 15) current-ts))
+           all-entries))
+         (previous-file (car (last previous-entries))))
+    (if previous-file
+        (find-file (expand-file-name previous-file journal-dir))
+      (message "No previous journal entry found."))))
+
+(with-eval-after-load 'denote-journal
+  (define-key global-map (kbd "C-c n p") #'my/denote-journal-previous-entry))
+
+
+(defun my/shred-quicknote ()
+  "Shred quicknote.org into a denote note tagged inbox, then clear the file."
+  (interactive)
+  (let* ((capture-file (expand-file-name "~/Dropbox/org/denote/quicknote.org"))
+         (content (with-temp-buffer
+                    (insert-file-contents capture-file)
+                    (string-trim (buffer-string)))))
+    (if (string-empty-p content)
+        (message "Capture file is empty. Nothing to shred.")
+      (let ((new-file (denote "quick note" '("inbox"))))
+        (with-current-buffer (find-file-noselect new-file)
+          (goto-char (point-max))
+          (insert content "\n")
+          (save-buffer))
+        ;; Clear the capture file and revert any open buffer
+        (with-temp-file capture-file (insert ""))
+        (when-let ((buf (find-buffer-visiting capture-file)))
+          (with-current-buffer buf (revert-buffer t t)))
+        (message "Shredded quicknote into %s" (file-name-nondirectory new-file))))))
+
+(global-set-key (kbd "C-c n q") #'my/shred-quicknote)
+
+;; Optional: Work journal (separate from personal)
+;; You can call this function or bind it
+(defun my/denote-journal-work ()
+  "Create or open today's work journal entry."
+  (interactive)
+  (let ((denote-journal-directory (expand-file-name "~/Dropbox/org/denote/work/journal"))
+        (denote-journal-file-name-title "work"))
+    (denote-journal-new-or-existing-entry)))
+
+;; Work prefix keymap under C-c n w
+(defun my/consult-denote-work ()
+  "Find work note with consult."
+  (interactive)
+  (consult-find (expand-file-name "~/Dropbox/org/denote/work")))
+
+(define-prefix-command 'my/denote-work-map)
+(global-set-key (kbd "C-c n w") 'my/denote-work-map)
+(define-key my/denote-work-map (kbd "j") #'my/denote-journal-work)
+(define-key my/denote-work-map (kbd "n") #'my/denote-work)
+(define-key my/denote-work-map (kbd "f") #'my/consult-denote-work)
+
+;; Consult integration (if you use consult)
+(with-eval-after-load 'consult
+  (defun my/consult-denote ()
+    "Find denote file with consult."
     (interactive)
-    (let ((denote-directory (expand-file-name "~/Dropbox/org/denote/work")))
-      (call-interactively #'denote)))
+    (consult-find denote-directory))
 
-  (use-package denote-journal
-    :straight t
-    :bind (("C-c n J" . denote-journal-new-entry)     ; Today's journal
-           ("C-c n j" . denote-journal-new-or-existing-entry)) ; Find journal entry
-    :config
-    ;; Journal lives in separate directory
-    (setq denote-journal-directory (expand-file-name "~/Dropbox/org/denote/journal"))
-
-    ;; Simpler journal file names (no signature, no keywords by default)
-    (setq denote-journal-file-name-title "journal")
-
-    ;; Daily journal (could be 'weekly or 'monthly)
-    (setq denote-journal-frequency 'daily))
-
-
-  (defun my/shred-quicknote ()
-    "Shred quicknote.org into a denote note tagged inbox, then clear the file."
+  (defun my/consult-denote-grep ()
+    "Grep denote files with consult."
     (interactive)
-    (let* ((capture-file (expand-file-name "~/Dropbox/org/denote/quicknote.org"))
-           (content (with-temp-buffer
-                      (insert-file-contents capture-file)
-                      (string-trim (buffer-string)))))
-      (if (string-empty-p content)
-          (message "Capture file is empty. Nothing to shred.")
-        (let ((new-file (denote "quick note" '("inbox"))))
-          (with-current-buffer (find-file-noselect new-file)
-            (goto-char (point-max))
-            (insert content "\n")
-            (save-buffer))
-          ;; Clear the capture file and revert any open buffer
-          (with-temp-file capture-file (insert ""))
-          (when-let ((buf (find-buffer-visiting capture-file)))
-            (with-current-buffer buf (revert-buffer t t)))
-          (message "Shredded quicknote into %s" (file-name-nondirectory new-file))))))
+    (consult-ripgrep denote-directory)))
 
-  (global-set-key (kbd "C-c n q") #'my/shred-quicknote)
-
-  ;; Optional: Work journal (separate from personal)
-  ;; You can call this function or bind it
-  (defun my/denote-journal-work ()
-    "Create or open today's work journal entry."
-    (interactive)
-    (let ((denote-journal-directory (expand-file-name "~/Dropbox/org/denote/work/journal"))
-          (denote-journal-file-name-title "work"))
-      (denote-journal-new-or-existing-entry)))
-
-  ;; Work prefix keymap under C-c n w
-  (defun my/consult-denote-work ()
-    "Find work note with consult."
-    (interactive)
-    (consult-find (expand-file-name "~/Dropbox/org/denote/work")))
-
-  (define-prefix-command 'my/denote-work-map)
-  (global-set-key (kbd "C-c n w") 'my/denote-work-map)
-  (define-key my/denote-work-map (kbd "j") #'my/denote-journal-work)
-  (define-key my/denote-work-map (kbd "n") #'my/denote-work)
-  (define-key my/denote-work-map (kbd "f") #'my/consult-denote-work)
-
-  ;; Consult integration (if you use consult)
-  (with-eval-after-load 'consult
-    (defun my/consult-denote ()
-      "Find denote file with consult."
-      (interactive)
-      (consult-find denote-directory))
-
-    (defun my/consult-denote-grep ()
-      "Grep denote files with consult."
-      (interactive)
-      (consult-ripgrep denote-directory)))
-
-  ;; Quick access to iFIT work service files
-  (defun my/find-ifit-service ()
-    "Find and open an iFIT service file from denote/work.
+;; Quick access to iFIT work service files
+(defun my/find-ifit-service ()
+  "Find and open an iFIT service file from denote/work.
 Shows clean service names for completion (e.g., 'user-service')."
-    (interactive)
-    (let* ((work-dir (expand-file-name "~/Dropbox/org/denote/work"))
-           (files (directory-files work-dir t "\\.org$"))
-           ;; Filter out journal files
-           (service-files (seq-remove
-                           (lambda (f) (string-match-p "journal" f))
-                           files))
-           ;; Build alist of (display-name . filepath)
-           (candidates
-            (mapcar
-             (lambda (filepath)
-               (let* ((filename (file-name-nondirectory filepath))
-                      ;; Extract title part: 20230725T120000--user-service__ifit.org -> user-service
-                      (title (if (string-match "--\\([^_]+\\)__" filename)
-                                 (match-string 1 filename)
-                               filename)))
-                 (cons title filepath)))
-             service-files))
-           ;; Let user choose
-           (chosen (completing-read "iFIT Service: " candidates nil t))
-           (filepath (cdr (assoc chosen candidates))))
-      (when filepath
-        (find-file filepath))))
+  (interactive)
+  (let* ((work-dir (expand-file-name "~/Dropbox/org/denote/work"))
+         (files (directory-files work-dir t "\\.org$"))
+         ;; Filter out journal files
+         (service-files (seq-remove
+                         (lambda (f) (string-match-p "journal" f))
+                         files))
+         ;; Build alist of (display-name . filepath)
+         (candidates
+          (mapcar
+           (lambda (filepath)
+             (let* ((filename (file-name-nondirectory filepath))
+                    ;; Extract title part: 20230725T120000--user-service__ifit.org -> user-service
+                    (title (if (string-match "--\\([^_]+\\)__" filename)
+                               (match-string 1 filename)
+                             filename)))
+               (cons title filepath)))
+           service-files))
+         ;; Let user choose
+         (chosen (completing-read "iFIT Service: " candidates nil t))
+         (filepath (cdr (assoc chosen candidates))))
+    (when filepath
+      (find-file filepath))))
 
-  (global-set-key (kbd "C-c n i") #'my/find-ifit-service)
+(global-set-key (kbd "C-c n i") #'my/find-ifit-service)
 
 (use-package markdown-mode :ensure t)
 

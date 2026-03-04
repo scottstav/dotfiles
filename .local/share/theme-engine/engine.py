@@ -38,6 +38,7 @@ TEMPLATE_MAP = {
     "fzf-theme.sh.tmpl":          "~/.local/share/fzf-picker/theme.sh",
     "fuzzel.ini.tmpl":            "~/.config/fuzzel/fuzzel.ini",
     "hyprpaper.conf.tmpl":        "~/.config/hypr/hyprpaper.conf",
+    "alacritty.toml.tmpl":        "~/.config/alacritty/alacritty.toml",
 }
 
 ASIDE_CONFIG = os.path.expanduser("~/.config/aside/config.toml")
@@ -323,6 +324,30 @@ def update_aside_config(ns: dict, theme: dict) -> None:
         text,
         flags=re.MULTILINE,
     )
+
+    # Patch overlay layout settings from [overlay] section of theme
+    overlay = theme.get("overlay", {})
+    for key in ("position", "width", "max_lines", "margin_top", "margin_right",
+                "margin_bottom", "margin_left", "padding_top", "padding_right",
+                "padding_bottom", "padding_left", "corner_radius", "border_width",
+                "accent_height"):
+        if key not in overlay:
+            continue
+        val = overlay[key]
+        if isinstance(val, str):
+            text = re.sub(
+                rf'^(\s*{key}\s*=\s*)(".*?")',
+                rf'\g<1>"{val}"',
+                text,
+                flags=re.MULTILINE,
+            )
+        else:
+            text = re.sub(
+                rf'^(\s*{key}\s*=\s*)\S+',
+                rf'\g<1>{val}',
+                text,
+                flags=re.MULTILINE,
+            )
 
     with open(ASIDE_CONFIG, "w") as f:
         f.write(text)

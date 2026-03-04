@@ -28,5 +28,21 @@ error         = "red"
 warning       = "orange"
 success       = "green"
 
+[overlay]
+position = "top-right"
+width = 500
+max_lines = 4
+margin_top = 10
+margin_right = 10
+margin_bottom = 0
+margin_left = 0
+padding_top = 18
+padding_right = 24
+padding_bottom = 18
+padding_left = 24
+corner_radius = 6
+border_width = 1
+accent_height = 3
+
 [emacs]
 theme = "tango-dark"

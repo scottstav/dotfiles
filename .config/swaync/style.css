@@ -1,46 +1,46 @@
 /* Glass + Motion SwayNC Theme — TURNED UP */
 
-@define-color cc-bg rgba(18, 18, 32, 0.9);
-@define-color noti-bg rgba(18, 18, 32, 0.9);
-@define-color noti-bg-darker rgba(8, 8, 16, 0.95);
+@define-color cc-bg rgba(37, 42, 36, 0.9);
+@define-color noti-bg rgba(37, 42, 36, 0.9);
+@define-color noti-bg-darker rgba(26, 28, 30, 0.95);
 @define-color noti-bg-hover rgba(50, 50, 58, 0.94);
 @define-color noti-bg-focus rgba(60, 60, 68, 0.95);
 @define-color noti-close-bg rgba(80, 80, 80, 0.4);
-@define-color noti-close-bg-hover rgba(208, 184, 80, 0.9);
-@define-color text-color #d0d0e0;
+@define-color noti-close-bg-hover rgba(106, 158, 142, 0.9);
+@define-color text-color #d4d4d4;
 @define-color text-color-secondary #c8c8c8;
-@define-color text-color-disabled #505068;
-@define-color accent-color #d0b850;
-@define-color accent-color-hover #f0e8c8;
-@define-color border-color rgba(208, 184, 80, 0.35);
-@define-color urgent-color #d04848;
-@define-color success-color #50a060;
-@define-color warning-color #d09040;
+@define-color text-color-disabled #8a8070;
+@define-color accent-color #6a9e8e;
+@define-color accent-color-hover #c6dad4;
+@define-color border-color rgba(106, 158, 142, 0.35);
+@define-color urgent-color #e06060;
+@define-color success-color #5b9a6a;
+@define-color warning-color #d4944a;
 
 /* Arrival: fade in + blue flash + glow bloom */
 @keyframes notification-arrive {
   0% {
     opacity: 0;
-    background: rgba(208, 184, 80, 0.25);
-    border-color: rgba(208, 184, 80, 0.8);
+    background: rgba(106, 158, 142, 0.25);
+    border-color: rgba(106, 158, 142, 0.8);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.12),
       0 8px 32px rgba(0, 0, 0, 0.6),
-      0 0 40px rgba(208, 184, 80, 0.45);
+      0 0 40px rgba(106, 158, 142, 0.45);
   }
   40% {
     opacity: 1;
-    background: rgba(208, 184, 80, 0.08);
-    border-color: rgba(208, 184, 80, 0.6);
+    background: rgba(106, 158, 142, 0.08);
+    border-color: rgba(106, 158, 142, 0.6);
   }
   100% {
     opacity: 1;
     background: rgba(35, 35, 40, 0.9);
-    border-color: rgba(208, 184, 80, 0.35);
+    border-color: rgba(106, 158, 142, 0.35);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 8px 32px rgba(0, 0, 0, 0.5),
-      0 0 2px rgba(208, 184, 80, 0.2);
+      0 0 2px rgba(106, 158, 142, 0.2);
   }
 }
 
@@ -48,15 +48,15 @@
 @keyframes notification-arrive-critical {
   0% {
     opacity: 0;
-    background: rgba(208, 72, 72, 0.2);
+    background: rgba(224, 96, 96, 0.2);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.1),
       0 8px 32px rgba(0, 0, 0, 0.6),
-      0 0 50px rgba(208, 72, 72, 0.5);
+      0 0 50px rgba(224, 96, 96, 0.5);
   }
   40% {
     opacity: 1;
-    background: rgba(208, 72, 72, 0.08);
+    background: rgba(224, 96, 96, 0.08);
   }
   100% {
     opacity: 1;
@@ -64,7 +64,7 @@
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.06),
       0 8px 32px rgba(0, 0, 0, 0.5),
-      0 0 20px rgba(208, 72, 72, 0.25);
+      0 0 20px rgba(224, 96, 96, 0.25);
   }
 }
 
@@ -89,7 +89,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 16px 48px rgba(0, 0, 0, 0.6),
-    0 0 2px rgba(208, 184, 80, 0.15);
+    0 0 2px rgba(106, 158, 142, 0.15);
   padding: 14px;
 }
 
@@ -137,7 +137,7 @@
   background: @accent-color;
   color: #1a1a1a;
   border-color: @accent-color;
-  box-shadow: 0 0 16px rgba(208, 184, 80, 0.4);
+  box-shadow: 0 0 16px rgba(106, 158, 142, 0.4);
 }
 
 /* DND Widget */
@@ -158,7 +158,7 @@
 
 .widget-dnd > switch:checked {
   background: @accent-color;
-  box-shadow: 0 0 10px rgba(208, 184, 80, 0.3);
+  box-shadow: 0 0 10px rgba(106, 158, 142, 0.3);
 }
 
 .widget-dnd > switch slider {
@@ -232,7 +232,7 @@
 .widget-mpris-player button:hover {
   background: @accent-color;
   color: #1a1a1a;
-  box-shadow: 0 0 14px rgba(208, 184, 80, 0.4);
+  box-shadow: 0 0 14px rgba(106, 158, 142, 0.4);
 }
 
 .widget-mpris > box > button {
@@ -272,14 +272,14 @@
 .widget-buttons-grid > flowbox > flowboxchild > button:hover {
   background: rgba(100, 100, 100, 0.6);
   border-color: @border-color;
-  box-shadow: 0 0 12px rgba(208, 184, 80, 0.2);
+  box-shadow: 0 0 12px rgba(106, 158, 142, 0.2);
 }
 
 .widget-buttons-grid > flowbox > flowboxchild > button.toggle:checked {
   background: @accent-color;
   color: #1a1a1a;
   border-color: @accent-color;
-  box-shadow: 0 0 16px rgba(208, 184, 80, 0.4);
+  box-shadow: 0 0 16px rgba(106, 158, 142, 0.4);
 }
 
 /* ==================== NOTIFICATIONS ==================== */
@@ -306,7 +306,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 2px rgba(208, 184, 80, 0.2);
+    0 0 2px rgba(106, 158, 142, 0.2);
   transition: all 200ms ease;
   animation-name: notification-arrive;
   animation-duration: 600ms;
@@ -317,11 +317,11 @@
 
 .notification-row .notification-background .notification:hover {
   background: @noti-bg-hover;
-  border-color: rgba(208, 184, 80, 0.6);
+  border-color: rgba(106, 158, 142, 0.6);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
     0 16px 48px rgba(0, 0, 0, 0.6),
-    0 0 24px rgba(208, 184, 80, 0.25);
+    0 0 24px rgba(106, 158, 142, 0.25);
   transform: scale(1.02);
 }
 
@@ -331,7 +331,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
     0 8px 32px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(208, 72, 72, 0.25);
+    0 0 20px rgba(224, 96, 96, 0.25);
   animation-name: notification-arrive-critical;
   animation-duration: 700ms;
   animation-timing-function: ease-out;
@@ -411,7 +411,7 @@
 .notification-row .notification-background .notification .notification-content progressbar progress {
   background: @accent-color;
   border-radius: 4px;
-  box-shadow: 0 0 6px rgba(208, 184, 80, 0.3);
+  box-shadow: 0 0 6px rgba(106, 158, 142, 0.3);
 }
 
 /* Action buttons - pill shaped */
@@ -433,7 +433,7 @@
 .notification-row .notification-background .notification .notification-action > button:hover {
   background: @accent-color;
   color: #1a1a1a;
-  box-shadow: 0 0 16px rgba(208, 184, 80, 0.35);
+  box-shadow: 0 0 16px rgba(106, 158, 142, 0.35);
   transform: scale(1.05);
 }
 
@@ -454,7 +454,7 @@
 .close-button:hover {
   background: @noti-close-bg-hover;
   color: #1a1a1a;
-  box-shadow: 0 0 12px rgba(208, 184, 80, 0.4);
+  box-shadow: 0 0 12px rgba(106, 158, 142, 0.4);
 }
 
 /* Inline reply */
@@ -478,7 +478,7 @@
   border-radius: 20px;
   margin-left: 8px;
   padding: 8px 14px;
-  box-shadow: 0 0 10px rgba(208, 184, 80, 0.3);
+  box-shadow: 0 0 10px rgba(106, 158, 142, 0.3);
 }
 
 /* ==================== NOTIFICATION GROUPS ==================== */
@@ -530,7 +530,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.07),
     0 16px 48px rgba(0, 0, 0, 0.6),
-    0 0 3px rgba(208, 184, 80, 0.25);
+    0 0 3px rgba(106, 158, 142, 0.25);
   border-radius: 16px;
 }
 
@@ -538,7 +538,7 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.1),
     0 20px 56px rgba(0, 0, 0, 0.65),
-    0 0 28px rgba(208, 184, 80, 0.3);
+    0 0 28px rgba(106, 158, 142, 0.3);
 }
 
 /* Blank window */

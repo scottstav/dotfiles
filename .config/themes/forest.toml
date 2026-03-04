@@ -28,5 +28,21 @@ error         = "red"
 warning       = "orange"
 success       = "green"
 
+[overlay]
+position = "top-center"
+width = 550
+max_lines = 6
+margin_top = 8
+margin_right = 0
+margin_bottom = 0
+margin_left = 0
+padding_top = 12
+padding_right = 16
+padding_bottom = 12
+padding_left = 16
+corner_radius = 12
+border_width = 2
+accent_height = 4
+
 [emacs]
 theme = "wheatgrass"

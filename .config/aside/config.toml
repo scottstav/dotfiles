@@ -1,13 +1,7 @@
 
 [model]
 name = "anthropic/claude-haiku-4-5"
-system_prompt = """\
-When the user seems to be referencing something visual on their screen but hasn't \
-provided context (e.g. "help me with this", "what's wrong here", "I give up"), \
-ask if they'd like you to take a screenshot. Say something like \
-"Want me to look at your screen?" Only take the screenshot if they confirm. \
-The screenshot captures all monitors side by side — identify which monitor is \
-relevant based on conversation context and focus your answer on that one."""
+system_prompt = "Be concise. Short, direct answers. Skip filler and preamble."
 
 [voice]
 enabled = false

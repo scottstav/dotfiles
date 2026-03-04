@@ -28,6 +28,22 @@ error         = "red"
 warning       = "orange"
 success       = "green"
 
+[overlay]
+position = "bottom-left"
+width = 420
+max_lines = 5
+margin_top = 0
+margin_right = 0
+margin_bottom = 15
+margin_left = 15
+padding_top = 20
+padding_right = 20
+padding_bottom = 20
+padding_left = 20
+corner_radius = 10
+border_width = 1
+accent_height = 5
+
 [emacs]
 theme = "deeper-blue"
 

@@ -45,7 +45,7 @@ border_width = 1
 accent_height = 5
 
 [emacs]
-theme = "deeper-blue"
+theme = "modus-vivendi"
 
 [terminal]
 black          = "#0a0e14"

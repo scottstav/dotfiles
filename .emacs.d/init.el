@@ -420,33 +420,218 @@
   :config
   (claude-code-ide-emacs-tools-setup))
 
-(let ((efrit-dir (expand-file-name "efrit" user-emacs-directory)))
-  (unless (file-directory-p efrit-dir)
-    (shell-command (format "git clone https://github.com/steveyegge/efrit.git %s" efrit-dir)))
-  (add-to-list 'load-path (expand-file-name "lisp" efrit-dir)))
-(require 'efrit)
-(setq efrit-default-model "claude-sonnet-4-6")
-(setq efrit-api-excluded-headers '("anthropic-beta"))
-(global-set-key (kbd "C-c a c") 'efrit-chat)
-(global-set-key (kbd "C-c a d") 'efrit-do)
-(global-set-key (kbd "C-c a a") 'efrit-agent)
-(global-set-key (kbd "C-c a p") 'efrit-do-show-progress)
+(use-package gptel
+    :straight t
+    :bind (("C-c a c" . gptel)
+           ("C-c a d" . gptel-send)
+           ("C-c a a" . gptel-menu)
+           ("C-c a r" . gptel-rewrite)
+           ("C-c a x" . gptel-add)
+           ("C-c a e" . my/gptel-explain-region)
+           ("C-c a m" . my/gptel-commit-message)
+           ("C-c a w" . my/gptel-shell-command)
+           ("C-c a s" . my/gptel-summarize-region)
+           ("C-c a t" . my/gptel-transform-region))
+    :config
+    (setq gptel-default-mode 'org-mode)
+    (setq gptel-rewrite-default-action 'diff)
+    (setq gptel-model 'claude-sonnet-4-6
+          gptel-backend (gptel-make-anthropic "Claude"
+                          :stream t
+                          :key (lambda () (gptel-api-key-from-auth-source nil "personal"))
+                          :models '(claude-sonnet-4-6
+                                    claude-opus-4-6
+                                    claude-sonnet-4-5-20250929
+                                    claude-haiku-4-5-20251001))))
 
-(defun efrit-rewrite-region (instruction)
-  "Rewrite the selected region using efrit with INSTRUCTION."
-  (interactive "sRewrite instruction: ")
-  (unless (use-region-p)
-    (user-error "No region selected"))
-  (let* ((code (buffer-substring-no-properties (region-beginning) (region-end)))
-         (buf-name (buffer-name))
-         (start (region-beginning))
-         (end (region-end))
-         (command (format "In buffer \"%s\", replace the text from position %d to %d. Current text:\n```\n%s\n```\nInstruction: %s\nUse edit_buffer with from-pos %d and to-pos %d. Only replace that range, nothing else."
-                          buf-name start end code instruction start end)))
-    (deactivate-mark)
-    (efrit-do command)))
+  (defun my/gptel-explain-region (beg end)
+    "Explain the selected region with full buffer context."
+    (interactive "r")
+    (let* ((region-text (buffer-substring-no-properties beg end))
+           (buf-text (buffer-substring-no-properties (point-min) (point-max)))
+           (filename (or (buffer-file-name) (buffer-name)))
+           (lang (string-replace "-mode" "" (symbol-name major-mode)))
+           (prompt (format "File: %s (%s)\n\nFull file:\n```\n%s\n```\n\nExplain this section:\n```\n%s\n```"
+                           filename lang buf-text region-text)))
+      (gptel-request prompt
+        :system "Explain the highlighted code in context of the full file. Be concise and specific. Don't restate the code."
+        :callback (lambda (response info)
+                    (if response
+                        (with-current-buffer (get-buffer-create "*gptel-explain*")
+                          (let ((inhibit-read-only t))
+                            (erase-buffer)
+                            (org-mode)
+                            (insert response)
+                            (goto-char (point-min)))
+                          (pop-to-buffer (current-buffer)))
+                      (message "gptel error: %s" (plist-get info :status)))))))
 
-(global-set-key (kbd "C-c a r") 'efrit-rewrite-region)
+  (defun my/gptel-commit-message ()
+    "Generate a commit message from the staged diff."
+    (interactive)
+    (let ((diff (shell-command-to-string "git diff --cached")))
+      (when (string-empty-p diff)
+        (user-error "No staged changes"))
+      (message "Generating commit message...")
+      (gptel-request diff
+        :system "Generate a concise git commit message for this diff. One short subject line. No body unless the change is complex. No explanation, just the message."
+        :callback (lambda (response info)
+                    (if response
+                        (let ((msg (string-trim response)))
+                          (kill-new msg)
+                          (message "Commit message copied: %s" msg))
+                      (message "gptel error: %s" (plist-get info :status)))))))
+
+  (defun my/gptel-shell-command ()
+    "Generate a shell command from a natural language description."
+    (interactive)
+    (let ((desc (read-string "Shell command for: ")))
+      (message "Generating command...")
+      (gptel-request desc
+        :system "Generate a single shell command for the request. Linux with standard tools. Return ONLY the command, no explanation, no markdown fences."
+        :callback (lambda (response info)
+                    (if response
+                        (let ((cmd (string-trim response)))
+                          (kill-new cmd)
+                          (message "Command copied: %s" cmd))
+                      (message "gptel error: %s" (plist-get info :status)))))))
+
+  (defun my/gptel-summarize-region (beg end)
+    "Summarize the selected region."
+    (interactive "r")
+    (let ((text (buffer-substring-no-properties beg end)))
+      (message "Summarizing...")
+      (gptel-request text
+        :system "Summarize the following text in a few concise bullet points. Be direct."
+        :callback (lambda (response info)
+                    (if response
+                        (let ((summary (string-trim response)))
+                          (kill-new summary)
+                          (message "%s" summary))
+                      (message "gptel error: %s" (plist-get info :status)))))))
+
+  ;; Tools for agentic transform
+  (defvar my/gptel--transform-tools nil
+    "Tools available to the agentic transform command.")
+
+  (setq my/gptel--transform-tools
+        (list
+         (gptel-make-tool
+          :name "read_file"
+          :function (lambda (path)
+                      (condition-case err
+                          (with-temp-buffer
+                            (insert-file-contents path nil nil 50000)
+                            (buffer-string))
+                        (error (format "Error: %s" (error-message-string err)))))
+          :description "Read a file's contents. Use to follow imports, find definitions, check configs."
+          :args (list '(:name "path" :type string
+                        :description "Absolute path to the file"))
+          :category "transform")
+
+         (gptel-make-tool
+          :name "grep_project"
+          :function (lambda (pattern)
+                      (let ((default-directory
+                             (or (when-let ((proj (project-current)))
+                                   (project-root proj))
+                                 default-directory)))
+                        (shell-command-to-string
+                         (format "rg --no-heading -n -t js -t ts -t py -t el -t go -t rust -t java -t sh %s 2>/dev/null | head -40"
+                                 (shell-quote-argument pattern)))))
+          :description "Search for a pattern across the project. Returns matching lines with file:line format. Use to find function definitions, imports, API endpoints, variable declarations."
+          :args (list '(:name "pattern" :type string
+                        :description "Text or regex pattern to search for"))
+          :category "transform")
+
+         (gptel-make-tool
+          :name "find_files"
+          :function (lambda (glob)
+                      (let ((default-directory
+                             (or (when-let ((proj (project-current)))
+                                   (project-root proj))
+                                 default-directory)))
+                        (shell-command-to-string
+                         (format "fd %s 2>/dev/null | head -30"
+                                 (shell-quote-argument glob)))))
+          :description "Find files by name glob. Use to locate source files, configs, package manifests."
+          :args (list '(:name "glob" :type string
+                        :description "Filename pattern like apiClient.ts or *.config.js"))
+          :category "transform")
+
+         (gptel-make-tool
+          :name "list_directory"
+          :function (lambda (path)
+                      (condition-case err
+                          (shell-command-to-string
+                           (format "ls -1 %s 2>/dev/null | head -50"
+                                   (shell-quote-argument path)))
+                        (error (format "Error: %s" (error-message-string err)))))
+          :description "List files in a directory. Use to understand project structure."
+          :args (list '(:name "path" :type string
+                        :description "Directory path to list"))
+          :category "transform")))
+
+  (defun my/gptel-transform-region (beg end)
+    "Agentic transform: apply a freeform instruction to the selected region.
+Has tools to read files, grep the project, and explore the codebase.
+Result is copied to the kill ring."
+    (interactive "r")
+    (let* ((instruction (read-string "Transform: "))
+           (region-text (buffer-substring-no-properties beg end))
+           (buf-text (buffer-substring-no-properties (point-min) (point-max)))
+           (filename (or (buffer-file-name) (buffer-name)))
+           (lang (string-replace "-mode" "" (symbol-name major-mode)))
+           (project-root (when-let ((proj (project-current)))
+                           (project-root proj)))
+           (backend gptel-backend)
+           (prompt (format "File: %s (%s)%s\n\nFull file:\n```\n%s\n```\n\nSelected region:\n```\n%s\n```\n\nInstruction: %s"
+                           filename lang
+                           (if project-root
+                               (format "\nProject root: %s" project-root)
+                             "")
+                           buf-text region-text instruction)))
+      (message "Transforming (agentic)...")
+      (with-current-buffer (get-buffer-create " *gptel-transform*")
+        (setq-local gptel-tools my/gptel--transform-tools)
+        (setq-local gptel-use-tools t)
+        (setq-local gptel-confirm-tool-calls nil)
+        (setq-local gptel-include-tool-results nil)
+        (setq-local gptel-model 'claude-sonnet-4-6)
+        (setq-local gptel-backend backend)
+        (gptel-request prompt
+          :system "You transform code. You have tools: read_file, grep_project, find_files, list_directory.
+
+RULES:
+1. NEVER output text until you are done. Your FIRST action must be tool calls, not text.
+2. Use tools to look up every import, function call, type, or reference you need.
+3. When you have all the context, output ONLY the final result. No preamble, no explanation, no markdown fences unless the format requires them.
+4. If the code references anything from another file, YOU MUST read that file first."
+          :callback (lambda (response info)
+                      (cond
+                       ((and (consp response) (eq (car response) 'tool-result))
+                        (message "Transforming... (exploring codebase)"))
+                       ((stringp response)
+                        (if (plist-get info :tool-success)
+                            ;; Tools were used, this is the final answer
+                            (let ((result (string-trim response)))
+                              (kill-new result)
+                              (message "Result copied (%d chars). C-y to paste." (length result)))
+                          ;; No tools used — single-shot response
+                          (let ((result (string-trim response)))
+                            (kill-new result)
+                            (message "Result copied (%d chars). C-y to paste." (length result)))))
+                       (t
+                        (message "gptel error: %s" (plist-get info :status))))))))
+
+(use-package gptel-quick
+  :straight (:host github :repo "karthink/gptel-quick")
+  :after gptel
+  :bind (("C-c a q" . gptel-quick))
+  :config
+  (with-eval-after-load 'embark
+    (keymap-set embark-general-map "?" #'gptel-quick)
+    (keymap-set embark-identifier-map "?" #'gptel-quick)))
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
@@ -477,6 +662,75 @@
 (define-key my/git-map (kbd "r") #'git-gutter:revert-hunk)
 (define-key my/git-map (kbd "s") #'git-gutter:stage-hunk)
 (define-key my/git-map (kbd "d") #'git-gutter:popup-hunk)
+
+(defvar my/shell-last-command nil
+    "Last command run via `my/shell-run'.")
+
+  (defun my/shell--sentinel (process event)
+    "Sentinel for async shell commands. Pop output buffer on non-zero exit."
+    (when (memq (process-status process) '(exit signal))
+      (let ((exit-code (process-exit-status process))
+            (buf (process-buffer process)))
+        (if (zerop exit-code)
+            (message "Command finished: %s" (process-name process))
+          (message "Command FAILED (exit %d): %s" exit-code (process-name process))
+          (when (buffer-live-p buf)
+            (display-buffer buf))))))
+
+  (defun my/shell-run (command)
+    "Run COMMAND asynchronously without showing the output buffer.
+On non-zero exit, the output buffer is displayed automatically."
+    (interactive
+     (list (read-shell-command "Shell command: ")))
+    (setq my/shell-last-command command)
+    (save-window-excursion
+      (async-shell-command command))
+    (let* ((buf (get-buffer "*Async Shell Command*"))
+           (proc (and buf (get-buffer-process buf))))
+      (when proc
+        (set-process-sentinel proc #'my/shell--sentinel))))
+
+  (defun my/shell-consult ()
+    "Search shell command history with consult and run the selected command."
+    (interactive)
+    (let ((command (consult--read shell-command-history
+                                 :prompt "Shell history: "
+                                 :sort nil)))
+      (when (and command (not (string-empty-p command)))
+        (my/shell-run command))))
+
+  (defun my/shell-show-output ()
+    "Show the *Async Shell Command* output buffer."
+    (interactive)
+    (let ((buf (get-buffer "*Async Shell Command*")))
+      (if buf
+          (display-buffer buf)
+        (message "No async shell output buffer"))))
+
+  (defun my/shell-kill ()
+    "Kill the running async shell process."
+    (interactive)
+    (let* ((buf (get-buffer "*Async Shell Command*"))
+           (proc (and buf (get-buffer-process buf))))
+      (if proc
+          (progn (kill-process proc)
+                 (message "Killed async shell process"))
+        (message "No running async shell process"))))
+
+  (defun my/shell-rerun ()
+    "Re-run the last command from `my/shell-run'."
+    (interactive)
+    (if my/shell-last-command
+        (my/shell-run my/shell-last-command)
+      (message "No previous shell command to re-run")))
+
+  (define-prefix-command 'my/shell-map)
+  (global-set-key (kbd "C-c x") 'my/shell-map)
+  (define-key my/shell-map (kbd "x") #'my/shell-run)
+  (define-key my/shell-map (kbd "c") #'my/shell-consult)
+  (define-key my/shell-map (kbd "o") #'my/shell-show-output)
+  (define-key my/shell-map (kbd "k") #'my/shell-kill)
+  (define-key my/shell-map (kbd "r") #'my/shell-rerun)
 
 (use-package treesit-auto
   :custom

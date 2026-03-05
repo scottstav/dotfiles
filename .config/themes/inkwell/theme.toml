@@ -29,4 +29,4 @@ warning       = "orange"
 success       = "green"
 
 [emacs]
-theme = "wombat"
+theme = "modus-vivendi"

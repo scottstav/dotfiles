@@ -21,6 +21,9 @@
     ;; Gmail saves sent mail server-side, so don't store locally
     (setq mu4e-sent-messages-behavior 'delete)
 
+    ;; Split headers (left) | article (right)
+    (setq mu4e-split-view 'vertical)
+
     ;; Display
     (setq mu4e-view-show-images t
           mu4e-headers-date-format "%Y-%m-%d"

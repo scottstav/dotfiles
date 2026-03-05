@@ -45,4 +45,4 @@ border_width = 1
 accent_height = 3
 
 [emacs]
-theme = "tango-dark"
+theme = "modus-vivendi"

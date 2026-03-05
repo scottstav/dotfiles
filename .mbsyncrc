@@ -2,7 +2,7 @@ IMAPAccount gmail
 Host imap.gmail.com
 User scottstavinoha@gmail.com
 PassCmd "cat ~/.config/mbsync/password"
-SSLType IMAPS
+TLSType IMAPS
 CertificateFile /etc/ssl/certs/ca-certificates.crt
 
 IMAPStore gmail-remote

@@ -22,9 +22,9 @@ TOOL_SPEC = {
     "description": (
         "Search and read emails from the user's local mailbox. Two modes:\n\n"
         "**Search mode** — provide any combination of sender, recipient, subject, keywords, "
-        "date_range, unread_only, or folder to find matching emails. Sender/recipient name "
-        "searches automatically consider alternate spellings (e.g. Stephanie/Stefanie, "
-        "Sean/Shawn) so STT-transcribed names find the right emails. Returns a list with date, "
+        "date_range, unread_only, or folder to find matching emails. **Start broad** — use just "
+        "sender or 1-2 keywords. Don't over-specify with many fields at once. Sender/recipient "
+        "name searches automatically consider alternate spellings. Returns a list with date, "
         "sender, subject, flags, and file path for each match (up to 10).\n\n"
         "**Read mode** — provide read_path (a file path from search results) to read the full "
         "email content including headers and body.\n\n"
@@ -122,11 +122,17 @@ def _build_query(params):
     if params.get("subject"):
         parts.extend(_fuzzy_field("subject", params["subject"]))
     if params.get("keywords"):
-        # Body/general search — no field prefix, just fuzzy tokens
+        # Body/general search — no field prefix, OR'd (any match is useful)
+        kw_parts = []
         for token in params["keywords"].split():
             clean = re.sub(r"[^\w@.\-]", "", token.lower())
             if clean:
-                parts.append(f"{clean}*")
+                kw_parts.append(f"{clean}*")
+        if kw_parts:
+            if len(kw_parts) == 1:
+                parts.append(kw_parts[0])
+            else:
+                parts.append(f"({' OR '.join(kw_parts)})")
     if params.get("date_range"):
         dr = params["date_range"].strip()
         if ".." in dr:
@@ -309,4 +315,18 @@ def run(sender: str = None, recipient: str = None, subject: str = None,
     if not query:
         return "Could not build a search query from the provided parameters."
 
-    return _search(query)
+    result = _search(query)
+
+    # Auto-fallback: if strict AND found nothing and we have multiple params,
+    # retry with progressively fewer constraints (drop keywords, then subject)
+    if result.startswith("No emails found") and len(search_params) > 1:
+        for drop_key in ("keywords", "subject", "date_range", "folder"):
+            if drop_key in search_params:
+                fallback = {k: v for k, v in search_params.items() if k != drop_key}
+                fq = _build_query(fallback)
+                if fq:
+                    fr = _search(fq)
+                    if not fr.startswith("No emails found"):
+                        return fr
+
+    return result

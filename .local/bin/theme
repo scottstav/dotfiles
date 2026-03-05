@@ -6,12 +6,14 @@ ENGINE="$HOME/.local/share/theme-engine/engine.py"
 
 case "${1:-}" in
     list)
-        for f in "$THEME_DIR"/*.toml; do
-            [ -f "$f" ] || continue
-            name=$(basename "$f" .toml)
+        for d in "$THEME_DIR"/*/; do
+            [ -d "$d" ] || continue
+            [ -f "$d/theme.toml" ] || continue
+            name=$(basename "$d")
+            [ "$name" = "current" ] && continue
             current=""
             if [ -L "$THEME_DIR/current" ]; then
-                current_name=$(basename "$(readlink "$THEME_DIR/current")" .toml)
+                current_name=$(basename "$(readlink "$THEME_DIR/current")")
                 [ "$name" = "$current_name" ] && current=" *"
             fi
             echo "${name}${current}"
@@ -19,7 +21,7 @@ case "${1:-}" in
         ;;
     current)
         if [ -L "$THEME_DIR/current" ]; then
-            basename "$(readlink "$THEME_DIR/current")" .toml
+            basename "$(readlink "$THEME_DIR/current")"
         else
             echo "No theme set" >&2
             exit 1
@@ -27,23 +29,25 @@ case "${1:-}" in
         ;;
     set)
         [ -z "${2:-}" ] && echo "Usage: theme set <name>" >&2 && exit 1
-        [ ! -f "$THEME_DIR/${2}.toml" ] && echo "Theme '${2}' not found" >&2 && exit 1
+        [ ! -d "$THEME_DIR/${2}" ] && echo "Theme '${2}' not found" >&2 && exit 1
         python3 "$ENGINE" apply "$2"
         ;;
     edit)
         [ -z "${2:-}" ] && echo "Usage: theme edit <name>" >&2 && exit 1
-        ${EDITOR:-vim} "$THEME_DIR/${2}.toml"
+        [ ! -d "$THEME_DIR/${2}" ] && echo "Theme '${2}' not found" >&2 && exit 1
+        ${EDITOR:-vim} "$THEME_DIR/${2}/"
         ;;
     new)
         [ -z "${2:-}" ] && echo "Usage: theme new <name>" >&2 && exit 1
         if [ -L "$THEME_DIR/current" ]; then
-            cp "$(readlink "$THEME_DIR/current")" "$THEME_DIR/${2}.toml"
+            current=$(readlink "$THEME_DIR/current")
+            cp -r "$THEME_DIR/$current" "$THEME_DIR/${2}"
         else
             echo "No current theme to copy from" >&2
             exit 1
         fi
-        sed -i "s/^name *= *\".*\"/name = \"${2}\"/" "$THEME_DIR/${2}.toml"
-        ${EDITOR:-vim} "$THEME_DIR/${2}.toml"
+        sed -i "s/^name *= *\".*\"/name = \"${2}\"/" "$THEME_DIR/${2}/theme.toml"
+        ${EDITOR:-vim} "$THEME_DIR/${2}/"
         ;;
     *)
         echo "Usage: theme {list|current|set|edit|new} [name]" >&2

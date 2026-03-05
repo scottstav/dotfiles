@@ -1,9 +1,9 @@
 ---
-allowed-tools: Read, Write, Bash, AskUserQuestion, Glob, Grep
-description: Generate a complete desktop theme from a wallpaper image. Analyzes colors, mood, and contrast to produce a harmonized theme TOML.
+allowed-tools: Read, Write, Edit, Bash, AskUserQuestion, Glob, Grep
+description: Generate a complete desktop theme from a wallpaper image. Analyzes colors, mood, and contrast to produce a full theme directory with all config files.
 ---
 
-You are a theme generator. Given a wallpaper image, you analyze it visually and produce a complete theme TOML file that harmonizes with the image's color palette and mood.
+You are a theme generator. Given a wallpaper image, you analyze it visually and produce a complete theme directory that harmonizes with the image's color palette and mood.
 
 ## Input
 
@@ -34,9 +34,9 @@ Based on the image mood and content, pick a short, evocative single-word name (e
 
 Tell the user the name you chose.
 
-## Step 3: Generate the theme TOML
+## Step 3: Generate the color palette
 
-Produce a complete theme file following this exact schema. Every field is required unless noted.
+Design a complete color palette following this schema. Every field is required unless noted.
 
 ```toml
 [meta]
@@ -107,7 +107,7 @@ Choose from this curated list based on the mood:
 
 ### Terminal palette (optional)
 
-Only include a `[terminal]` section if the auto-derived terminal colors (hues mapped to ANSI, bright variants lightened 20%) would clash with the theme. Most themes can omit this.
+Only include a `[terminal]` section in `theme.toml` if the auto-derived terminal colors (hues mapped to ANSI, bright variants lightened 20%) would clash with the theme. Most themes can omit this.
 
 ### Contrast check
 
@@ -117,9 +117,64 @@ Before finalizing, mentally verify:
 - Accent colors are visible on both background and surface
 - The overall palette feels cohesive — like one image, not a random color picker
 
-## Step 4: Write the file
+## Step 4: Create the theme directory
 
-Write the theme TOML to: `/home/ifit/dotfiles/.config/themes/<name>.toml`
+Create the full theme directory with all config files:
+
+### 4a: Bootstrap from current theme
+
+```bash
+THEME_NAME="<name>"
+THEME_DIR="/home/ifit/dotfiles/.config/themes/${THEME_NAME}"
+mkdir -p "${THEME_DIR}"
+CURRENT_THEME=$(readlink -f ~/.config/themes/current)
+cp -r "${CURRENT_THEME}"/* "${THEME_DIR}/"
+```
+
+This copies all config files from the currently active theme as a starting point.
+
+### 4b: Write theme.toml
+
+Write the palette TOML you designed in Step 3 to `${THEME_DIR}/theme.toml`, replacing the copied one.
+
+### 4c: Update colors in each config file
+
+Now the creative part. For each config file copied from the current theme, read it, understand its structure, and replace the old theme's colors with your new palette's colors. You need to intelligently map colors to roles:
+
+- **Background/surface colors** → new `background`, `surface`
+- **Text/foreground colors** → new `foreground`, `dim`
+- **Border/separator colors** → new `border`
+- **Accent/highlight colors** → new accent hue, accent_bright hue
+- **Semantic colors (error, warning, success)** → new `red`, `orange`, `green` hues
+- **Terminal ANSI colors** → map from new hues
+
+Read the current theme's `theme.toml` first to understand what colors map to what roles, then substitute your new colors.
+
+Here's what each file looks like and how to handle it:
+
+**`foot.ini`** — INI format, bare hex colors (no `#` prefix). Contains terminal foreground/background and full 16-color ANSI palette. Replace all color values.
+
+**`waybar-style.css`** — CSS with hex colors (`#xxxxxx`) and `rgba()` values. Contains background, text, border, accent colors for the bar and modules. Replace all color values.
+
+**`swaync-style.css`** — CSS with `@define-color` declarations at the top, hex colors, and `rgba()` throughout. Update the `@define-color` lines and any inline colors.
+
+**`fuzzel.ini`** — INI format, bare hex colors with alpha suffix (e.g., `1a1b26ff`). 8 hex chars = 6 color + 2 alpha. Replace the color portion, keep alpha values.
+
+**`fzf-theme.sh`** — Shell script setting `FZF_DEFAULT_OPTS` with `--color` flag. Uses format like `--color=bg:#xxxxxx,fg:#xxxxxx,...`. Replace each hex color.
+
+**`hyprpaper.conf`** — Just a wallpaper path. Update to point to the new wallpaper: `~/Dropbox/Images/wallpapers/<filename>`.
+
+**`hyprland-colors.conf`** — Hyprland variable declarations. Bare hex with alpha suffix (e.g., `$color_bg = rgb(1a1b26)`). Replace hex values inside `rgb()`.
+
+**`hyprlock-colors.conf`** — Hyprland lock screen colors. Uses `rgba()` format (e.g., `$hl_bg = rgba(1a1b26ff)`). Replace hex+alpha values.
+
+**`alacritty.toml`** — TOML format with hex string values (e.g., `"#1a1b26"`). Contains primary colors and full 16-color palette. Replace all hex strings.
+
+**`theme.el`** — Emacs lisp. Just loads a built-in theme. Update the theme name from the `[emacs]` section of theme.toml.
+
+**`aside-theme.toml`** — TOML config for aside overlay. Contains hex colors with alpha (e.g., `"#1a1b26e6"`). Replace color portions, preserve alpha values.
+
+Use the Edit tool for each file — read it, then make targeted replacements.
 
 ## Step 5: Copy wallpaper if needed
 
@@ -129,14 +184,14 @@ If the image is NOT already in `~/Dropbox/Images/wallpapers/`, copy it there:
 cp "<original-path>" ~/Dropbox/Images/wallpapers/
 ```
 
-The `meta.wallpaper` path in the TOML should always point to the `~/Dropbox/Images/wallpapers/` copy.
+The `meta.wallpaper` path in theme.toml should always point to the `~/Dropbox/Images/wallpapers/` copy.
 
 ## Step 6: Report
 
-Print the full generated TOML so the user can review it.
+Print the full generated `theme.toml` so the user can review the palette.
 
 Tell the user:
-- The theme name and file location
+- The theme name and directory location
 - A brief description of the vibe/palette choices
-- How to apply: `theme apply <name>`
+- How to apply: `theme set <name>`
 - Remind them you did NOT apply it — they switch when ready

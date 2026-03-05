@@ -1,0 +1,29 @@
+#!/bin/bash
+# GIF picker — search Tenor, preview with sixels, copy to clipboard
+
+source "$HOME/.local/share/fzf-picker/theme.sh"
+
+OUTPUT=$(fzf "${FZF_PICKER_OPTS[@]}" \
+    --disabled \
+    --delimiter=$'\t' \
+    --with-nth=1 \
+    --border-label=' GIF ' \
+    --prompt='  ' \
+    --header='type to search  |  enter=copy url  alt-enter=copy gif' \
+    --preview='curl -sf {3} | chafa --format=sixel -s ${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}' \
+    --preview-window=right:50%:wrap \
+    --bind 'change:reload:sleep 0.3; gif-search {q}' \
+    --expect=alt-enter)
+
+KEY=$(head -1 <<< "$OUTPUT")
+SELECTION=$(tail -1 <<< "$OUTPUT")
+
+[[ -z "$SELECTION" ]] && exit 0
+
+GIF_URL=$(printf '%s' "$SELECTION" | cut -f2)
+
+if [[ "$KEY" == "alt-enter" ]]; then
+    hyprctl dispatch exec "bash -c 'curl -sfL \"$GIF_URL\" -o /tmp/gif-pick.gif && wl-copy -t image/gif < /tmp/gif-pick.gif'"
+else
+    hyprctl dispatch exec "bash -c 'printf \"%s\" \"$GIF_URL\" | wl-copy'"
+fi

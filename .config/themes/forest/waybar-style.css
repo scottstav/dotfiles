@@ -1,0 +1,397 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Iosevka";
+    font-size: 11px;
+    min-height: 0;
+}
+
+window#waybar {
+    min-height: 24px;
+    color: #d4d4d4;
+    background: linear-gradient(180deg, rgba(26, 28, 30, 0.6), rgba(26, 28, 30, 0.4));
+    border-bottom: 1px solid rgba(91, 154, 106, 0.25);
+    border-radius: 0;
+}
+
+#window {
+    font-family: "Iosevka";
+    color: #d4d4d4;
+}
+
+#workspaces button {
+    color: #d4d4d4;
+    padding: 0 4px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+#workspaces button:hover {
+    color: #ffffff;
+}
+
+#workspaces button.active {
+    color: #5b9a6a;
+    border-bottom: 2px solid #5b9a6a;
+}
+
+#workspaces button.urgent {
+    background-color: rgb(110, 00, 00);
+    color: #ffffff;
+}
+
+#mode {
+    background: rgba(37, 42, 36, 0.5);
+    border-bottom: 3px solid #8a8070;
+}
+
+#custom-waybarstatus {
+    margin-left: 150px;
+}
+
+.modules-center {
+}
+
+.modules-center * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+.modules-right * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+#custom-waybarstatus {
+    padding: 2px 4px;
+    color: #d4d4d4;
+    background-color: rgba(37, 42, 36, 0.5);
+}
+
+#battery icon {
+    color: #e06060;
+}
+
+#battery.charging {
+    color: #5b9a6a;
+}
+
+@keyframes blink {
+    to {
+	background-color: #6a9e8e;
+	color: #1a1c1e;
+    }
+}
+
+#battery.warning:not(.charging) {
+    color: #e06060;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#network.disconnected {
+    background: #e06060;
+}
+
+/* Audio module */
+#custom-audio {
+    color: #d4d4d4;
+}
+
+#custom-audio.muted {
+    color: #e06060;
+}
+
+#custom-audio.source-muted {
+    color: #e06060;
+}
+
+#custom-audio.high {
+    color: #d4944a;
+}
+
+/* Bluetooth module */
+#custom-bluetooth {
+    color: #d4d4d4;
+}
+
+#custom-bluetooth.off {
+    color: #5a4a3a;
+}
+
+#custom-bluetooth.on {
+    color: #8a8070;
+}
+
+#custom-bluetooth.connected {
+    color: #6a9e8e;
+}
+
+#custom-bluetooth.low-battery {
+    color: #d4944a;
+    animation-name: pulse;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-spotify {
+    color: #6a9e8e;
+}
+
+#tray {
+    color: #6a9e8e;
+}
+
+#custom-sysinfo {
+    color: #6a9e8e;
+}
+
+#custom-sysinfo.warning {
+    color: #d4944a;
+}
+
+#custom-sysinfo.critical {
+    color: #e06060;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-external-drive {
+    color: #6a9e8e;
+}
+
+#custom-external-drive.mounted {
+    color: #5b9a6a;
+}
+
+/* Notification module */
+#custom-notification {
+    color: #d4d4d4;
+}
+
+#custom-notification.notification {
+    color: #6a9e8e;
+}
+
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none {
+    color: #8a8070;
+}
+
+#custom-notification.inhibited-notification,
+#custom-notification.inhibited-none {
+    color: #d4944a;
+}
+
+/* Recording module */
+#custom-recording {
+    color: #404040;
+}
+
+#custom-recording.recording {
+    color: #e06060;
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-recording.idle {
+    color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+/* Voice typing module */
+#custom-voice-typing {
+    color: #8a8070;
+}
+
+#custom-voice-typing.listening {
+    color: #5b9a6a;
+    animation-name: pulse;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-voice-typing.paused {
+    color: #8a8070;
+}
+
+#custom-voice-typing.off {
+    color: #5a4a3a;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* System freshness module */
+#custom-system-freshness.fresh {
+    color: #5b9a6a;
+}
+
+#custom-system-freshness.healthy {
+    color: #6a9e8e;
+}
+
+#custom-system-freshness.aging {
+    color: #d4944a;
+}
+
+#custom-system-freshness.wilting {
+    color: #e06060;
+}
+
+#custom-system-freshness.dead {
+    color: #e06060;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+/* Google Calendar module */
+#custom-gcal.active {
+    color: #5b9a6a;
+}
+
+#custom-gcal.urgent {
+    color: #e06060;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-gcal.soon {
+    color: #d4944a;
+}
+
+#custom-gcal.upcoming {
+    color: #6a9e8e;
+}
+
+#custom-gcal.later {
+    color: #d4d4d4;
+}
+
+#custom-gcal.idle {
+    color: #8a8070;
+}
+
+#custom-gcal.none {
+    color: #404040;
+}
+
+/* Smooth color glow animations for aside states */
+@keyframes glow-blue {
+    0% { color: #6a9e8e; }
+    50% { color: #c6dad4; }
+    100% { color: #6a9e8e; }
+}
+
+@keyframes glow-green {
+    0% { color: #5b9a6a; }
+    50% { color: #b8d5bf; }
+    100% { color: #5b9a6a; }
+}
+
+@keyframes glow-amber {
+    0% { color: #d4944a; }
+    50% { color: #f1ddc5; }
+    100% { color: #d4944a; }
+}
+
+/* Aside module */
+#custom-aside {
+    color: #6a9e8e;
+}
+
+#custom-aside.thinking {
+    animation-name: glow-blue;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.tool_use {
+    animation-name: glow-amber;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.speaking {
+    animation-name: glow-green;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.listening {
+    color: #d4944a;
+    animation-name: pulse;
+    animation-duration: 0.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+/* CCL worker module */
+#custom-ccl {
+    color: #6a9e8e;
+}
+
+#custom-ccl.idle {
+    color: #8a8070;
+}
+
+@keyframes glow-yellow {
+    0% { color: #c4b060; opacity: 1; }
+    50% { color: #7c6f3e; opacity: 0.5; }
+    100% { color: #c4b060; opacity: 1; }
+}
+
+#custom-ccl.working {
+    animation-name: glow-yellow;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes arrive-green {
+    0% { color: #ffffff; }
+    30% { color: #5b9a6a; }
+    60% { color: #ffffff; }
+    100% { color: #5b9a6a; }
+}
+
+#custom-ccl.done {
+    color: #5b9a6a;
+    animation-name: arrive-green;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: 1;
+}
+
+#custom-ccl.pending {
+    color: #8a8070;
+}

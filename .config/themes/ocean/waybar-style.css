@@ -1,0 +1,397 @@
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Iosevka";
+    font-size: 11px;
+    min-height: 0;
+}
+
+window#waybar {
+    min-height: 24px;
+    color: #e0e0e0;
+    background: linear-gradient(180deg, rgba(10, 14, 20, 0.6), rgba(10, 14, 20, 0.4));
+    border-bottom: 1px solid rgba(30, 144, 255, 0.25);
+    border-radius: 0;
+}
+
+#window {
+    font-family: "Iosevka";
+    color: #c0c0c0;
+}
+
+#workspaces button {
+    color: #e0e0e0;
+    padding: 0 4px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+}
+
+#workspaces button:hover {
+    color: #ffffff;
+}
+
+#workspaces button.active {
+    color: #1e90ff;
+    border-bottom: 2px solid #1e90ff;
+}
+
+#workspaces button.urgent {
+    background-color: rgb(110, 00, 00);
+    color: #ffffff;
+}
+
+#mode {
+    background: rgba(26, 30, 36, 0.5);
+    border-bottom: 3px solid #6e7681;
+}
+
+#custom-waybarstatus {
+    margin-left: 150px;
+}
+
+.modules-center {
+}
+
+.modules-center * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+.modules-right * {
+    padding: 0 1px;
+    margin: 0 5px;
+}
+
+#custom-waybarstatus {
+    padding: 2px 4px;
+    color: #c0c0c0;
+    background-color: rgba(26, 30, 36, 0.5);
+}
+
+#battery icon {
+    color: #dc143c;
+}
+
+#battery.charging {
+    color: #00ff7f;
+}
+
+@keyframes blink {
+    to {
+	background-color: #00bfff;
+	color: #0a0e14;
+    }
+}
+
+#battery.warning:not(.charging) {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#network.disconnected {
+    background: #dc143c;
+}
+
+/* Audio module */
+#custom-audio {
+    color: #e0e0e0;
+}
+
+#custom-audio.muted {
+    color: #dc143c;
+}
+
+#custom-audio.source-muted {
+    color: #dc143c;
+}
+
+#custom-audio.high {
+    color: #ffa500;
+}
+
+/* Bluetooth module */
+#custom-bluetooth {
+    color: #e0e0e0;
+}
+
+#custom-bluetooth.off {
+    color: #3a3a4a;
+}
+
+#custom-bluetooth.on {
+    color: #6e7681;
+}
+
+#custom-bluetooth.connected {
+    color: #00bfff;
+}
+
+#custom-bluetooth.low-battery {
+    color: #ffa500;
+    animation-name: pulse;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-spotify {
+    color: #00bfff;
+}
+
+#tray {
+    color: #00bfff;
+}
+
+#custom-sysinfo {
+    color: #00bfff;
+}
+
+#custom-sysinfo.warning {
+    color: #ffa500;
+}
+
+#custom-sysinfo.critical {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-external-drive {
+    color: #00bfff;
+}
+
+#custom-external-drive.mounted {
+    color: #00ff7f;
+}
+
+/* Notification module */
+#custom-notification {
+    color: #e0e0e0;
+}
+
+#custom-notification.notification {
+    color: #00bfff;
+}
+
+#custom-notification.dnd-notification,
+#custom-notification.dnd-none {
+    color: #6e7681;
+}
+
+#custom-notification.inhibited-notification,
+#custom-notification.inhibited-none {
+    color: #ffa500;
+}
+
+/* Recording module */
+#custom-recording {
+    color: #404040;
+}
+
+#custom-recording.recording {
+    color: #dc143c;
+    animation-name: pulse;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-recording.idle {
+    color: transparent;
+    padding: 0;
+    margin: 0;
+}
+
+/* Voice typing module */
+#custom-voice-typing {
+    color: #6e7681;
+}
+
+#custom-voice-typing.listening {
+    color: #00ff7f;
+    animation-name: pulse;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-voice-typing.paused {
+    color: #6e7681;
+}
+
+#custom-voice-typing.off {
+    color: #3a3a4a;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* System freshness module */
+#custom-system-freshness.fresh {
+    color: #00ff7f;
+}
+
+#custom-system-freshness.healthy {
+    color: #00bfff;
+}
+
+#custom-system-freshness.aging {
+    color: #ffa500;
+}
+
+#custom-system-freshness.wilting {
+    color: #dc143c;
+}
+
+#custom-system-freshness.dead {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+/* Google Calendar module */
+#custom-gcal.active {
+    color: #00ff7f;
+}
+
+#custom-gcal.urgent {
+    color: #dc143c;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+#custom-gcal.soon {
+    color: #ffa500;
+}
+
+#custom-gcal.upcoming {
+    color: #00bfff;
+}
+
+#custom-gcal.later {
+    color: #e0e0e0;
+}
+
+#custom-gcal.idle {
+    color: #6e7681;
+}
+
+#custom-gcal.none {
+    color: #404040;
+}
+
+/* Smooth color glow animations for aside states */
+@keyframes glow-blue {
+    0% { color: #00bfff; }
+    50% { color: #99e5ff; }
+    100% { color: #00bfff; }
+}
+
+@keyframes glow-green {
+    0% { color: #00ff7f; }
+    50% { color: #99ffcb; }
+    100% { color: #00ff7f; }
+}
+
+@keyframes glow-amber {
+    0% { color: #ffa500; }
+    50% { color: #ffdb99; }
+    100% { color: #ffa500; }
+}
+
+/* Aside module */
+#custom-aside {
+    color: #00bfff;
+}
+
+#custom-aside.thinking {
+    animation-name: glow-blue;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.tool_use {
+    animation-name: glow-amber;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.speaking {
+    animation-name: glow-green;
+    animation-duration: 1s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+#custom-aside.listening {
+    color: #ffa500;
+    animation-name: pulse;
+    animation-duration: 0.8s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+/* CCL worker module */
+#custom-ccl {
+    color: #00bfff;
+}
+
+#custom-ccl.idle {
+    color: #6e7681;
+}
+
+@keyframes glow-yellow {
+    0% { color: #e5c07b; opacity: 1; }
+    50% { color: #7c6f3e; opacity: 0.5; }
+    100% { color: #e5c07b; opacity: 1; }
+}
+
+#custom-ccl.working {
+    animation-name: glow-yellow;
+    animation-duration: 2s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+}
+
+@keyframes arrive-green {
+    0% { color: #ffffff; }
+    30% { color: #00ff7f; }
+    60% { color: #ffffff; }
+    100% { color: #00ff7f; }
+}
+
+#custom-ccl.done {
+    color: #00ff7f;
+    animation-name: arrive-green;
+    animation-duration: 1.5s;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: 1;
+}
+
+#custom-ccl.pending {
+    color: #6e7681;
+}

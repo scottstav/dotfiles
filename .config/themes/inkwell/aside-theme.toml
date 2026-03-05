@@ -1,0 +1,12 @@
+[input]
+font = "Iosevka 12"
+
+[overlay]
+font = "Iosevka 12"
+
+[overlay.colors]
+background = "#12101ae6"
+foreground = "#d0ccd5ff"
+border = "#383344ff"
+accent = "#9a7098"
+user_accent = "#4a4555"

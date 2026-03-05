@@ -1,0 +1,26 @@
+[input]
+font = "Iosevka 12"
+
+[overlay]
+font = "Iosevka 12"
+max_lines = 6
+corner_radius = 12
+border_width = 2
+accent_height = 4
+position = "top-center"
+width = 550
+margin_top = 8
+margin_right = 0
+margin_bottom = 0
+margin_left = 0
+padding_top = 12
+padding_right = 16
+padding_bottom = 12
+padding_left = 16
+
+[overlay.colors]
+background = "#1a1c1ee6"
+foreground = "#d4d4d4ff"
+border = "#5a4a3aff"
+accent = "#5b9a6a"
+user_accent = "#a07048"

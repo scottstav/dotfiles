@@ -60,11 +60,25 @@ Both users on this machine sign commits with the GPG signing key:
 
 ## Setting Up a New Machine
 
-1. Install: `gnupg`, `libfido2`, `pcsclite` (if using ykman PIV/OATH)
-2. Import GPG public key: `gpg --import <public-key>` or fetch from keyserver
-3. Plug in YubiKey — `gpg --card-status` will bind the stubs to the card
-4. Stow dotfiles — this sets up `gpg-agent.conf` (SSH support), `.profile` (SSH_AUTH_SOCK), `.gitconfig` (signing)
-5. Add SSH public key to any new remote hosts
+Run the automated setup script:
+
+```
+yubikey-setup
+```
+
+This handles everything: installs dependencies, enables pcscd, fetches the GPG public key from the keyserver, configures gpg-agent for SSH, sets up git signing, and binds the YubiKey stubs.
+
+If you've already stowed dotfiles, `gpg-agent.conf` and `.profile` are already in place — the script is safe to run either way.
+
+### Manual steps (if not using the script)
+
+1. Install: `gnupg`, `ccid`, `pcsclite`, `pinentry`
+2. Enable pcscd: `sudo systemctl enable --now pcscd`
+3. Fetch GPG public key: `gpg --keyserver keys.openpgp.org --recv-keys ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE`
+4. Set trust: `echo "ED13C159C6CAE08D7FA0CF5EB22E59FC3E226CCE:6:" | gpg --import-ownertrust`
+5. Plug in YubiKey — `gpg --card-status` will bind the stubs to the card
+6. Stow dotfiles — this sets up `gpg-agent.conf` (SSH support), `.profile` (SSH_AUTH_SOCK), `.gitconfig` (signing)
+7. Add SSH public key to any new remote hosts
 
 ## Loading Keys onto a New YubiKey
 

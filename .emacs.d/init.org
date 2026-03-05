@@ -258,6 +258,20 @@
 #+RESULTS:
 : mc/mark-previous-like-this
 
+* colors
+#+begin_src emacs-lisp
+  (use-package rainbow-mode
+    :hook (conf-mode toml-ts-mode css-mode html-mode emacs-lisp-mode))
+
+  (use-package kurecolor
+    :bind (("C-c c h" . kurecolor-increase-hue-by-step)
+           ("C-c c H" . kurecolor-decrease-hue-by-step)
+           ("C-c c s" . kurecolor-increase-saturation-by-step)
+           ("C-c c S" . kurecolor-decrease-saturation-by-step)
+           ("C-c c b" . kurecolor-increase-brightness-by-step)
+           ("C-c c B" . kurecolor-decrease-brightness-by-step)))
+#+end_src
+
 * tempel
 #+begin_src emacs-lisp
   (use-package tempel

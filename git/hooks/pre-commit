@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Block commits with @ifit.com email outside ifit org repos
+
+email=$(git config user.email)
+
+if [[ "$email" == *@ifit.com ]]; then
+    remote=$(git remote get-url origin 2>/dev/null || echo "")
+    if [[ "$remote" != *"ifit/"* && "$remote" != *"ifit-"* ]]; then
+        echo "ERROR: Committing with ifit email ($email) to a non-ifit repo."
+        echo "Remote: ${remote:-none}"
+        echo ""
+        echo "Fix: git config user.email scottstavinoha@gmail.com"
+        exit 1
+    fi
+fi

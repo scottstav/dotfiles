@@ -1,5 +1,5 @@
 [user]
-	email = scottstavinoha@gmail.com
+	email = scotts@ifit.com
 	name = scottstav
 	signingkey = B22E59FC3E226CCE
 [github]
@@ -8,3 +8,5 @@
 	format = openpgp
 [commit]
 	gpgsign = true
+[core]
+	hooksPath = /home/ifit/.config/git/hooks

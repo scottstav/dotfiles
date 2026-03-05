@@ -8,7 +8,19 @@ API_KEY_FILE="$HOME/.config/gif-picker/api-key"
 [[ ! -f "$API_KEY_FILE" ]] && { echo "Missing API key at $API_KEY_FILE"; exit 1; }
 API_KEY=$(< "$API_KEY_FILE")
 
+CACHE_DIR="/tmp/gif-picker-cache"
+mkdir -p "$CACHE_DIR"
+
 QUERY=$(printf '%s' "$1" | jq -sRr @uri)
 
-curl -sf "https://api.klipy.com/api/v1/${API_KEY}/gifs/search?q=${QUERY}&page=1&per_page=20&content_filter=moderate&format_filter=gif" \
-  | jq -r '.data.data[]? | [.title, .file.hd.gif.url, .file.sm.gif.url] | @tsv'
+RESPONSE=$(curl -sf "https://api.klipy.com/api/v1/${API_KEY}/gifs/search?q=${QUERY}&page=1&per_page=20&content_filter=moderate&format_filter=gif")
+
+# Output results for fzf
+printf '%s' "$RESPONSE" | jq -r '.data.data[]? | [.title, .file.hd.gif.url, .file.sm.gif.url] | @tsv'
+
+# Prefetch all thumbnails in background
+printf '%s' "$RESPONSE" | jq -r '.data.data[]?.file.sm.gif.url' | while read -r url; do
+    hash=$(printf '%s' "$url" | md5sum | cut -d' ' -f1)
+    [[ -f "$CACHE_DIR/$hash" ]] && continue
+    curl -sf "$url" -o "$CACHE_DIR/$hash" &
+done &

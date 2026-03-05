@@ -10,7 +10,12 @@ OUTPUT=$(fzf "${FZF_PICKER_OPTS[@]}" \
     --border-label=' GIF ' \
     --prompt='  ' \
     --header='type to search  |  enter=copy url  alt-enter=copy gif' \
-    --preview='curl -sf {3} | chafa --format=sixel -s ${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES}' \
+    --preview='
+      url={3}; hash=$(printf "%s" "$url" | md5sum | cut -d" " -f1)
+      f="/tmp/gif-picker-cache/$hash"
+      [[ -f "$f" ]] || curl -sf "$url" -o "$f"
+      chafa --format=sixel -s ${FZF_PREVIEW_COLUMNS}x${FZF_PREVIEW_LINES} "$f"
+    ' \
     --preview-window=right:50%:wrap \
     --bind 'change:reload:sleep 0.3; gif-search {q}' \
     --expect=alt-enter)

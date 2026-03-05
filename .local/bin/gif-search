@@ -1,5 +1,5 @@
 #!/bin/bash
-# gif-search — Tenor v2 search helper for gif-picker
+# gif-search — Klipy GIF API search helper for gif-picker
 # Usage: gif-search <query>
 
 [[ -z "$1" ]] && exit 0
@@ -10,5 +10,5 @@ API_KEY=$(< "$API_KEY_FILE")
 
 QUERY=$(printf '%s' "$1" | jq -sRr @uri)
 
-curl -sf "https://tenor.googleapis.com/v2/search?q=${QUERY}&key=${API_KEY}&client_key=gif-picker&limit=20&media_filter=gif,tinygif" \
-  | jq -r '.results[] | [.content_description, .media_formats.gif.url, .media_formats.tinygif.url] | @tsv'
+curl -sf "https://api.klipy.com/api/v1/${API_KEY}/gifs/search?q=${QUERY}&page=1&per_page=20&content_filter=moderate&format_filter=gif" \
+  | jq -r '.data.data[]? | [.title, .file.gif, .file.webp] | @tsv'

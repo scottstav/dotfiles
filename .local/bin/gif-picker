@@ -1,5 +1,5 @@
 #!/bin/bash
-# GIF picker — search Tenor, preview with sixels, copy to clipboard
+# GIF picker — search Klipy, preview with sixels, copy to clipboard
 
 source "$HOME/.local/share/fzf-picker/theme.sh"
 

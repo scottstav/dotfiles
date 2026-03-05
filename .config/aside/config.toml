@@ -16,41 +16,11 @@ enabled = false
 speed = 1.0
 filter = {skip_code_blocks = true, skip_urls = true}
 
-[input]
-font = "Iosevka 12"
-
 [storage]
 archive_dir = "~/Dropbox/LLM/Chats"
 
 [tools]
 dirs = ["~/.config/aside/tools"]
-
-[overlay]
-font = "Iosevka 12"
-max_lines = 5
-corner_radius = 8
-border_width = 1
-accent_height = 4
-scroll_duration = 200
-fade_duration = 400
-position = "top-center"
-width = 450
-margin_top = 5
-margin_right = 5
-margin_left = 5
-margin_bottom = 5
-padding_top = 2.5
-padding_right = 2.5
-padding_left = 2.5
-padding_bottom = 2.5
-
-[overlay.colors]
-background = "#080810e6"
-foreground = "#d0d0e0ff"
-border = "#282840ff"
-accent = "#d09040"
-user_accent = "#3a3a58"
-
 
 [status]
 signal = 12

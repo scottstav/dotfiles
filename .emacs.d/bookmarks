@@ -2,7 +2,13 @@
 ;;; This format is meant to be slightly human-readable;
 ;;; nevertheless, you probably don't want to edit it.
 ;;; -*- End Of Bookmark File Format Version Stamp -*-
-(("quicknote"
+(("whirlwind:~"
+ (filename . "/ssh:whirlwind@192.168.8.244:~/")
+ (front-context-string . ".authinfo.gpg ->")
+ (rear-context-string . "22 Dec 11 18:44 ")
+ (position . 219)
+ (last-modified 27052 49755 664440 782000))
+("quicknote"
  (filename . "~/Dropbox/org/denote/quicknote.org")
  (front-context-string . "\n\n* DONE https:/")
  (rear-context-string)

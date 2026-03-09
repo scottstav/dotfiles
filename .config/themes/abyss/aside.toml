@@ -1,0 +1,51 @@
+[model]
+name = "anthropic/claude-haiku-4-5"
+system_prompt = "Be concise. Short, direct answers. Skip filler and preamble."
+
+[voice]
+enabled = false
+stt_model = "base"
+stt_device = "cpu"
+smart_silence = true
+silence_timeout = 2.5
+no_speech_timeout = 3.0
+
+[tts]
+enabled = false
+speed = 1.0
+
+[storage]
+archive_dir = "~/Dropbox/LLM/Chats"
+
+[tools]
+dirs = ["~/.config/aside/tools"]
+
+[status]
+signal = 12
+
+[input]
+font = "Iosevka 12"
+
+[overlay]
+font = "Iosevka 12"
+max_lines = 4
+corner_radius = 6
+border_width = 1
+accent_height = 3
+position = "top-center"
+width = 500
+margin_top = 10
+margin_right = 10
+margin_bottom = 0
+margin_left = 0
+padding_top = 18
+padding_right = 24
+padding_bottom = 18
+padding_left = 24
+
+[overlay.colors]
+background = "#080810e6"
+foreground = "#d0d0e0ff"
+border = "#282840ff"
+accent = "#d09040"
+user_accent = "#3a3a58"

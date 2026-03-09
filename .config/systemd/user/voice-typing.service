@@ -7,6 +7,7 @@ Requires=pipewire-pulse.service
 Type=simple
 Environment=YDOTOOL_SOCKET=%t/.ydotool_socket
 Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/bin/bash -c 'test -x %h/.local/share/voice-typing-linux/.venv/bin/python || (python3.11 -m venv %h/.local/share/voice-typing-linux/.venv && %h/.local/share/voice-typing-linux/.venv/bin/pip install -r %h/.local/share/voice-typing-linux/requirements.txt requests)'
 ExecStart=%h/.local/share/voice-typing-linux/.venv/bin/python %h/.local/share/voice-typing-linux/enhanced-voice-typing.py
 Restart=on-failure
 RestartSec=3

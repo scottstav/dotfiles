@@ -17,6 +17,9 @@
 
 ;; Make use-package use straight by default
 (setq straight-use-package-by-default t)
+
+;; Rebuild packages when source files change (prevents stale .elc after pull)
+(setq straight-check-for-modifications '(check-on-save find-when-checking))
 (straight-use-package 'org)
 
 (global-set-key (kbd "M-o") 'other-window)

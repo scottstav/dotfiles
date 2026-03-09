@@ -4,16 +4,10 @@ set -euo pipefail
 source "$HOME/.local/share/fzf-picker/theme.sh"
 
 THEME_DIR="$HOME/.config/themes"
-CURRENT=$(theme current 2>/dev/null || echo "")
 
 SELECTION=$(
-    for f in "$THEME_DIR"/*.toml; do
-        [ -f "$f" ] || continue
-        name=$(basename "$f" .toml)
-        marker=""
-        [ "$name" = "$CURRENT" ] && marker=" [active]"
-        echo "${name}${marker}"
-    done | fzf "${FZF_PICKER_OPTS[@]}" \
+    theme list | sed "s/ \*$/ [active]/" \
+    | fzf "${FZF_PICKER_OPTS[@]}" \
         --border-label=' Theme ' \
         --prompt='theme> '
 ) || exit 0

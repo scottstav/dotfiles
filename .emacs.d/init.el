@@ -622,7 +622,7 @@ RULES:
                             (kill-new result)
                             (message "Result copied (%d chars). C-y to paste." (length result)))))
                        (t
-                        (message "gptel error: %s" (plist-get info :status))))))))
+                        (message "gptel error: %s" (plist-get info :status)))))))))
 
 (use-package gptel-quick
   :straight (:host github :repo "karthink/gptel-quick")

@@ -517,6 +517,7 @@
   (defvar my/gptel--transform-tools nil
     "Tools available to the agentic transform command.")
 
+  (with-eval-after-load 'gptel
   (setq my/gptel--transform-tools
         (list
          (gptel-make-tool
@@ -573,7 +574,7 @@
           :description "List files in a directory. Use to understand project structure."
           :args (list '(:name "path" :type string
                         :description "Directory path to list"))
-          :category "transform")))
+          :category "transform"))))
 
   (defun my/gptel-transform-region (beg end)
     "Agentic transform: apply a freeform instruction to the selected region.

@@ -9,4 +9,4 @@
 [commit]
 	gpgsign = true
 [core]
-	hooksPath = /home/ifit/.config/git/hooks
+	hooksPath = ~/.config/git/hooks

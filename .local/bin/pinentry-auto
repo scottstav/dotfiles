@@ -1,0 +1,11 @@
+#!/bin/sh
+# Auto-select pinentry based on environment.
+# GUI sessions get a graphical dialog; TTY sessions get curses/tty.
+
+if [ -n "$DISPLAY" ] || [ -n "$WAYLAND_DISPLAY" ]; then
+    exec /usr/bin/pinentry-gnome3 "$@"
+elif [ -t 0 ]; then
+    exec /usr/bin/pinentry-curses "$@"
+else
+    exec /usr/bin/pinentry-tty "$@"
+fi

@@ -253,6 +253,15 @@ def detect_display_server():
 
     if session_type == 'wayland' or wayland_display:
         return 'wayland'
+
+    # Fallback: check for wayland socket in XDG_RUNTIME_DIR (useful when
+    # systemd user service starts before environment is fully imported)
+    runtime_dir = os.environ.get('XDG_RUNTIME_DIR', '')
+    if runtime_dir:
+        import glob
+        if glob.glob(os.path.join(runtime_dir, 'wayland-*')):
+            return 'wayland'
+
     return 'x11'
 
 

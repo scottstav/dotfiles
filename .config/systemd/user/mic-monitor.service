@@ -1,0 +1,6 @@
+[Unit]
+Description=Mic monitor loopback (wireless mic -> headphones)
+
+[Service]
+ExecStart=%h/.local/bin/mic-monitor-start.sh
+Restart=on-failure

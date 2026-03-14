@@ -180,7 +180,8 @@
         "exec": "voice-typing-status",
         "return-type": "json",
         "interval": 1,
-        "on-click": "voice-typing"
+        "on-click": "voice-typing",
+        "on-click-middle": "mic-monitor-toggle.sh"
     },
     "custom/emacs-daemon": {
         "exec": "emacs-daemon-status",

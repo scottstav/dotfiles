@@ -3,9 +3,18 @@
 
 STATE_FILE="${XDG_RUNTIME_DIR:-/tmp}/voice-typing-state"
 
+# Check if mic monitor loopback is active
+if systemctl --user is-active --quiet mic-monitor; then
+    MON_DOT="<span font_size='x-small' rise='6000'> ●</span>"
+    MON_TIP=" | Mic monitor ON (middle-click to stop)"
+else
+    MON_DOT=""
+    MON_TIP=""
+fi
+
 if [ ! -f "$STATE_FILE" ]; then
     # Daemon not running
-    echo '{"text": "", "class": "off", "tooltip": "Voice typing off (click to start)"}'
+    echo "{\"text\": \"$MON_DOT\", \"class\": \"off\", \"tooltip\": \"Voice typing off (click to start)$MON_TIP\"}"
     exit 0
 fi
 
@@ -13,12 +22,12 @@ STATE=$(cat "$STATE_FILE")
 
 case "$STATE" in
     listening)
-        echo '{"text": "", "class": "listening", "tooltip": "Voice typing: LISTENING (click to pause)"}'
+        echo "{\"text\": \"$MON_DOT\", \"class\": \"listening\", \"tooltip\": \"Voice typing: LISTENING (click to pause)$MON_TIP\"}"
         ;;
     paused)
-        echo '{"text": "", "class": "paused", "tooltip": "Voice typing: PAUSED (click to resume)"}'
+        echo "{\"text\": \"$MON_DOT\", \"class\": \"paused\", \"tooltip\": \"Voice typing: PAUSED (click to resume)$MON_TIP\"}"
         ;;
     *)
-        echo '{"text": "", "class": "off", "tooltip": "Voice typing off"}'
+        echo "{\"text\": \"$MON_DOT\", \"class\": \"off\", \"tooltip\": \"Voice typing off$MON_TIP\"}"
         ;;
 esac

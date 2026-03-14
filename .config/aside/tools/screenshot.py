@@ -11,12 +11,10 @@ TOOL_SPEC = {
     "description": (
         "Capture a screenshot of the user's currently focused monitor. "
         "After receiving the image, analyze what's on screen and help "
-        "the user with what they're looking at.\n\n"
-        "IMPORTANT: Always ask the user for permission before calling this tool. "
-        "When the user seems to be referring to something on their screen without "
-        "providing visual context (e.g. 'help me with this', 'what am I doing wrong', "
-        "'I give up'), ask 'Want me to look at your screen?' and only call this "
-        "tool if they confirm."
+        "the user with what they're looking at. "
+        "Call this tool immediately whenever the user seems to be referring "
+        "to something on their screen without providing visual context "
+        "(e.g. 'help me with this', 'what am I doing wrong', 'I give up')."
     ),
     "parameters": {
         "type": "object",
